@@ -28,7 +28,12 @@ async function chercherAliments() {
 }
 
 async function chercherStock() {
-    const result = await db.query("SELECT stock.*, foods.nom, foods.emoji, foods.unite AS food_unite FROM stock JOIN foods ON stock.food_id = foods.id");
+    const result = await db.query("SELECT stock.*, foods.nom, foods.emoji, foods.tracking_type FROM stock JOIN foods ON stock.food_id = foods.id");
+    const aujourdhui = new Date();
+    result.rows.forEach(row => {
+        const diff = aujourdhui - new Date(row.date_maj);
+        row.jours_depuis = Math.floor(diff / (1000 * 60 * 60 * 24));
+    });
     return result.rows
 }
 
