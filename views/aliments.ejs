@@ -1,0 +1,10 @@
+<%- include('partials/header') %>
+
+<main>
+  <h1>Aliments</h1>
+  <% aliments.forEach(function(aliment) { %>
+    <p><%= aliment.nom %></p>
+  <% }) %>
+</main>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,16 @@
+<%- include('partials/header') %>
+
+<main>
+  <h1>Stock</h1>
+  <% stock.forEach(function(aliment) { %>
+  <p><%= aliment.nom %></p>
+  <% if (aliment.unite === 'plein' || aliment.unite === 'presque vide' || aliment.unite === 'à moitié' || aliment.unite === 'vide') { %>
+  <p><%= aliment.unite %></p>
+  <% } else { %>
+  <p><%= aliment.quantite %> <%= aliment.unite %></p>
+  <% } %>
+  <p><%= aliment.date_ajout %></p>
+  <% }) %>
+</main>
+
+<%- include('partials/footer') %>

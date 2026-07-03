@@ -1,0 +1,11 @@
+<%- include('partials/header') %>
+
+<main>
+  <h1>Courses</h1>
+  <% courses.forEach(function(aliment) { %>
+  <p><%= aliment.nom %></p>
+  <p><%= aliment.quantite %> <%= aliment.unite %></p>
+  <% }) %>
+</main>
+
+<%- include('partials/footer') %>

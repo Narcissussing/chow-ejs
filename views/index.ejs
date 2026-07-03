@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+
+<main class="home">
+  <div class="home__hero">
+    <h1>Bienvenue sur <span>Chow</span></h1>
+    <p>Ton hub alimentaire maison.</p>
+  </div>
+
+  <div class="home__cards">
+    <a href="/stock" class="home-card">
+      <span class="home-card__icon">📦</span>
+      <h2 class="home-card__title">Stock</h2>
+      <p class="home-card__desc">Ce que j'ai à la maison</p>
+    </a>
+
+    <a href="/courses" class="home-card">
+      <span class="home-card__icon">🛒</span>
+      <h2 class="home-card__title">Courses</h2>
+      <p class="home-card__desc">Ce que je dois acheter</p>
+    </a>
+
+    <a href="/aliments" class="home-card">
+      <span class="home-card__icon">🥗</span>
+      <h2 class="home-card__title">Aliments</h2>
+      <p class="home-card__desc">Tous les aliments et leurs infos nutritionnelles</p>
+    </a>
+  </div>
+</main>
+
+<%- include('partials/footer') %>
