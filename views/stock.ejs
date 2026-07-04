@@ -56,6 +56,15 @@
 
     // Filtrer en temps réel
     rechercheAliment.addEventListener("input", function() {
+      idAlimentCache.value = "";
+      btnAjouter.disabled = true;
+
+      champQuantite.disabled = true;
+      champQuantite.value = "";
+
+      champCL.disabled = true;
+      champCL.selectedIndex = 0;
+
       const recherche = this.value.toLowerCase();
 
       if (recherche === "") {
@@ -65,9 +74,10 @@
 
       let count = 0;
       listeAliments.hidden = false;
+
       items.forEach(function(item) {
-        const nom = item.textContent.toLowerCase();
-        const match = nom.includes(recherche);
+        const match = item.textContent.toLowerCase().includes(recherche);
+
         if (match && count < 3) {
           item.hidden = false;
           count++;
@@ -76,7 +86,6 @@
         }
       });
     });
-
     // Sélectionner un aliment
     items.forEach(function(item) {
       item.addEventListener("click", function() {
