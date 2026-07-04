@@ -11,12 +11,22 @@
   <% } %>
   <% if (aliment.jours_depuis === 0) { %>
   <p>aujourd'hui</p>
-<% } else if (aliment.jours_depuis === 1) { %>
+  <% } else if (aliment.jours_depuis === 1) { %>
   <p>il y a 1 jour</p>
-<% } else { %>
+  <% } else { %>
   <p>il y a <%= aliment.jours_depuis %> jours</p>
-<% } %>
+  <% } %>
   <% }) %>
+
+  <form action="/stock/ajouter" method="post">
+    <select name="idAliment">
+      <% aliments.forEach(function(aliment) { %>
+      <option value="<%= aliment.id %>"><%= aliment.emoji %> <%= aliment.nom %></option>
+      <% }) %>
+    </select>
+    <input type="text" name="quantiteAliment" placeholder="Quantité" />
+    <button type="submit">Ajouter</button>
+  </form>
 </main>
 
 <%- include('partials/footer') %>

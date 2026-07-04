@@ -20,6 +20,8 @@ app.use(express.static("public"));
 
 app.set("view engine", "ejs");
 
+const uniteParType = { unite: 'unités', pack: 'packs', cl: 'cl' };
+
 //Function
 
 async function chercherAliments() {
@@ -67,10 +69,13 @@ app.get("/aliments", async (req, res) => {
 
 app.get("/stock", async (req, res) => {
     try {
-        const aliments = await chercherStock()
+        const stock = await chercherStock()
+        const aliments = await chercherAliments()
         res.render("stock.ejs", {
             title: "Stock",
-            stock: aliments
+            stock: stock,
+            aliments: aliments,
+
 
         });
     } catch (err) {
@@ -92,6 +97,78 @@ app.get("/courses", async (req, res) => {
         res.status(500).send("Internal Server Error");
     }
 });
+
+app.post("/stock/ajouter", async (req, res) => {
+    const idAliment = req.body.idAliment;
+    const quantiteAliment = req.body.quantiteAliment;
+    try {
+        if (!idAliment || !quantiteAliment) {
+            throw new Error("Champs requis.");
+        }
+        // const aliments = await chercherStock()
+        const result = await db.query("SELECT tracking_type FROM foods WHERE id = $1", [idAliment]);
+        const tracking_type = result.rows[0].tracking_type;
+        const unite = uniteParType[tracking_type];
+
+        await db.query(
+            "INSERT INTO stock (food_id, quantite, unite, date_maj) VALUES ($1, $2, $3, NOW())",
+            [idAliment, quantiteAliment, unite]
+        );
+
+        res.redirect("/stock");
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        const stock = await chercherStock()
+        const aliments = await chercherAliments()
+
+        res.render("stock.ejs", {
+            error: err.message,
+            stock: stock,
+            aliments: aliments,
+        });
+    }
+});
+
+
+app.post("/stock/modifier", async (req, res) => {
+    try {
+        const updatedItem = req.body.updatedItemTitle;
+        const itemId = req.body.updatedItemId;
+
+
+        if (!updatedItem) {
+            throw new Error("Field cannot be empty");
+        }
+
+
+        await db.query("UPDATE items SET title = $1 WHERE id = $2", [updatedItem, itemId]);
+        res.redirect("/");
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        const items = await getItems()
+
+
+        res.render("index.ejs", {
+            error: err.message,
+            listTitle: "Today",
+            listItems: items,
+        });
+    }
+});
+
+
+app.post("/stock/supprimer", async (req, res) => {
+    try {
+        const itemId = req.body.deleteItemId;
+        await db.query("DELETE FROM items WHERE id = $1", [itemId]);
+        res.redirect("/");
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Something went wrong, please try again.");
+    }
+});
+
+
 
 
 
