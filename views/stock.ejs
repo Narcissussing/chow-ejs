@@ -19,14 +19,91 @@
   <% }) %>
 
   <form action="/stock/ajouter" method="post">
-    <select name="idAliment">
-      <% aliments.forEach(function(aliment) { %>
-      <option value="<%= aliment.id %>"><%= aliment.emoji %> <%= aliment.nom %></option>
-      <% }) %>
+    <input type="hidden" name="idAliment" id="idAlimentCache" />
+
+    <div id="autocomplete">
+      <input type="text" id="rechercheAliment" placeholder="Rechercher un aliment..." autocomplete="off" />
+      <ul id="listeAliments">
+        <% aliments.forEach(function(aliment) { %>
+        <li data-id="<%= aliment.id %>" data-type="<%= aliment.tracking_type %>">
+          <%= aliment.emoji %> <%= aliment.nom %>
+        </li>
+        <% }) %>
+      </ul>
+    </div>
+
+    <input type="number" name="quantiteAliment" id="champQuantite" placeholder="Quantité" disabled />
+    <select name="quantiteAliment" id="champCL" disabled>
+      <option value="plein">Plein</option>
+      <option value="à moitié">À moitié</option>
+      <option value="presque vide">Presque vide</option>
+      <option value="vide">Vide</option>
     </select>
-    <input type="text" name="quantiteAliment" placeholder="Quantité" />
-    <button type="submit">Ajouter</button>
+    <button type="submit" disabled>Ajouter</button>
   </form>
+
+  <script>
+    const rechercheAliment = document.getElementById("rechercheAliment");
+    const listeAliments = document.getElementById("listeAliments");
+    const idAlimentCache = document.getElementById("idAlimentCache");
+    const champQuantite = document.getElementById("champQuantite");
+    const champCL = document.getElementById("champCL");
+    const btnAjouter = document.querySelector("button[type='submit']");
+    const items = listeAliments.querySelectorAll("li");
+
+    // Cacher la liste par défaut
+    listeAliments.hidden = true;
+
+    // Filtrer en temps réel
+    rechercheAliment.addEventListener("input", function() {
+      const recherche = this.value.toLowerCase();
+
+      if (recherche === "") {
+        listeAliments.hidden = true;
+        return;
+      }
+
+      let count = 0;
+      listeAliments.hidden = false;
+      items.forEach(function(item) {
+        const nom = item.textContent.toLowerCase();
+        const match = nom.includes(recherche);
+        if (match && count < 3) {
+          item.hidden = false;
+          count++;
+        } else {
+          item.hidden = true;
+        }
+      });
+    });
+
+    // Sélectionner un aliment
+    items.forEach(function(item) {
+      item.addEventListener("click", function() {
+        const type = this.dataset.type;
+        idAlimentCache.value = this.dataset.id;
+        rechercheAliment.value = this.textContent.trim();
+        listeAliments.hidden = true;
+
+        if (type === "cl") {
+          champCL.disabled = false;
+          champQuantite.disabled = true;
+          champQuantite.value = "";
+        } else {
+          champQuantite.disabled = false;
+          champCL.disabled = true;
+        }
+        btnAjouter.disabled = false;
+      });
+    });
+
+    // Cacher la liste si on clique ailleurs
+    document.addEventListener("click", function(e) {
+      if (!document.getElementById("autocomplete").contains(e.target)) {
+        listeAliments.hidden = true;
+      }
+    });
+  </script>
 </main>
 
 <%- include('partials/footer') %>
