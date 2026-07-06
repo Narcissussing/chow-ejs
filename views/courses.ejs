@@ -1,11 +1,76 @@
 <%- include('partials/header') %>
 
 <main>
-  <h1>Courses</h1>
-  <% courses.forEach(function(aliment) { %>
-  <p><%= aliment.nom %></p>
-  <p><%= aliment.quantite %> <%= aliment.unite %></p>
-  <% }) %>
+  <div class="courses-section">
+    <h1>Courses</h1>
+
+    <% if (typeof error !== 'undefined') { %>
+    <p class="erreur"><%= error %></p>
+    <% } %>
+
+    <div id="triCourses">
+      <button type="button" id="triAlpha" class="tri-actif">Trier par nom</button>
+      <button type="button" id="triCategorie">Trier par catégorie</button>
+      <button type="button" id="toggleMagasin">🛒 Je suis au magasin</button>
+    </div>
+
+    <div id="listeCourses">
+      <% courses.forEach(function(item) { %>
+      <div class="course-item" data-nom="<%= item.nom.toLowerCase() %>" data-categorie="<%= item.categorie || 'zzz' %>">
+        <span class="course-nom" data-id="<%= item.id %>"><%= item.emoji %> <%= item.nom %></span>
+        <% if (item.commentaire) { %>
+        <p class="note-affichee" data-id="<%= item.id %>">📝 <%= item.commentaire %></p>
+        <% } %>
+        <input type="text" class="input-commentaire hidden" placeholder="Ajouter une note" value="<%= item.commentaire || '' %>" data-id="<%= item.id %>" /> <% if (item.food_id && item.tracking_type === 'cl') { %>
+        <form action="/courses/acheter" method="post" class="form-acheter">
+          <input type="hidden" name="idCourse" value="<%= item.id %>" />
+          <button type="submit">Acheté</button>
+        </form>
+        <% } else if (item.food_id) { %>
+        <form action="/courses/acheter" method="post" class="form-acheter form-quantite">
+          <input type="hidden" name="idCourse" value="<%= item.id %>" />
+          <div class="suggestions-quantite">
+            <button type="button" class="suggestion" data-valeur="1">1</button>
+            <button type="button" class="suggestion" data-valeur="2">2</button>
+            <button type="button" class="suggestion" data-valeur="5">5</button>
+          </div>
+          <input type="number" name="quantiteAchetee" class="champ-quantite-achat" min="1" placeholder="Quantité" />
+          <button type="submit" class="btn-enregistrer-achat" disabled>Acheté</button>
+        </form>
+        <% } else { %>
+        <form action="/courses/acheter" method="post" class="form-acheter">
+          <input type="hidden" name="idCourse" value="<%= item.id %>" />
+          <button type="submit">Acheté</button>
+        </form>
+        <% } %>
+
+        <form action="/courses/supprimer" method="post" class="form-supprimer">
+          <input type="hidden" name="idCourse" value="<%= item.id %>" />
+          <button type="submit">Supprimer</button>
+        </form>
+      </div>
+      <% }) %>
+    </div>
+
+    <form action="/courses/ajouter" method="post" id="formAjouterCourse">
+      <input type="hidden" name="idAliment" id="idAlimentCacheCourses" />
+
+      <div id="autocompleteCourses">
+        <input type="text" id="rechercheAlimentCourses" name="rechercheAliment" placeholder="Ajouter un article..." autocomplete="off" />
+        <ul id="listeAlimentsCourses">
+          <% aliments.forEach(function(aliment) { %>
+          <li data-id="<%= aliment.id %>">
+            <%= aliment.emoji %> <%= aliment.nom %>
+          </li>
+          <% }) %>
+        </ul>
+      </div>
+
+      <button type="submit" id="btnAjouterCourses" disabled>Ajouter</button>
+    </form>
+
+    <script src="/js/courses.js" defer></script>
+  </div>
 </main>
 
 <%- include('partials/footer') %>

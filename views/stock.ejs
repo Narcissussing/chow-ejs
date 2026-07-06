@@ -16,6 +16,32 @@
   <% } else { %>
   <p>il y a <%= aliment.jours_depuis %> jours</p>
   <% } %>
+
+  <% if (aliment.tracking_type === 'cl') { %>
+  <form action="/stock/modifier" method="post" class="form-modif">
+    <input type="hidden" name="idStock" value="<%= aliment.id %>" />
+    <select name="nouvelleQuantite" class="champ-modif" data-initial="<%= aliment.quantite %>" disabled>
+      <option value="plein" <%= aliment.quantite === 'plein' ? 'selected' : '' %>>Plein</option>
+      <option value="à moitié" <%= aliment.quantite === 'à moitié' ? 'selected' : '' %>>À moitié</option>
+      <option value="presque vide" <%= aliment.quantite === 'presque vide' ? 'selected' : '' %>>Presque vide</option>
+      <option value="vide" <%= aliment.quantite === 'vide' ? 'selected' : '' %>>Vide</option>
+    </select>
+    <button type="button" class="btn-editer">Modifier</button>
+    <button type="submit" class="btn-sauvegarder" disabled hidden>Enregistrer</button>
+  </form>
+  <% } else { %>
+  <form action="/stock/modifier" method="post" class="form-modif">
+    <input type="hidden" name="idStock" value="<%= aliment.id %>" />
+    <input type="number" name="nouvelleQuantite" class="champ-modif" value="<%= aliment.quantite %>" data-initial="<%= aliment.quantite %>" min="0" disabled />
+    <button type="button" class="btn-editer">Modifier</button>
+    <button type="submit" class="btn-sauvegarder" disabled hidden>Enregistrer</button>
+  </form>
+  <% } %>
+
+  <form action="/stock/supprimer" method="post">
+    <input type="hidden" name="idStock" value="<%= aliment.id %>" />
+    <button type="submit">Supprimer</button>
+  </form>
   <% }) %>
 
   <form action="/stock/ajouter" method="post">
@@ -32,87 +58,18 @@
       </ul>
     </div>
 
-    <input type="number" name="quantiteAliment" id="champQuantite" placeholder="Quantité" disabled />
+    <input type="number" name="quantiteAliment" id="champQuantite" placeholder="Quantité" min="1" disabled />
     <select name="quantiteAliment" id="champCL" disabled>
+      <option value="">-- Choisir --</option>
       <option value="plein">Plein</option>
       <option value="à moitié">À moitié</option>
       <option value="presque vide">Presque vide</option>
       <option value="vide">Vide</option>
     </select>
-    <button type="submit" disabled>Ajouter</button>
+    <button type="submit" id="btnAjouter" disabled>Ajouter</button>
   </form>
 
-  <script>
-    const rechercheAliment = document.getElementById("rechercheAliment");
-    const listeAliments = document.getElementById("listeAliments");
-    const idAlimentCache = document.getElementById("idAlimentCache");
-    const champQuantite = document.getElementById("champQuantite");
-    const champCL = document.getElementById("champCL");
-    const btnAjouter = document.querySelector("button[type='submit']");
-    const items = listeAliments.querySelectorAll("li");
-
-    // Cacher la liste par défaut
-    listeAliments.hidden = true;
-
-    // Filtrer en temps réel
-    rechercheAliment.addEventListener("input", function() {
-      idAlimentCache.value = "";
-      btnAjouter.disabled = true;
-
-      champQuantite.disabled = true;
-      champQuantite.value = "";
-
-      champCL.disabled = true;
-      champCL.selectedIndex = 0;
-
-      const recherche = this.value.toLowerCase();
-
-      if (recherche === "") {
-        listeAliments.hidden = true;
-        return;
-      }
-
-      let count = 0;
-      listeAliments.hidden = false;
-
-      items.forEach(function(item) {
-        const match = item.textContent.toLowerCase().includes(recherche);
-
-        if (match && count < 3) {
-          item.hidden = false;
-          count++;
-        } else {
-          item.hidden = true;
-        }
-      });
-    });
-    // Sélectionner un aliment
-    items.forEach(function(item) {
-      item.addEventListener("click", function() {
-        const type = this.dataset.type;
-        idAlimentCache.value = this.dataset.id;
-        rechercheAliment.value = this.textContent.trim();
-        listeAliments.hidden = true;
-
-        if (type === "cl") {
-          champCL.disabled = false;
-          champQuantite.disabled = true;
-          champQuantite.value = "";
-        } else {
-          champQuantite.disabled = false;
-          champCL.disabled = true;
-        }
-        btnAjouter.disabled = false;
-      });
-    });
-
-    // Cacher la liste si on clique ailleurs
-    document.addEventListener("click", function(e) {
-      if (!document.getElementById("autocomplete").contains(e.target)) {
-        listeAliments.hidden = true;
-      }
-    });
-  </script>
+  <script src="/js/stock.js" defer></script>
 </main>
 
 <%- include('partials/footer') %>
