@@ -1490,6 +1490,160 @@ body.mode-edition-stock .form-supprimer-stock {
 
 /* ---------- JOURNAL (compteur de calories) ---------- */
 
+.journal-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+#selectRecette {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+#btnToggleRecette {
+  margin-bottom: 16px;
+}
+
+.journal-grammes-input {
+  width: 80px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text);
+  text-align: center;
+}
+
+.journal-grammes-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#panneauCreerRecette #nomRecette {
+  width: 100%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+
+.ligne-ingredient {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.ligne-ingredient-nom {
+  flex: 1;
+  min-width: 140px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+#autocompleteIngredient {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+#rechercheIngredient {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+#rechercheIngredient:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#listeIngredientsRecherche {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  list-style: none;
+  overflow: hidden;
+  z-index: 50;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+#listeIngredientsRecherche li {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+#listeIngredientsRecherche li:hover {
+  background: var(--bg);
+}
+
+.ingredient-quantite {
+  width: 100px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.btn-supprimer-ingredient {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-supprimer-ingredient:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#formCreerRecette #btnCreerRecette {
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  padding: 9px 24px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
 .journal-section {
   max-width: 900px;
   margin: 0 auto;
@@ -1659,6 +1813,220 @@ body.mode-edition-stock .form-supprimer-stock {
 .form-supprimer-journal button[type="submit"]:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ---- Recettes : boutons rapides + cartes ---- */
+
+#listeRecettesRapides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+#listeRecettes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.recette-carte {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+}
+
+.recette-nom {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.recette-ingredients-liste {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recette-ingredients-liste li {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ---- Formulaire nouvelle recette ---- */
+
+#formNouvelleRecette {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+#champNomRecette {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text);
+}
+
+#champNomRecette:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#listeIngredientsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ingredient-form-row {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ingredient-form-nom {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.btn-retirer-ingredient {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-retirer-ingredient:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#ajoutIngredientRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+#autocompleteRecette {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+#rechercheAlimentRecette {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+#rechercheAlimentRecette:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#listeAlimentsRecette {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  list-style: none;
+  overflow: hidden;
+  z-index: 50;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+#listeAlimentsRecette li {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+#listeAlimentsRecette li:hover {
+  background: var(--bg);
+}
+
+#champGrammesRecette {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+  width: 120px;
+}
+
+#btnAjouterIngredient,
+#btnCreerRecette {
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  padding: 9px 24px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+#btnAjouterIngredient:disabled,
+#btnCreerRecette:disabled {
+  background: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+#btnAjouterIngredient:not(:disabled):hover,
+#btnCreerRecette:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+/* ---- Édition inline de la quantité (page Calories) ---- */
+
+.form-modif-journal {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.journal-unite {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+#btnToutSupprimer {
+  margin-top: 20px;
 }
 
 @media (max-width: 768px) {

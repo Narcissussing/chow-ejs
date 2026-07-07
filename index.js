@@ -49,11 +49,6 @@ async function chercherCourses() {
     return result.rows
 }
 
-async function chercherDetailAliment() {
-    const result = await db.query("SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji, foods.unite AS food_unite, foods.tracking_type, foods.categorie FROM courses LEFT JOIN foods ON courses.food_id = foods.id WHERE achete = false");
-    return result.rows
-}
-
 async function chercherJournalDuJour() {
     const result = await db.query(
         `SELECT journal_repas.*, foods.nom, foods.emoji,
@@ -66,6 +61,11 @@ async function chercherJournalDuJour() {
          WHERE date_entree = CURRENT_DATE
          ORDER BY heure_entree ASC`
     );
+    return result.rows;
+}
+
+async function chercherRecettes() {
+    const result = await db.query("SELECT id, nom FROM recettes ORDER BY nom ASC");
     return result.rows;
 }
 
@@ -326,10 +326,12 @@ app.get("/calories", async (req, res) => {
     try {
         const journal = await chercherJournalDuJour();
         const aliments = await chercherAliments();
+        const recettes = await chercherRecettes();
         res.render("calories.ejs", {
             title: "Calories",
             journal: journal,
-            aliments: aliments
+            aliments: aliments,
+            recettes: recettes
         });
     } catch (err) {
         console.error(err);
@@ -337,12 +339,14 @@ app.get("/calories", async (req, res) => {
     }
 });
  
+// -- POST /calories/ajouter : remplace l'ancienne (quantiteG optionnelle, défaut 100) --
+ 
 app.post("/calories/ajouter", async (req, res) => {
     try {
         const idAliment = req.body.idAliment;
-        const quantiteG = req.body.quantiteG;
+        const quantiteG = req.body.quantiteG || 100;
  
-        if (!idAliment || !quantiteG) {
+        if (!idAliment) {
             return res.status(400).json({ erreur: "Champs requis." });
         }
  
@@ -371,15 +375,125 @@ app.post("/calories/ajouter", async (req, res) => {
     }
 });
  
-app.post("/calories/supprimer", async (req, res) => {
+// -- POST /calories/modifier : nouvelle route, édition inline de la quantité --
+ 
+app.post("/calories/modifier", async (req, res) => {
     try {
         const idEntree = req.body.idEntree;
-        if (!idEntree) {
-            return res.status(400).json({ erreur: "Aucune ligne sélectionnée" });
+        const nouvelleQuantite = req.body.nouvelleQuantite;
+ 
+        if (!idEntree || !nouvelleQuantite) {
+            return res.status(400).json({ erreur: "Champs requis." });
         }
  
-        await db.query("DELETE FROM journal_repas WHERE id = $1", [idEntree]);
+        await db.query("UPDATE journal_repas SET quantite_g = $1 WHERE id = $2", [nouvelleQuantite, idEntree]);
+ 
+        const itemResult = await db.query(
+            `SELECT journal_repas.*, foods.nom, foods.emoji,
+                    ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
+                    ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
+                    ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
+                    ROUND(foods.lipides * journal_repas.quantite_g / 100, 1) AS lipides_calc
+             FROM journal_repas
+             JOIN foods ON journal_repas.food_id = foods.id
+             WHERE journal_repas.id = $1`,
+            [idEntree]
+        );
+ 
+        res.json({ succes: true, item: itemResult.rows[0] });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+ 
+// -- POST /calories/supprimer : identique à avant, garder tel quel --
+ 
+// -- POST /calories/vider : nouvelle route, Tout Effacer --
+ 
+app.post("/calories/vider", async (req, res) => {
+    try {
+        await db.query("DELETE FROM journal_repas WHERE date_entree = CURRENT_DATE");
         res.json({ succes: true });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+ 
+// -- POST /calories/ajouter-recette : nouvelle route, applique une recette --
+ 
+app.post("/calories/ajouter-recette", async (req, res) => {
+    try {
+        const idRecette = req.body.idRecette;
+        if (!idRecette) {
+            return res.status(400).json({ erreur: "Aucune recette sélectionnée." });
+        }
+ 
+        const ingredients = await db.query(
+            "SELECT food_id, quantite_g FROM recette_ingredients WHERE recette_id = $1",
+            [idRecette]
+        );
+ 
+        if (ingredients.rows.length === 0) {
+            return res.status(400).json({ erreur: "Cette recette n'a aucun ingrédient." });
+        }
+ 
+        const nouvellesEntrees = [];
+ 
+        for (const ingredient of ingredients.rows) {
+            const insertResult = await db.query(
+                "INSERT INTO journal_repas (food_id, quantite_g) VALUES ($1, $2) RETURNING id",
+                [ingredient.food_id, ingredient.quantite_g]
+            );
+            nouvellesEntrees.push(insertResult.rows[0].id);
+        }
+ 
+        const itemsResult = await db.query(
+            `SELECT journal_repas.*, foods.nom, foods.emoji,
+                    ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
+                    ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
+                    ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
+                    ROUND(foods.lipides * journal_repas.quantite_g / 100, 1) AS lipides_calc
+             FROM journal_repas
+             JOIN foods ON journal_repas.food_id = foods.id
+             WHERE journal_repas.id = ANY($1)
+             ORDER BY journal_repas.heure_entree ASC`,
+            [nouvellesEntrees]
+        );
+ 
+        res.json({ succes: true, items: itemsResult.rows });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+ 
+// -- POST /recettes/creer : nouvelle route, création d'une recette --
+ 
+app.post("/recettes/creer", async (req, res) => {
+    try {
+        const nom = req.body.nom;
+        const ingredients = req.body.ingredients;
+ 
+        if (!nom || !ingredients || ingredients.length === 0) {
+            return res.status(400).json({ erreur: "Nom et au moins un ingrédient requis." });
+        }
+ 
+        const recetteResult = await db.query(
+            "INSERT INTO recettes (nom) VALUES ($1) RETURNING id",
+            [nom]
+        );
+        const idRecette = recetteResult.rows[0].id;
+ 
+        for (const ingredient of ingredients) {
+            await db.query(
+                "INSERT INTO recette_ingredients (recette_id, food_id, quantite_g) VALUES ($1, $2, $3)",
+                [idRecette, ingredient.food_id, ingredient.quantite_g]
+            );
+        }
+ 
+        res.json({ succes: true, recette: { id: idRecette, nom: nom } });
     } catch (err) {
         console.log("ERREUR:", err.message);
         res.status(500).json({ erreur: err.message });

@@ -1,9 +1,5 @@
 const rechercheAlimentCalories = document.getElementById("rechercheAlimentCalories");
 const listeAlimentsCalories = document.getElementById("listeAlimentsCalories");
-const idAlimentCacheCalories = document.getElementById("idAlimentCacheCalories");
-const champGrammes = document.getElementById("champGrammes");
-const btnAjouterCalories = document.getElementById("btnAjouterCalories");
-const formAjouterCalories = document.getElementById("formAjouterCalories");
 const listeJournal = document.getElementById("listeJournal");
 const noResultsJournal = document.getElementById("noResultsJournal");
 
@@ -12,19 +8,25 @@ const totalGlucidesEl = document.getElementById("totalGlucides");
 const totalProteinesEl = document.getElementById("totalProteines");
 const totalLipidesEl = document.getElementById("totalLipides");
 
+const selectRecette = document.getElementById("selectRecette");
+const btnToutEffacer = document.getElementById("btnToutEffacer");
+
+const btnToggleRecette = document.getElementById("btnToggleRecette");
+const panneauCreerRecette = document.getElementById("panneauCreerRecette");
+const formCreerRecette = document.getElementById("formCreerRecette");
+const listeIngredients = document.getElementById("listeIngredients");
+const rechercheIngredient = document.getElementById("rechercheIngredient");
+const listeIngredientsRecherche = document.getElementById("listeIngredientsRecherche");
+const nomRecette = document.getElementById("nomRecette");
+
 // ============================================
-// AUTOCOMPLETE
+// AUTOCOMPLETE + AJOUT INSTANTANÉ (clic = ajout direct, 100g par défaut)
 // ============================================
 
 listeAlimentsCalories.hidden = true;
 const itemsAutocomplete = listeAlimentsCalories.querySelectorAll("li");
 
 rechercheAlimentCalories.addEventListener("input", function () {
-  idAlimentCacheCalories.value = "";
-  champGrammes.disabled = true;
-  champGrammes.value = "";
-  btnAjouterCalories.disabled = true;
-
   const recherche = this.value.toLowerCase();
 
   if (recherche === "") {
@@ -48,11 +50,9 @@ rechercheAlimentCalories.addEventListener("input", function () {
 
 itemsAutocomplete.forEach(function (item) {
   item.addEventListener("click", function () {
-    idAlimentCacheCalories.value = this.dataset.id;
-    rechercheAlimentCalories.value = this.textContent.trim();
+    ajouterAlimentAuJournal(this.dataset.id, 100);
+    rechercheAlimentCalories.value = "";
     listeAlimentsCalories.hidden = true;
-    champGrammes.disabled = false;
-    champGrammes.focus();
   });
 });
 
@@ -62,12 +62,28 @@ document.addEventListener("click", function (e) {
   }
 });
 
-champGrammes.addEventListener("input", function () {
-  btnAjouterCalories.disabled = this.value.trim() === "" || Number(this.value) <= 0;
-});
+function ajouterAlimentAuJournal(idAliment, quantiteG) {
+  fetch("/calories/ajouter", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idAliment: idAliment, quantiteG: quantiteG })
+  })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (data.erreur) {
+        alert(data.erreur);
+        return;
+      }
+      const nouvelleEntree = construireJournalItemDOM(data.item);
+      listeJournal.appendChild(nouvelleEntree);
+      activerItem(nouvelleEntree);
+      nouvelleEntree.classList.add("entree");
+      recalculerTotaux();
+    });
+}
 
 // ============================================
-// MISE À JOUR DES TOTAUX
+// TOTAUX
 // ============================================
 
 function recalculerTotaux() {
@@ -92,7 +108,7 @@ function recalculerTotaux() {
 }
 
 // ============================================
-// CONSTRUCTION D'UNE NOUVELLE ENTRÉE
+// CONSTRUCTION D'UNE ENTRÉE
 // ============================================
 
 function construireJournalItemDOM(entree) {
@@ -106,7 +122,7 @@ function construireJournalItemDOM(entree) {
 
   div.innerHTML = `
     <span class="journal-nom">${entree.emoji} ${entree.nom}</span>
-    <span class="journal-grammes">${entree.quantite_g} g</span>
+    <input type="number" class="journal-grammes-input" value="${entree.quantite_g}" min="1" />
     <span class="journal-kcal">${Number(entree.calories_calc).toFixed(0)} kcal</span>
     <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
       <input type="hidden" name="idEntree" value="${entree.id}" />
@@ -118,47 +134,39 @@ function construireJournalItemDOM(entree) {
 }
 
 // ============================================
-// AJOUT (fetch, sans rechargement)
+// ÉDITION INLINE DE LA QUANTITÉ (auto-save au blur)
 // ============================================
 
-formAjouterCalories.addEventListener("submit", function (event) {
-  event.preventDefault();
+function activerItem(item) {
+  const champGrammes = item.querySelector(".journal-grammes-input");
+  const kcalSpan = item.querySelector(".journal-kcal");
 
-  const donnees = new FormData(formAjouterCalories);
-  const objet = {};
-  donnees.forEach(function (valeur, cle) {
-    objet[cle] = valeur;
+  champGrammes.addEventListener("change", function () {
+    const nouvelleQuantite = this.value;
+    if (!nouvelleQuantite || Number(nouvelleQuantite) <= 0) return;
+
+    fetch("/calories/modifier", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idEntree: item.dataset.id, nouvelleQuantite: nouvelleQuantite })
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        if (data.erreur) {
+          alert(data.erreur);
+          return;
+        }
+        item.dataset.kcal = data.item.calories_calc;
+        item.dataset.glucides = data.item.glucides_calc;
+        item.dataset.proteines = data.item.proteines_calc;
+        item.dataset.lipides = data.item.lipides_calc;
+        kcalSpan.textContent = Number(data.item.calories_calc).toFixed(0) + " kcal";
+        recalculerTotaux();
+      });
   });
 
-  fetch("/calories/ajouter", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(objet)
-  })
-    .then(function (response) { return response.json(); })
-    .then(function (data) {
-      if (data.erreur) {
-        alert(data.erreur);
-        return;
-      }
-
-      const nouvelleEntree = construireJournalItemDOM(data.item);
-      listeJournal.appendChild(nouvelleEntree);
-      activerSuppression(nouvelleEntree);
-      nouvelleEntree.classList.add("entree");
-      recalculerTotaux();
-
-      rechercheAlimentCalories.value = "";
-      idAlimentCacheCalories.value = "";
-      champGrammes.value = "";
-      champGrammes.disabled = true;
-      btnAjouterCalories.disabled = true;
-    });
-});
-
-// ============================================
-// SUPPRESSION (fetch, sans rechargement)
-// ============================================
+  activerSuppression(item);
+}
 
 function activerSuppression(item) {
   const form = item.querySelector(".form-supprimer-journal");
@@ -183,7 +191,6 @@ function activerSuppression(item) {
           alert(data.erreur);
           return;
         }
-
         item.remove();
         recalculerTotaux();
       });
@@ -191,9 +198,188 @@ function activerSuppression(item) {
 }
 
 // ============================================
+// RECETTES — ajout instantané via dropdown
+// ============================================
+
+selectRecette.addEventListener("change", function () {
+  const idRecette = this.value;
+  if (!idRecette) return;
+
+  fetch("/calories/ajouter-recette", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idRecette: idRecette })
+  })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (data.erreur) {
+        alert(data.erreur);
+        return;
+      }
+      data.items.forEach(function (entree) {
+        const nouvelleEntree = construireJournalItemDOM(entree);
+        listeJournal.appendChild(nouvelleEntree);
+        activerItem(nouvelleEntree);
+        nouvelleEntree.classList.add("entree");
+      });
+      recalculerTotaux();
+      selectRecette.value = "";
+    });
+});
+
+// ============================================
+// TOUT EFFACER
+// ============================================
+
+btnToutEffacer.addEventListener("click", function () {
+  if (!confirm("Effacer tout le journal d'aujourd'hui ?")) return;
+
+  fetch("/calories/vider", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (data.erreur) {
+        alert(data.erreur);
+        return;
+      }
+      listeJournal.innerHTML = "";
+      recalculerTotaux();
+    });
+});
+
+// ============================================
+// PANNEAU CRÉER UNE RECETTE
+// ============================================
+
+btnToggleRecette.addEventListener("click", function () {
+  panneauCreerRecette.classList.toggle("hidden");
+});
+
+function creerLigneIngredient(foodId, foodNom) {
+  const ligne = document.createElement("div");
+  ligne.className = "ligne-ingredient";
+  ligne.dataset.foodId = foodId;
+
+  const nomSpan = document.createElement("span");
+  nomSpan.className = "ligne-ingredient-nom";
+  nomSpan.textContent = foodNom;
+
+  const champQuantite = document.createElement("input");
+  champQuantite.type = "number";
+  champQuantite.className = "ingredient-quantite";
+  champQuantite.placeholder = "Grammes";
+  champQuantite.min = "1";
+
+  const btnSupprimer = document.createElement("button");
+  btnSupprimer.type = "button";
+  btnSupprimer.textContent = "✕";
+  btnSupprimer.className = "btn-supprimer-ingredient";
+  btnSupprimer.addEventListener("click", function () {
+    ligne.remove();
+  });
+
+  ligne.appendChild(nomSpan);
+  ligne.appendChild(champQuantite);
+  ligne.appendChild(btnSupprimer);
+
+  return ligne;
+}
+
+listeIngredientsRecherche.hidden = true;
+const itemsIngredientsRecherche = listeIngredientsRecherche.querySelectorAll("li");
+
+rechercheIngredient.addEventListener("input", function () {
+  const recherche = this.value.toLowerCase();
+
+  if (recherche === "") {
+    listeIngredientsRecherche.hidden = true;
+    return;
+  }
+
+  let count = 0;
+  listeIngredientsRecherche.hidden = false;
+
+  itemsIngredientsRecherche.forEach(function (item) {
+    const match = item.textContent.toLowerCase().includes(recherche);
+    if (match && count < 5) {
+      item.hidden = false;
+      count++;
+    } else {
+      item.hidden = true;
+    }
+  });
+});
+
+itemsIngredientsRecherche.forEach(function (item) {
+  item.addEventListener("click", function () {
+    const foodId = this.dataset.id;
+    const foodNom = this.textContent.trim();
+
+    const ligne = creerLigneIngredient(foodId, foodNom);
+    listeIngredients.appendChild(ligne);
+    ligne.querySelector(".ingredient-quantite").focus();
+
+    rechercheIngredient.value = "";
+    listeIngredientsRecherche.hidden = true;
+  });
+});
+
+document.addEventListener("click", function (e) {
+  if (!document.getElementById("autocompleteIngredient").contains(e.target)) {
+    listeIngredientsRecherche.hidden = true;
+  }
+});
+
+formCreerRecette.addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  const nom = nomRecette.value.trim();
+  const lignes = listeIngredients.querySelectorAll(".ligne-ingredient");
+  const ingredients = [];
+
+  lignes.forEach(function (ligne) {
+    const foodId = ligne.dataset.foodId;
+    const quantite = ligne.querySelector(".ingredient-quantite").value;
+    if (foodId && quantite) {
+      ingredients.push({ food_id: foodId, quantite_g: quantite });
+    }
+  });
+
+  if (!nom || ingredients.length === 0) {
+    alert("Ajoute un nom et au moins un ingrédient valide.");
+    return;
+  }
+
+  fetch("/recettes/creer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nom: nom, ingredients: ingredients })
+  })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (data.erreur) {
+        alert(data.erreur);
+        return;
+      }
+
+      const option = document.createElement("option");
+      option.value = data.recette.id;
+      option.textContent = data.recette.nom;
+      selectRecette.appendChild(option);
+
+      nomRecette.value = "";
+      listeIngredients.innerHTML = "";
+      panneauCreerRecette.classList.add("hidden");
+    });
+});
+
+// ============================================
 // ACTIVATION DES ENTRÉES EXISTANTES AU CHARGEMENT
 // ============================================
 
 listeJournal.querySelectorAll(".journal-item").forEach(function (item) {
-  activerSuppression(item);
+  activerItem(item);
 });

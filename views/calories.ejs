@@ -5,6 +5,7 @@
   const totalGlucides = journal.reduce((sum, j) => sum + Number(j.glucides_calc), 0);
   const totalProteines = journal.reduce((sum, j) => sum + Number(j.proteines_calc), 0);
   const totalLipides = journal.reduce((sum, j) => sum + Number(j.lipides_calc), 0);
+  const alimentsTries = [...aliments].sort((a, b) => a.nom.localeCompare(b.nom));
 %>
 
 <main>
@@ -30,7 +31,7 @@
       </div>
     </div>
 
-    <form id="formAjouterCalories">
+    <div class="journal-actions-row">
       <div id="autocompleteCalories">
         <input type="text" id="rechercheAlimentCalories" placeholder="Rechercher un aliment..." autocomplete="off" />
         <ul id="listeAlimentsCalories">
@@ -41,16 +42,43 @@
           <% }) %>
         </ul>
       </div>
-      <input type="hidden" name="idAliment" id="idAlimentCacheCalories" />
-      <input type="number" name="quantiteG" id="champGrammes" placeholder="Grammes" min="1" disabled />
-      <button type="submit" id="btnAjouterCalories" disabled>Ajouter</button>
-    </form>
+
+      <select id="selectRecette">
+        <option value="">-- Ajouter une recette --</option>
+        <% recettes.forEach(function(recette) { %>
+        <option value="<%= recette.id %>"><%= recette.nom %></option>
+        <% }) %>
+      </select>
+
+      <button type="button" id="btnToutEffacer" class="filter-btn">Tout effacer</button>
+    </div>
+
+    <button type="button" id="btnToggleRecette" class="filter-btn">+ Créer une recette</button>
+
+    <div id="panneauCreerRecette" class="panneau-ajout hidden">
+      <form id="formCreerRecette">
+        <input type="text" id="nomRecette" placeholder="Nom de la recette" required />
+
+        <div id="autocompleteIngredient">
+          <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
+          <ul id="listeIngredientsRecherche">
+            <% alimentsTries.forEach(function(aliment) { %>
+            <li data-id="<%= aliment.id %>"><%= aliment.emoji %> <%= aliment.nom %></li>
+            <% }) %>
+          </ul>
+        </div>
+
+        <div id="listeIngredients"></div>
+
+        <button type="submit" id="btnCreerRecette">Créer la recette</button>
+      </form>
+    </div>
 
     <div id="listeJournal">
       <% journal.forEach(function(entree) { %>
       <div class="journal-item" data-id="<%= entree.id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>">
         <span class="journal-nom"><%= entree.emoji %> <%= entree.nom %></span>
-        <span class="journal-grammes"><%= entree.quantite_g %> g</span>
+        <input type="number" class="journal-grammes-input" value="<%= entree.quantite_g %>" min="1" />
         <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
         <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
           <input type="hidden" name="idEntree" value="<%= entree.id %>" />
