@@ -1,0 +1,69 @@
+<%- include('partials/header') %>
+
+<%
+  const totalKcal = journal.reduce((sum, j) => sum + Number(j.calories_calc), 0);
+  const totalGlucides = journal.reduce((sum, j) => sum + Number(j.glucides_calc), 0);
+  const totalProteines = journal.reduce((sum, j) => sum + Number(j.proteines_calc), 0);
+  const totalLipides = journal.reduce((sum, j) => sum + Number(j.lipides_calc), 0);
+%>
+
+<main>
+  <div class="journal-section">
+    <h1>Calories</h1>
+
+    <div class="journal-totaux">
+      <div class="macro-card macro-calories">
+        <span class="macro-valeur" id="totalKcal"><%= totalKcal.toFixed(0) %></span>
+        <span class="macro-label">kcal</span>
+      </div>
+      <div class="macro-card">
+        <span class="macro-valeur" id="totalGlucides"><%= totalGlucides.toFixed(1) %>g</span>
+        <span class="macro-label">Glucides</span>
+      </div>
+      <div class="macro-card">
+        <span class="macro-valeur" id="totalProteines"><%= totalProteines.toFixed(1) %>g</span>
+        <span class="macro-label">Protéines</span>
+      </div>
+      <div class="macro-card">
+        <span class="macro-valeur" id="totalLipides"><%= totalLipides.toFixed(1) %>g</span>
+        <span class="macro-label">Lipides</span>
+      </div>
+    </div>
+
+    <form id="formAjouterCalories">
+      <div id="autocompleteCalories">
+        <input type="text" id="rechercheAlimentCalories" placeholder="Rechercher un aliment..." autocomplete="off" />
+        <ul id="listeAlimentsCalories">
+          <% aliments.forEach(function(aliment) { %>
+          <li data-id="<%= aliment.id %>">
+            <%= aliment.emoji %> <%= aliment.nom %>
+          </li>
+          <% }) %>
+        </ul>
+      </div>
+      <input type="hidden" name="idAliment" id="idAlimentCacheCalories" />
+      <input type="number" name="quantiteG" id="champGrammes" placeholder="Grammes" min="1" disabled />
+      <button type="submit" id="btnAjouterCalories" disabled>Ajouter</button>
+    </form>
+
+    <div id="listeJournal">
+      <% journal.forEach(function(entree) { %>
+      <div class="journal-item" data-id="<%= entree.id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>">
+        <span class="journal-nom"><%= entree.emoji %> <%= entree.nom %></span>
+        <span class="journal-grammes"><%= entree.quantite_g %> g</span>
+        <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
+        <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
+          <input type="hidden" name="idEntree" value="<%= entree.id %>" />
+          <button type="submit">Supprimer</button>
+        </form>
+      </div>
+      <% }) %>
+    </div>
+
+    <p class="no-results hidden" id="noResultsJournal">Rien d'ajouté aujourd'hui.</p>
+
+    <script src="/js/calories.js" defer></script>
+  </div>
+</main>
+
+<%- include('partials/footer') %>

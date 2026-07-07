@@ -1,0 +1,51 @@
+<%- include('partials/header') %>
+
+<main>
+  <div class="detail-section">
+    <a href="/aliments" class="btn-retour">← Retour aux aliments</a>
+
+    <% if (aliment) { %>
+    <div class="detail-carte">
+      <div class="detail-image">
+        <%= aliment.emoji %>
+      </div>
+
+      <div class="detail-infos">
+        <p class="detail-categorie"><%= aliment.categorie %></p>
+        <h1 class="detail-nom"><%= aliment.nom %></h1>
+
+        <% if (aliment.origine) { %>
+        <p class="detail-origine">Origine : <%= aliment.origine %></p>
+        <% } %>
+
+        <% if (aliment.description) { %>
+        <p class="detail-description"><%= aliment.description %></p>
+        <% } %>
+
+        <div class="detail-macros">
+          <div class="macro-card macro-calories">
+            <span class="macro-valeur"><%= aliment.calories %></span>
+            <span class="macro-label">kcal</span>
+          </div>
+          <div class="macro-card">
+            <span class="macro-valeur"><%= aliment.glucides %>g</span>
+            <span class="macro-label">Glucides</span>
+          </div>
+          <div class="macro-card">
+            <span class="macro-valeur"><%= aliment.proteines %>g</span>
+            <span class="macro-label">Protéines</span>
+          </div>
+          <div class="macro-card">
+            <span class="macro-valeur"><%= aliment.lipides %>g</span>
+            <span class="macro-label">Lipides</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% } else { %>
+    <p class="not-found">Aliment introuvable.</p>
+    <% } %>
+  </div>
+</main>
+
+<%- include('partials/footer') %>

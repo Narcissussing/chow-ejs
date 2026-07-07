@@ -31,7 +31,7 @@ async function chercherAliments() {
 }
 
 async function chercherStock() {
-    const result = await db.query("SELECT stock.*, foods.nom, foods.emoji, foods.tracking_type FROM stock JOIN foods ON stock.food_id = foods.id");
+    const result = await db.query("SELECT stock.*, foods.nom, foods.emoji, foods.tracking_type, foods.emplacement FROM stock JOIN foods ON stock.food_id = foods.id");
     const aujourdhui = new Date();
     result.rows.forEach(row => {
         const diff = aujourdhui - new Date(row.date_maj);
@@ -43,6 +43,26 @@ async function chercherStock() {
 async function chercherCourses() {
     const result = await db.query("SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji, foods.unite AS food_unite, foods.tracking_type, foods.categorie FROM courses LEFT JOIN foods ON courses.food_id = foods.id WHERE achete = false");
     return result.rows
+}
+
+async function chercherDetailAliment() {
+    const result = await db.query("SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji, foods.unite AS food_unite, foods.tracking_type, foods.categorie FROM courses LEFT JOIN foods ON courses.food_id = foods.id WHERE achete = false");
+    return result.rows
+}
+
+async function chercherJournalDuJour() {
+    const result = await db.query(
+        `SELECT journal_repas.*, foods.nom, foods.emoji,
+                ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
+                ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
+                ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
+                ROUND(foods.lipides * journal_repas.quantite_g / 100, 1) AS lipides_calc
+         FROM journal_repas
+         JOIN foods ON journal_repas.food_id = foods.id
+         WHERE date_entree = CURRENT_DATE
+         ORDER BY heure_entree ASC`
+    );
+    return result.rows;
 }
 
 app.get("/", async (req, res) => {
@@ -61,6 +81,22 @@ app.get("/aliments", async (req, res) => {
             title: "Aliments",
             aliments: aliments
 
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Internal Server Error");
+    }
+});
+
+app.get("/aliments/:idAliment", async (req, res) => {
+    try {
+        const idAliment = req.params.idAliment;
+        const result = await db.query("SELECT * FROM foods WHERE id = $1", [idAliment]);
+        const aliment = result.rows[0];
+        if (!aliment) { return res.status(404).render("aliment-detail.ejs", { title: "Aliment introuvable", aliment: null }); }
+        res.render("aliment-detail.ejs", {
+            title: aliment.nom,
+            aliment: aliment
         });
     } catch (err) {
         console.error(err);
@@ -90,43 +126,45 @@ app.post("/stock/ajouter", async (req, res) => {
     const quantiteAliment = req.body.quantiteAliment;
     try {
         if (!idAliment || !quantiteAliment) {
-            throw new Error("Champs requis.");
+            return res.status(400).json({ erreur: "Champs requis." });
         }
         const result = await db.query("SELECT tracking_type, nom FROM foods WHERE id = $1", [idAliment]);
         if (result.rows.length === 0) {
-            throw new Error("Article introuvable.");
+            return res.status(400).json({ erreur: "Article introuvable." });
         }
         const tracking_type = result.rows[0].tracking_type;
         const nom = result.rows[0].nom;
         const unite = uniteParType[tracking_type];
+        const emplacement = result.rows[0].emplacement;
 
-        const existeDeja = await db.query(
-            "SELECT 1 FROM stock WHERE food_id = $1",
-            [idAliment]
-        );
+
+        const existeDeja = await db.query("SELECT 1 FROM stock WHERE food_id = $1", [idAliment]);
         if (existeDeja.rows.length > 0) {
-            throw new Error(`L'article ${nom} est déjà dans le stock.`);
+            return res.status(400).json({ erreur: `L'article ${nom} est déjà dans le stock.` });
         }
 
-        await db.query(
-            "INSERT INTO stock (food_id, quantite, unite, date_maj) VALUES ($1, $2, $3, NOW())",
+        const insertResult = await db.query(
+            "INSERT INTO stock (food_id, quantite, unite, date_maj) VALUES ($1, $2, $3, NOW()) RETURNING id",
             [idAliment, quantiteAliment, unite]
         );
 
-        res.redirect("/stock");
+        res.json({
+            succes: true,
+            item: {
+                id: insertResult.rows[0].id,
+                nom: nom,
+                quantite: quantiteAliment,
+                unite: unite,
+                tracking_type: tracking_type,
+                jemplacement: emplacement,
+                jours_depuis: 0
+            }
+        });
     } catch (err) {
         console.log("ERREUR:", err.message);
-        const stock = await chercherStock()
-        const aliments = await chercherAliments()
-
-        res.render("stock.ejs", {
-            error: err.message,
-            stock: stock,
-            aliments: aliments,
-        });
+        res.status(500).json({ erreur: err.message });
     }
 });
-
 
 app.post("/stock/modifier", async (req, res) => {
     try {
@@ -134,44 +172,29 @@ app.post("/stock/modifier", async (req, res) => {
         const idStock = req.body.idStock;
 
         if (!nouvelleQuantite) {
-            throw new Error("Champs requis.");
+            return res.status(400).json({ erreur: "Champs requis." });
         }
 
         await db.query("UPDATE stock SET quantite = $1, date_maj = NOW() WHERE id = $2", [nouvelleQuantite, idStock]);
-        res.redirect("/stock");
+        res.json({ succes: true, quantite: nouvelleQuantite });
     } catch (err) {
         console.log("ERREUR:", err.message);
-        const stock = await chercherStock()
-        const aliments = await chercherAliments()
-
-        res.render("stock.ejs", {
-            error: err.message,
-            stock: stock,
-            aliments: aliments,
-        });
+        res.status(500).json({ erreur: err.message });
     }
 });
-
 
 app.post("/stock/supprimer", async (req, res) => {
     try {
         const idStock = req.body.idStock;
         if (!idStock) {
-            throw new Error("Aucune ligne sélectionnée");
+            return res.status(400).json({ erreur: "Aucune ligne sélectionnée" });
         }
 
         await db.query("DELETE FROM stock WHERE id = $1", [idStock]);
-        res.redirect("/stock");
+        res.json({ succes: true });
     } catch (err) {
         console.log("ERREUR:", err.message);
-        const stock = await chercherStock()
-        const aliments = await chercherAliments()
-
-        res.render("stock.ejs", {
-            error: err.message,
-            stock: stock,
-            aliments: aliments,
-        });
+        res.status(500).json({ erreur: err.message });
     }
 });
 
@@ -288,6 +311,70 @@ app.post("/courses/acheter", async (req, res) => {
         }
 
         await db.query("UPDATE courses SET achete = true WHERE id = $1", [idCourse]);
+        res.json({ succes: true });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
+app.get("/calories", async (req, res) => {
+    try {
+        const journal = await chercherJournalDuJour();
+        const aliments = await chercherAliments();
+        res.render("calories.ejs", {
+            title: "Calories",
+            journal: journal,
+            aliments: aliments
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Internal Server Error");
+    }
+});
+ 
+app.post("/calories/ajouter", async (req, res) => {
+    try {
+        const idAliment = req.body.idAliment;
+        const quantiteG = req.body.quantiteG;
+ 
+        if (!idAliment || !quantiteG) {
+            return res.status(400).json({ erreur: "Champs requis." });
+        }
+ 
+        const insertResult = await db.query(
+            "INSERT INTO journal_repas (food_id, quantite_g) VALUES ($1, $2) RETURNING id",
+            [idAliment, quantiteG]
+        );
+        const nouvelId = insertResult.rows[0].id;
+ 
+        const itemResult = await db.query(
+            `SELECT journal_repas.*, foods.nom, foods.emoji,
+                    ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
+                    ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
+                    ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
+                    ROUND(foods.lipides * journal_repas.quantite_g / 100, 1) AS lipides_calc
+             FROM journal_repas
+             JOIN foods ON journal_repas.food_id = foods.id
+             WHERE journal_repas.id = $1`,
+            [nouvelId]
+        );
+ 
+        res.json({ succes: true, item: itemResult.rows[0] });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+ 
+app.post("/calories/supprimer", async (req, res) => {
+    try {
+        const idEntree = req.body.idEntree;
+        if (!idEntree) {
+            return res.status(400).json({ erreur: "Aucune ligne sélectionnée" });
+        }
+ 
+        await db.query("DELETE FROM journal_repas WHERE id = $1", [idEntree]);
         res.json({ succes: true });
     } catch (err) {
         console.log("ERREUR:", err.message);

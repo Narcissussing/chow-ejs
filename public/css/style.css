@@ -1,6 +1,13 @@
-/* ============================================
+/* ================================================================
    CHOW — style.css
-   ============================================ */
+   Structure : Variables → Reset → Layout de base → Header → Hero
+   → Filtres/Recherche/Tri → Grille aliments → Page détail →
+   Page courses → Page stock → Footer → Responsive → Utilitaires
+   (Les utilitaires sont toujours en dernier : ils doivent gagner
+   sur les styles des composants, peu importe leur spécificité.)
+   ================================================================ */
+
+/* ---------- VARIABLES ---------- */
 
 :root {
   --bg: #f5f0e8;
@@ -14,6 +21,8 @@
   --font-display: "Playfair Display", Georgia, serif;
   --font-body: "DM Sans", sans-serif;
 }
+
+/* ---------- RESET & BASE ---------- */
 
 *,
 *::before,
@@ -35,7 +44,8 @@ body {
   line-height: 1.6;
 }
 
-/* ---- HEADER ---- */
+/* ---------- HEADER ---------- */
+
 .header {
   background: var(--surface);
   border-bottom: 1.5px solid var(--border);
@@ -70,7 +80,71 @@ body {
   padding-left: 20px;
 }
 
-/* ---- HERO ---- */
+.nav {
+  display: flex;
+  gap: 24px;
+  margin-left: auto;
+}
+
+.nav__link {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.nav__link:hover {
+  color: var(--accent);
+}
+
+/* ---------- HOME (page d'accueil) ---------- */
+
+.home-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+}
+
+.home-link-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 30px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  animation: fadeIn 0.35s ease both;
+}
+
+.home-link-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  border-color: var(--accent-2);
+}
+
+.home-link-emoji {
+  font-size: 2.4rem;
+}
+
+.home-link-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--accent);
+}
+
+.home-link-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* ---------- HERO ---------- */
+
 .hero {
   max-width: 1200px;
   margin: 0 auto;
@@ -129,16 +203,8 @@ body {
   text-transform: uppercase;
 }
 
-@keyframes rotate-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* ---------- FILTRES / RECHERCHE / TRI (page Aliments) ---------- */
 
-/* ---- FILTERS ---- */
 .filters {
   background: var(--surface);
   border-top: 1.5px solid var(--border);
@@ -152,6 +218,12 @@ body {
 .filters__inner {
   max-width: 1200px;
   margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -180,7 +252,7 @@ body {
   border-color: var(--accent);
   color: white;
 }
-/* ---- SEARCH + SORT WRAPPER ---- */
+
 .search-sort-wrapper {
   display: flex;
   align-items: center;
@@ -251,13 +323,8 @@ body {
   outline: none;
 }
 
-.filter-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+/* ---------- GRILLE ALIMENTS ---------- */
 
-/* ---- GRID ---- */
 .grid-section {
   max-width: 1200px;
   margin: 0 auto;
@@ -270,7 +337,6 @@ body {
   gap: 28px;
 }
 
-/* ---- FOOD CARD ---- */
 .food-card {
   background: var(--surface);
   border: 1.5px solid var(--border);
@@ -279,11 +345,8 @@ body {
   cursor: pointer;
   text-decoration: none;
   color: inherit;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
   display: block;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   animation: fadeIn 0.35s ease both;
 }
 
@@ -291,17 +354,6 @@ body {
   transform: translateY(-4px);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
   border-color: var(--accent-2);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .food-card__img {
@@ -342,21 +394,7 @@ body {
   letter-spacing: 0.8px;
 }
 
-/* ---- NO RESULTS ---- */
-.no-results {
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 1rem;
-  padding: 60px 0;
-}
-
-.hidden {
-  display: none;
-}
-
-/* ============================================
-   DETAIL PAGE
-   ============================================ */
+/* ---------- PAGE DÉTAIL ALIMENT ---------- */
 
 .detail-section {
   max-width: 1000px;
@@ -384,7 +422,6 @@ body {
   overflow: hidden;
   display: grid;
   grid-template-columns: 1fr 1.3fr;
-  gap: 0;
 }
 
 .detail-image {
@@ -479,72 +516,27 @@ body {
   padding: 80px 0;
 }
 
-/* ---- FOOTER ---- */
-.footer {
-  border-top: 1.5px solid var(--border);
-  text-align: center;
-  padding: 30px 40px;
-  font-size: 0.82rem;
-  color: var(--text-muted);
+/* ---------- PAGE COURSES ---------- */
+
+.courses-section {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 50px 40px 80px;
 }
 
-/* ---- RESPONSIVE ---- */
-@media (max-width: 768px) {
-  .header {
-    padding: 14px 20px;
-  }
-  .tagline {
-    display: none;
-  }
-  .hero {
-    padding: 40px 20px 30px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .hero__badge {
-    display: none;
-  }
-  .filters {
-    padding: 14px 20px;
-    top: 57px;
-  }
-  .grid-section {
-    padding: 30px 20px 60px;
-  }
-  .food-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
-  }
-
-  .detail-section {
-    padding: 30px 20px 60px;
-  }
-  .detail-carte {
-    grid-template-columns: 1fr;
-  }
-  .detail-image {
-    min-height: 220px;
-    font-size: 5rem;
-  }
-  .detail-infos {
-    padding: 30px 25px;
-  }
-  .detail-nom {
-    font-size: 2rem;
-  }
-  .detail-macros {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.courses-section h1 {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 30px;
 }
-
-/* ============================================
-   COURSES PAGE
-   ============================================ */
 
 #triCourses {
   display: flex;
   gap: 10px;
   margin-bottom: 24px;
+  flex-wrap: wrap;
 }
 
 #triAlpha,
@@ -571,6 +563,31 @@ body {
 #triCategorie.tri-actif {
   background: var(--accent);
   border-color: var(--accent);
+  color: white;
+}
+
+#toggleMagasin {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 18px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+#toggleMagasin:hover {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
+#toggleMagasin.actif {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
   color: white;
 }
 
@@ -606,33 +623,25 @@ body {
   min-width: 160px;
 }
 
+/* Caché par défaut, visible seulement en mode magasin */
 .form-acheter,
 .form-quantite {
+  display: none;
+}
+
+body.mode-magasin .form-acheter,
+body.mode-magasin .form-quantite {
   display: flex;
+}
+
+.form-acheter,
+.form-quantite {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.form-acheter button[type="submit"] {
-  background: var(--accent);
-  border: none;
-  border-radius: 999px;
-  padding: 8px 20px;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: white;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.form-acheter button[type="submit"]:hover {
-  opacity: 0.85;
-}
-
-.suggestions-quantite,
-.form-quantite {
+.suggestions-quantite {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -673,48 +682,7 @@ body {
   border-color: var(--accent);
 }
 
-.btn-enregistrer-achat {
-  background: var(--accent-2);
-  border: none;
-  border-radius: 999px;
-  padding: 8px 18px;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: white;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.btn-enregistrer-achat:disabled {
-  background: var(--border);
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
-.btn-enregistrer-achat:not(:disabled):hover {
-  opacity: 0.85;
-}
-
-.form-supprimer button[type="submit"] {
-  background: transparent;
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 8px 18px;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.form-supprimer button[type="submit"]:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-/* ---- Formulaire ajout ---- */
+/* ---- Formulaire ajout courses ---- */
 
 #formAjouterCourse {
   display: flex;
@@ -806,31 +774,6 @@ body {
   margin-bottom: 20px;
 }
 
-.courses-section {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 50px 40px 80px;
-}
-
-.courses-section h1 {
-  font-family: var(--font-display);
-  font-size: 2.6rem;
-  font-weight: 900;
-  color: var(--text);
-  margin-bottom: 30px;
-}
-
-/* Caché par défaut, visible seulement en mode magasin */
-.form-acheter,
-.form-quantite {
-  display: none;
-}
-
-body.mode-magasin .form-acheter,
-body.mode-magasin .form-quantite {
-  display: flex;
-}
-
 /* ---- Notes / commentaires ---- */
 
 .note-affichee {
@@ -863,14 +806,27 @@ body.mode-magasin .form-quantite {
   border-color: var(--accent);
 }
 
-.input-commentaire.hidden,
-.note-affichee.hidden {
-  display: none;
+/* ---------- PAGE STOCK ---------- */
+
+.stock-section {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 50px 40px 80px;
 }
 
-/* ---- Toggle mode magasin ---- */
+.stock-section h1 {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 30px;
+}
 
-#toggleMagasin {
+#toggleEditionStock {
+  margin-bottom: 20px;
+}
+
+#btnModifierListe {
   background: transparent;
   border: 1.5px solid var(--border);
   border-radius: 999px;
@@ -881,21 +837,354 @@ body.mode-magasin .form-quantite {
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-left: auto;
 }
 
-#toggleMagasin:hover {
+#btnModifierListe:hover {
   border-color: var(--accent-2);
   color: var(--accent-2);
 }
 
-#toggleMagasin.actif {
+#btnModifierListe.actif {
   background: var(--accent-2);
   border-color: var(--accent-2);
   color: white;
 }
 
-/* ---- Nouvel item rejoint la liste ---- */
+/* ---- Panneau d'ajout (repliable) ---- */
+
+#btnToggleAjout {
+  margin-bottom: 16px;
+}
+
+.panneau-ajout {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  animation: slideDownNote 0.2s ease both;
+}
+
+/* ---- Liste stock ---- */
+
+#listeStock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.stock-item {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
+  transition: border-color 0.2s ease;
+}
+
+.stock-item:hover {
+  border-color: var(--accent-2);
+}
+
+.stock-nom {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  flex: 0 1 auto;
+  min-width: 100px;
+}
+
+.stock-quantite {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--accent-2);
+  font-family: var(--font-display);
+}
+
+.stock-jours {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.stock-infos {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.stock-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ---- Barre de remplissage (cl) ---- */
+
+.stock-barre-cl {
+  width: 50px;
+  height: 8px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.stock-barre-cl-remplissage {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.stock-barre-cl-remplissage.niveau-plein {
+  width: 100%;
+  background: #4caf50;
+}
+
+.stock-barre-cl-remplissage.niveau-moitie {
+  width: 50%;
+  background: #e8a838;
+}
+
+.stock-barre-cl-remplissage.niveau-presque-vide {
+  width: 25%;
+  background: #e0752b;
+}
+
+.stock-barre-cl-remplissage.niveau-vide {
+  width: 6%;
+  background: #c8472b;
+}
+
+/* ---- Édition inline (modifier / sauvegarder) ---- */
+
+.form-modif,
+.form-supprimer-stock {
+  display: none;
+}
+
+body.mode-edition-stock .form-modif,
+body.mode-edition-stock .form-supprimer-stock {
+  display: flex;
+}
+
+.form-modif {
+  align-items: center;
+  gap: 8px;
+}
+
+.champ-modif {
+  width: 90px;
+  height: 36px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 0 14px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.champ-modif:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn-sauvegarder {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 0;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--accent-2);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.btn-sauvegarder::before {
+  content: "💾";
+  font-size: 1rem;
+}
+
+.btn-sauvegarder:disabled {
+  background: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.btn-sauvegarder:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+/* ---- Formulaire ajout stock ---- */
+
+#formAjouterStock {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+#autocomplete {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+#rechercheAliment {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+#rechercheAliment:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#listeAliments {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  list-style: none;
+  overflow: hidden;
+  z-index: 50;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+#listeAliments li {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+#listeAliments li:hover {
+  background: var(--bg);
+}
+
+#champQuantite,
+#champCL {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+#btnAjouter {
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  padding: 9px 24px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+#btnAjouter:disabled {
+  background: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+#btnAjouter:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+/* ---------- ICÔNES SUR LES BOUTONS D'ACTION ---------- */
+/* (texte masqué via font-size:0, icône injectée en ::before) */
+
+.btn-editer,
+.form-supprimer-stock button[type="submit"],
+.form-supprimer button[type="submit"],
+.form-acheter button[type="submit"],
+.btn-enregistrer-achat {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.btn-editer::before {
+  content: "✏️";
+  font-size: 1.05rem;
+}
+
+.form-supprimer-stock button[type="submit"]::before,
+.form-supprimer button[type="submit"]::before {
+  content: "🗑️";
+  font-size: 1.05rem;
+}
+
+.form-acheter button[type="submit"]::before,
+.btn-enregistrer-achat::before {
+  content: "🛍️";
+  font-size: 1.05rem;
+}
+
+/* ---------- FOOTER ---------- */
+
+.footer {
+  border-top: 1.5px solid var(--border);
+  text-align: center;
+  padding: 30px 40px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* ---------- ANIMATIONS ---------- */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes popIn {
   from {
     opacity: 0;
@@ -907,11 +1196,6 @@ body.mode-magasin .form-quantite {
   }
 }
 
-.course-item.entree {
-  animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-/* ---- Supprimer : glisse vers la gauche, teinte rouge ---- */
 @keyframes slideOutLeft {
   from {
     opacity: 1;
@@ -928,13 +1212,6 @@ body.mode-magasin .form-quantite {
   }
 }
 
-.course-item.disparait-supprimer {
-  animation: slideOutLeft 0.3s ease forwards;
-  border-color: var(--accent) !important;
-  overflow: hidden;
-}
-
-/* ---- Acheté : petit rebond de satisfaction, teinte dorée ---- */
 @keyframes popOutSuccess {
   0% {
     opacity: 1;
@@ -954,11 +1231,6 @@ body.mode-magasin .form-quantite {
   }
 }
 
-.course-item.disparait-achete {
-  animation: popOutSuccess 0.35s ease forwards;
-  overflow: hidden;
-}
-
 @keyframes slideDownNote {
   from {
     opacity: 0;
@@ -968,11 +1240,6 @@ body.mode-magasin .form-quantite {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.note-affichee:not(.hidden),
-.input-commentaire:not(.hidden) {
-  animation: slideDownNote 0.18s ease both;
 }
 
 @keyframes fadeOutNote {
@@ -986,7 +1253,429 @@ body.mode-magasin .form-quantite {
   }
 }
 
+@keyframes flashMaj {
+  0% {
+    background: var(--surface);
+  }
+  30% {
+    background: rgba(232, 168, 56, 0.25);
+  }
+  100% {
+    background: var(--surface);
+  }
+}
+
+.course-item.entree,
+.stock-item.entree {
+  animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.course-item.disparait-supprimer,
+.stock-item.disparait {
+  animation: slideOutLeft 0.3s ease forwards;
+  border-color: var(--accent) !important;
+  overflow: hidden;
+}
+
+.course-item.disparait-achete {
+  animation: popOutSuccess 0.35s ease forwards;
+  overflow: hidden;
+}
+
+.note-affichee:not(.hidden),
+.input-commentaire:not(.hidden) {
+  animation: slideDownNote 0.18s ease both;
+}
+
 .note-affichee.masquage,
 .input-commentaire.masquage-input {
   animation: fadeOutNote 0.15s ease forwards;
+}
+
+.stock-item.maj-flash {
+  animation: flashMaj 0.6s ease;
+}
+
+/* ---------- RESPONSIVE — MOBILE ---------- */
+
+@media (max-width: 768px) {
+  .header {
+    padding: 14px 20px;
+  }
+
+  .tagline {
+    display: none;
+  }
+
+  .nav {
+    gap: 14px;
+  }
+
+  .nav__link {
+    font-size: 0.82rem;
+  }
+
+  .hero {
+    padding: 40px 20px 30px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero__badge {
+    display: none;
+  }
+
+  .filters {
+    padding: 14px 20px;
+    top: 57px;
+  }
+
+  .grid-section {
+    padding: 30px 20px 60px;
+  }
+
+  .food-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .detail-section {
+    padding: 30px 20px 60px;
+  }
+
+  .detail-carte {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-image {
+    min-height: 220px;
+    font-size: 5rem;
+  }
+
+  .detail-infos {
+    padding: 30px 25px;
+  }
+
+  .detail-nom {
+    font-size: 2rem;
+  }
+
+  .detail-macros {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .home-links {
+    grid-template-columns: 1fr;
+  }
+
+  .courses-section,
+  .stock-section {
+    padding: 30px 20px 60px;
+  }
+
+  .courses-section h1,
+  .stock-section h1 {
+    font-size: 2rem;
+  }
+
+  .stock-filtres-bar {
+    padding: 16px 20px;
+  }
+
+  .stock-sort-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .stock-sort-row > div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Le nom passe sur sa propre ligne, tout le reste reste en ligne et wrap librement */
+  .course-nom,
+  .stock-nom {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .stock-infos {
+    flex-basis: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .stock-actions {
+    flex-basis: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  .champ-modif {
+    flex: 0 1 90px;
+    max-width: 110px;
+  }
+
+  .suggestions-quantite {
+    flex-shrink: 0;
+  }
+
+  /* Boutons icônes un peu plus grands pour le tactile, mais toujours compacts */
+  .btn-editer,
+  .form-supprimer-stock button[type="submit"],
+  .form-supprimer button[type="submit"],
+  .form-acheter button[type="submit"],
+  .btn-sauvegarder,
+  .btn-enregistrer-achat {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+  }
+
+  #formAjouterCourse,
+  #formAjouterStock {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #autocomplete,
+  #autocompleteCourses {
+    width: 100%;
+  }
+
+  #btnAjouter,
+  #btnAjouterCourses {
+    width: 100%;
+  }
+
+  #triCourses {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #toggleMagasin {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .hero__text h1 {
+    font-size: 2rem;
+  }
+
+  .stock-quantite {
+    font-size: 1.1rem;
+  }
+}
+
+/* ================================================================
+   UTILITAIRES
+   Toujours en dernier dans le fichier : ces classes doivent gagner
+   sur n'importe quelle règle de composant (.stock-item, .food-card,
+   .course-item, etc.) qui définirait sa propre valeur de `display`.
+   ================================================================ */
+
+.hidden {
+  display: none;
+}
+
+.no-results {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 60px 0;
+}
+
+/* ---------- JOURNAL (compteur de calories) ---------- */
+
+.journal-section {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 50px 40px 80px;
+}
+
+.journal-section h1 {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 30px;
+}
+
+.journal-totaux {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+#formAjouterCalories {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+#autocompleteCalories {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+#rechercheAlimentCalories {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+#rechercheAlimentCalories:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#listeAlimentsCalories {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  list-style: none;
+  overflow: hidden;
+  z-index: 50;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+#listeAlimentsCalories li {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+#listeAlimentsCalories li:hover {
+  background: var(--bg);
+}
+
+#champGrammes {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+  width: 120px;
+}
+
+#btnAjouterCalories {
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  padding: 9px 24px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+#btnAjouterCalories:disabled {
+  background: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+#btnAjouterCalories:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+#listeJournal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.journal-item {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.journal-item:hover {
+  border-color: var(--accent-2);
+}
+
+.journal-nom {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+  min-width: 160px;
+}
+
+.journal-grammes {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.journal-kcal {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-display);
+}
+
+.form-supprimer-journal button[type="submit"] {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.form-supprimer-journal button[type="submit"]:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .journal-section {
+    padding: 30px 20px 60px;
+  }
+
+  .journal-totaux {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #formAjouterCalories {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #autocompleteCalories {
+    width: 100%;
+  }
 }

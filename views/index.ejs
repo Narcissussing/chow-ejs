@@ -1,30 +1,32 @@
 <%- include('partials/header') %>
 
-<main class="home">
-  <div class="home__hero">
-    <h1>Bienvenue sur <span>Chow</span></h1>
-    <p>Ton hub alimentaire maison.</p>
-  </div>
+<main>
+  <section class="hero">
+    <div class="hero__text">
+      <h1>Bienvenue sur <span>Chow</span></h1>
+      <p>Ton hub alimentaire maison.</p>
+    </div>
+  </section>
 
-  <div class="home__cards">
-    <a href="/stock" class="home-card">
-      <span class="home-card__icon">📦</span>
-      <h2 class="home-card__title">Stock</h2>
-      <p class="home-card__desc">Ce que j'ai à la maison</p>
-    </a>
-
-    <a href="/courses" class="home-card">
-      <span class="home-card__icon">🛒</span>
-      <h2 class="home-card__title">Courses</h2>
-      <p class="home-card__desc">Ce que je dois acheter</p>
-    </a>
-
-    <a href="/aliments" class="home-card">
-      <span class="home-card__icon">🥗</span>
-      <h2 class="home-card__title">Aliments</h2>
-      <p class="home-card__desc">Tous les aliments et leurs infos nutritionnelles</p>
-    </a>
-  </div>
+  <section class="grid-section">
+    <div class="home-links">
+      <a href="/stock" class="home-link-card">
+        <span class="home-link-emoji">📦</span>
+        <span class="home-link-title">Stock</span>
+        <span class="home-link-desc">Ce que j'ai à la maison</span>
+      </a>
+      <a href="/courses" class="home-link-card">
+        <span class="home-link-emoji">🛒</span>
+        <span class="home-link-title">Courses</span>
+        <span class="home-link-desc">Ce que je dois acheter</span>
+      </a>
+      <a href="/aliments" class="home-link-card">
+        <span class="home-link-emoji">🥗</span>
+        <span class="home-link-title">Aliments</span>
+        <span class="home-link-desc">Tous les aliments et leurs infos nutritionnelles</span>
+      </a>
+    </div>
+  </section>
 </main>
 
 <%- include('partials/footer') %>

@@ -1,10 +1,73 @@
 <%- include('partials/header') %>
 
+<%
+  const categories = [...new Set(aliments.map(a => a.categorie))].sort();
+%>
+
 <main>
-  <h1>Aliments</h1>
-  <% aliments.forEach(function(aliment) { %>
-    <p><%= aliment.nom %></p>
-  <% }) %>
+  <section class="hero">
+    <div class="hero__text">
+      <h1>Mieux manger <span>commence ici.</span></h1>
+      <p>Découvre les <%= aliments.length %> aliments du quotidien et leurs macronutriments essentiels — protéines, glucides, lipides et calories — pour 100g.</p>
+    </div>
+    <div class="hero__badge">
+      <span><%= aliments.length %></span>
+      <small>Aliments</small>
+    </div>
+  </section>
+
+  <div class="filters">
+    <div class="filters__inner">
+      <div class="filter-buttons">
+        <button type="button" class="filter-btn active" data-categorie="tous">Tous</button>
+        <% categories.forEach(function(cat) { %>
+        <button type="button" class="filter-btn" data-categorie="<%= cat %>"><%= cat %></button>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+
+  <section class="grid-section">
+    <div class="search-sort-wrapper">
+      <div class="search-wrapper">
+        <input type="text" id="searchInput" placeholder="Rechercher un aliment..." autocomplete="off" />
+      </div>
+      <div class="sort-wrapper">
+        <label for="sortSelect">Trier par :</label>
+        <select id="sortSelect">
+          <option value="nom-asc">Nom (A → Z)</option>
+          <option value="nom-desc">Nom (Z → A)</option>
+          <option value="calories-asc">Calories ↗</option>
+          <option value="calories-desc">Calories ↘</option>
+          <option value="proteines-asc">Protéines ↗</option>
+          <option value="proteines-desc">Protéines ↘</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="food-grid" id="foodGrid">
+      <% aliments.forEach(function(aliment) { %>
+      <a
+        href="/aliments/<%= aliment.id %>"
+        class="food-card"
+        data-nom="<%= aliment.nom.toLowerCase() %>"
+        data-categorie="<%= aliment.categorie %>"
+        data-calories="<%= aliment.calories %>"
+        data-proteines="<%= aliment.proteines %>"
+      >
+        <div class="food-card__img-placeholder"><%= aliment.emoji %></div>
+        <div class="food-card__body">
+          <p class="food-card__name"><%= aliment.nom %></p>
+          <p class="food-card__category"><%= aliment.categorie %></p>
+        </div>
+      </a>
+      <% }) %>
+    </div>
+
+    <p class="no-results hidden" id="noResults">Aucun aliment ne correspond à ta recherche.</p>
+  </section>
 </main>
 
 <%- include('partials/footer') %>
+
+<script src="/js/aliments.js" defer></script>

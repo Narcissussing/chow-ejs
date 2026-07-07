@@ -333,7 +333,7 @@ rechercheAlimentCourses.addEventListener("input", function () {
 
     itemsAutocomplete.forEach(function (item) {
         const match = item.textContent.toLowerCase().includes(recherche);
-        if (match && count < 3) {
+        if (match && count < 5) {
             item.hidden = false;
             count++;
         } else {
