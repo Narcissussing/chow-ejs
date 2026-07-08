@@ -134,6 +134,11 @@ body {
   border-color: var(--accent-2);
 }
 
+.home-link-card:active {
+  /* Après :hover dans le fichier pour gagner sur le translateY pendant le clic/tap */
+  transform: scale(0.97);
+}
+
 .home-link-emoji {
   font-size: 2.4rem;
 }
@@ -281,6 +286,10 @@ body {
   color: var(--accent);
 }
 
+.filter-btn:active {
+  transform: scale(0.95); /* petit effet "pressé" au tap/clic, comme sur iOS */
+}
+
 .filter-btn.active {
   background: var(--accent);
   border-color: var(--accent);
@@ -401,6 +410,11 @@ body {
   transform: translateY(-4px);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
   border-color: var(--accent-2);
+}
+
+.food-card:active {
+  /* Après :hover dans le fichier pour gagner sur le translateY pendant le clic/tap */
+  transform: scale(0.97);
 }
 
 .food-card__img {
@@ -752,6 +766,10 @@ body.mode-magasin .course-item__shop-slot {
   color: var(--accent);
 }
 
+.form-quantite .suggestion:active {
+  transform: scale(0.9);
+}
+
 .champ-quantite-achat {
   width: 100px;
   background: var(--bg);
@@ -784,48 +802,8 @@ body.mode-magasin .course-item__shop-slot {
   min-width: 220px;
 }
 
-#rechercheAlimentCourses {
-  width: 100%;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 9px 18px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--text);
-}
-
-#rechercheAlimentCourses:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-#listeAlimentsCourses {
-  /* La liste de suggestions flotte juste en dessous du champ de recherche */
-  position: absolute;
-  top: calc(100% + 6px); /* juste sous le champ, avec un petit espace de 6px */
-  left: 0;
-  right: 0;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  list-style: none; /* enlève les puces par défaut d'une liste <ul> */
-  overflow: hidden;
-  z-index: 50; /* passe au-dessus du contenu normal de la page */
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-}
-
-#listeAlimentsCourses li {
-  padding: 10px 18px;
-  font-size: 0.9rem;
-  color: var(--text);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-#listeAlimentsCourses li:hover {
-  background: var(--bg);
-}
+/* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
+   plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec Stock, Calories, etc.) */
 
 /* ---- Erreur ---- */
 
@@ -892,22 +870,49 @@ body.mode-magasin .course-item__shop-slot {
   margin-bottom: 16px;
 }
 
+/*
+  Technique "grid-rows accordéon" pour une vraie ouverture/fermeture animée (hauteur 0 -> hauteur réelle),
+  au lieu d'un simple show/hide instantané avec la classe .hidden :
+  - .panneau-ajout est une grille à une seule ligne, dont la hauteur de cette ligne (grid-template-rows)
+    passe de "0fr" (fermé) à "1fr" (ouvert) — une valeur qu'on peut animer en douceur avec "transition".
+  - .panneau-ajout__piege est l'unique enfant de cette grille, avec "overflow: hidden" : c'est ce qui
+    l'autorise à être compressé à 0px par la grille pendant la fermeture.
+  - .panneau-ajout__interieur, à l'intérieur du piège, porte le fond, la bordure et le padding.
+    Ces deux niveaux sont nécessaires : si le fond/bordure/padding étaient posés directement sur
+    l'élément "overflow:hidden" (le piège), ils resteraient visibles même à 0px de haut (le padding
+    et la bordure d'une boîte ne se compressent jamais en dessous de leur valeur déclarée, même quand
+    la boîte elle-même est réduite à 0 par son parent) — le panneau ne se fermerait donc jamais tout
+    à fait. En les déplaçant sur un niveau encore plus interne, le piège peut les cacher entièrement.
+  Ça remplace l'ancienne "animation: slideDownNote" qui n'animait que l'ouverture (jamais la fermeture),
+  et qui avait un effet de bord : elle créait un contexte d'empilement qui piégeait le z-index de la liste
+  de suggestions. On garde quand même position/z-index ici par sécurité, au cas où d'autres éléments
+  positionnés viendraient un jour se glisser juste après le panneau dans le HTML.
+*/
 .panneau-ajout {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+  transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              margin-bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 60;
+}
+
+.panneau-ajout.ouvert {
+  grid-template-rows: 1fr;
+  margin-bottom: 20px;
+}
+
+.panneau-ajout__piege {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.panneau-ajout__interieur {
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   padding: 20px;
-  margin-bottom: 20px;
-  animation: slideDownNote 0.2s ease both; /* petite animation d'ouverture quand le panneau apparaît */
-  /* L'animation ci-dessus se termine sur "transform: translateY(0)", qui — même si ça ne bouge plus
-     rien visuellement — n'est techniquement pas "none". Or toute valeur de transform autre que "none"
-     crée un nouveau "contexte d'empilement" pour cet élément. Sans z-index explicite ici, ce contexte
-     piège le z-index:50 de la liste de suggestions (#listeAliments) à l'intérieur du panneau, et la
-     grille du stock juste après (#listeStock), venant plus tard dans le HTML, finit par s'afficher
-     par-dessus tout le panneau — dropdown compris. On fixe donc nous-mêmes un z-index sur le panneau
-     entier pour qu'il passe toujours au-dessus de la grille, peu importe cet effet de bord de l'animation. */
-  position: relative;
-  z-index: 60;
 }
 
 /* ---- Liste stock (grille de cartes, avec emoji en attendant de vraies photos) ---- */
@@ -932,6 +937,11 @@ body.mode-magasin .course-item__shop-slot {
      un overflow:hidden sur la carte entière le couperait et le rendrait invisible. On arrondit
      donc seulement les coins du haut de l'emoji, plus bas, plutôt que de couper toute la carte. */
   cursor: pointer; /* toute la carte est cliquable pour ouvrir l'édition (voir stock.js) */
+  transition: transform 0.15s ease;
+}
+
+.stock-item:active {
+  transform: scale(0.98); /* léger effet "pressé" au tap, tant que la carte n'est pas déjà en édition */
 }
 
 .stock-item__emoji {
@@ -1114,47 +1124,8 @@ body.mode-magasin .course-item__shop-slot {
   min-width: 220px;
 }
 
-#rechercheAliment {
-  width: 100%;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 9px 18px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--text);
-}
-
-#rechercheAliment:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-#listeAliments {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  list-style: none;
-  overflow: hidden;
-  z-index: 50;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-}
-
-#listeAliments li {
-  padding: 10px 18px;
-  font-size: 0.9rem;
-  color: var(--text);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-#listeAliments li:hover {
-  background: var(--bg);
-}
+/* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
+   plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec Courses, Calories, etc.) */
 
 #champQuantite,
 #champCL {
@@ -1167,29 +1138,8 @@ body.mode-magasin .course-item__shop-slot {
   color: var(--text);
 }
 
-#btnAjouter {
-  background: var(--accent);
-  border: none;
-  border-radius: 999px;
-  padding: 9px 24px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: white;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-#btnAjouter:disabled {
-  /* Le bouton est grisé et non cliquable tant que le formulaire n'est pas complet (géré par stock.js) */
-  background: var(--border);
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
-#btnAjouter:not(:disabled):hover {
-  opacity: 0.85;
-}
+/* Le style de #btnAjouter (et son état disabled/hover) est défini une seule fois,
+   plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec le bouton "Créer la recette") */
 
 /* ---------- ICÔNES SUR LES BOUTONS D'ACTION ---------- */
 /* Un seul système, utilisé par supprimer ET acheté, pour garantir une taille identique partout */
@@ -1213,6 +1163,10 @@ body.mode-magasin .course-item__shop-slot {
 
 .btn-icone-rond:hover {
   border-color: var(--accent);
+}
+
+.btn-icone-rond:active {
+  transform: scale(0.9);
 }
 
 .btn-icone-rond:disabled {
@@ -1627,47 +1581,8 @@ body.mode-magasin .course-item__shop-slot {
   margin-bottom: 14px;
 }
 
-#rechercheIngredient {
-  width: 100%;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 9px 18px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--text);
-}
-
-#rechercheIngredient:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-#listeIngredientsRecherche {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  list-style: none;
-  overflow: hidden;
-  z-index: 50;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-}
-
-#listeIngredientsRecherche li {
-  padding: 10px 18px;
-  font-size: 0.9rem;
-  color: var(--text);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-#listeIngredientsRecherche li:hover {
-  background: var(--bg);
-}
+/* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
+   plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec Stock, Courses, Calories) */
 
 .ingredient-quantite {
   width: 100px;
@@ -1689,6 +1604,11 @@ body.mode-magasin .course-item__shop-slot {
   color: var(--text-muted);
   cursor: pointer;
   flex-shrink: 0;
+  transition: border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
+}
+
+.btn-supprimer-ingredient:active {
+  transform: scale(0.88);
 }
 
 .btn-supprimer-ingredient:hover {
@@ -1696,17 +1616,10 @@ body.mode-magasin .course-item__shop-slot {
   color: var(--accent);
 }
 
+/* Le style de #formCreerRecette #btnCreerRecette (couleurs, hover, disabled) est défini une seule
+   fois, plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec #btnAjouter) */
 #formCreerRecette #btnCreerRecette {
-  background: var(--accent);
-  border: none;
-  border-radius: 999px;
-  padding: 9px 24px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: white;
-  cursor: pointer;
-  margin-top: 10px;
+  margin-top: 10px; /* seule différence avec #btnAjouter : un peu d'espace au-dessus, sous la liste d'ingrédients */
 }
 
 .journal-section {
@@ -1736,47 +1649,8 @@ body.mode-magasin .course-item__shop-slot {
   min-width: 220px;
 }
 
-#rechercheAlimentCalories {
-  width: 100%;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 9px 18px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--text);
-}
-
-#rechercheAlimentCalories:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-#listeAlimentsCalories {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  list-style: none;
-  overflow: hidden;
-  z-index: 50;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-}
-
-#listeAlimentsCalories li {
-  padding: 10px 18px;
-  font-size: 0.9rem;
-  color: var(--text);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-#listeAlimentsCalories li:hover {
-  background: var(--bg);
-}
+/* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
+   plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec Stock, Courses, Ingrédients) */
 
 #listeJournal {
   display: flex;
@@ -1848,7 +1722,7 @@ body.mode-magasin .course-item__shop-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.12s ease;
 }
 
 .btn-supprimer-dash::before {
@@ -1860,6 +1734,10 @@ body.mode-magasin .course-item__shop-slot {
 
 .btn-supprimer-dash:hover {
   opacity: 0.85;
+}
+
+.btn-supprimer-dash:active {
+  transform: scale(0.85);
 }
 
 /* ---------- CONTRÔLES PARTAGÉS ---------- */
@@ -1899,13 +1777,17 @@ body.mode-magasin .course-item__shop-slot {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c8472b' stroke-width='3'><polyline points='6 9 12 15 18 9'/></svg>");
   background-repeat: no-repeat;
   background-position: right 14px center;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.12s ease;
 }
 
 .custom-select__button:hover,
 .custom-select__button:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.custom-select__button:active {
+  transform: scale(0.98);
 }
 
 .custom-select--open .custom-select__button {

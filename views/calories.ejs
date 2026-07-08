@@ -63,25 +63,30 @@
     <!-- Bouton qui ouvre/ferme le panneau de création d'une nouvelle recette -->
     <button type="button" id="btnToggleRecette" class="filter-btn">+ Créer une recette</button>
 
-    <!-- Panneau caché par défaut : formulaire pour créer une nouvelle recette (nom + liste d'ingrédients) -->
-    <div id="panneauCreerRecette" class="panneau-ajout hidden">
-      <form id="formCreerRecette">
-        <input type="text" id="nomRecette" placeholder="Nom de la recette" required />
+    <!-- Panneau fermé par défaut, ouvert/fermé en cliquant sur le bouton ci-dessus.
+         La classe "ouvert" (ajoutée/retirée par calories.js) anime la hauteur du panneau (voir style.css) -->
+    <div id="panneauCreerRecette" class="panneau-ajout">
+      <div class="panneau-ajout__piege">
+      <div class="panneau-ajout__interieur">
+        <form id="formCreerRecette">
+          <input type="text" id="nomRecette" placeholder="Nom de la recette" required />
 
-        <div id="autocompleteIngredient">
-          <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
-          <ul id="listeIngredientsRecherche">
-            <% alimentsTries.forEach(function(aliment) { %>
-            <li data-id="<%= aliment.id %>"><%= aliment.emoji %> <%= aliment.nom %></li>
-            <% }) %>
-          </ul>
-        </div>
+          <div id="autocompleteIngredient">
+            <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
+            <ul id="listeIngredientsRecherche">
+              <% alimentsTries.forEach(function(aliment) { %>
+              <li data-id="<%= aliment.id %>"><%= aliment.emoji %> <%= aliment.nom %></li>
+              <% }) %>
+            </ul>
+          </div>
 
-        <!-- Les lignes d'ingrédients ajoutées à la recette sont créées dynamiquement en JavaScript ici -->
-        <div id="listeIngredients"></div>
+          <!-- Les lignes d'ingrédients ajoutées à la recette sont créées dynamiquement en JavaScript ici -->
+          <div id="listeIngredients"></div>
 
-        <button type="submit" id="btnCreerRecette">Créer la recette</button>
-      </form>
+          <button type="submit" id="btnCreerRecette">Créer la recette</button>
+        </form>
+      </div>
+      </div>
     </div>
 
     <!-- Liste des aliments déjà mangés aujourd'hui, générée côté serveur -->

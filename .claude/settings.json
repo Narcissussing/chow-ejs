@@ -3,7 +3,21 @@
     "allow": [
       "Bash(node --check public/js/courses.js)",
       "Bash(node -e ' *)",
-      "Bash(curl -s -X POST http://localhost:3031/courses/preset-hebdo -H \"Content-Type: application/json\" -d '{}')"
+      "Bash(curl -s -X POST http://localhost:3031/courses/preset-hebdo -H \"Content-Type: application/json\" -d '{}')",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --hide-scrollbars --screenshot=/tmp/shot-courses.png --window-size=430,1400 http://localhost:3032/courses)",
+      "Read(//private/tmp/**)",
+      "Read(//tmp/**)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --hide-scrollbars --screenshot=/tmp/shot-aliments-mobile.png --window-size=430,1200 http://localhost:3032/aliments)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --hide-scrollbars --screenshot=/tmp/shot-aliments-desktop.png --window-size=1400,1000 http://localhost:3032/aliments)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --hide-scrollbars --screenshot=/tmp/shot-stock-mobile.png --window-size=430,1400 http://localhost:3032/stock)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --hide-scrollbars --screenshot=/tmp/shot-detail.png --window-size=430,1100 http://localhost:3032/aliments/ail)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --hide-scrollbars --screenshot=/tmp/shot-home.png --window-size=430,900 http://localhost:3032/)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --hide-scrollbars --screenshot=/tmp/shot-scrollwidth.png --window-size=430,300 --dump-dom http://localhost:3032/aliments)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --virtual-time-budget=2000 --window-size=430,900 --run-all-compositor-stages-before-draw --repl)",
+      "Bash(curl -s http://localhost:9333/json)",
+      "Bash(node --check public/js/calories.js)",
+      "Bash(node -e \"require\\('fs'\\).readFileSync\\('public/css/style.css','utf8'\\); console.log\\('css read ok'\\)\")",
+      "Bash(curl -s http://localhost:9335/json/version)"
     ]
   }
 }

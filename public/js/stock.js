@@ -48,9 +48,11 @@ const OPTIONS_CL = [
 // PANNEAU D'AJOUT (repliable)
 // ============================================
 
-// Quand on clique sur "+ Ajouter un aliment", on affiche/cache le panneau du formulaire
+// Quand on clique sur "+ Ajouter un aliment", on ouvre/ferme le panneau du formulaire.
+// La classe "ouvert" pilote une vraie animation de hauteur (voir .panneau-ajout dans style.css),
+// au lieu d'un simple show/hide instantané.
 btnToggleAjout.addEventListener("click", function () {
-  panneauAjoutStock.classList.toggle("hidden");
+  panneauAjoutStock.classList.toggle("ouvert");
 });
 
 // ============================================
@@ -331,7 +333,7 @@ formAjouterStock.addEventListener("submit", function (event) {
       btnAjouter.disabled = true;
 
       // On referme le panneau d'ajout automatiquement après un ajout réussi
-      panneauAjoutStock.classList.add("hidden");
+      panneauAjoutStock.classList.remove("ouvert");
     });
 });
 

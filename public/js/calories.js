@@ -345,9 +345,11 @@ btnToutEffacer.addEventListener("click", function () {
 // PANNEAU CRÉER UNE RECETTE
 // ============================================
 
-// Ouvre/ferme le panneau permettant de créer une nouvelle recette
+// Ouvre/ferme le panneau permettant de créer une nouvelle recette.
+// La classe "ouvert" pilote une vraie animation de hauteur (voir .panneau-ajout dans style.css),
+// au lieu d'un simple show/hide instantané.
 btnToggleRecette.addEventListener("click", function () {
-  panneauCreerRecette.classList.toggle("hidden");
+  panneauCreerRecette.classList.toggle("ouvert");
 });
 
 // Crée une ligne représentant un ingrédient dans le formulaire de création de recette
@@ -474,7 +476,7 @@ formCreerRecette.addEventListener("submit", function (event) {
       // On réinitialise le formulaire de création de recette
       nomRecette.value = "";
       listeIngredients.innerHTML = "";
-      panneauCreerRecette.classList.add("hidden");
+      panneauCreerRecette.classList.remove("ouvert");
     });
 });
 

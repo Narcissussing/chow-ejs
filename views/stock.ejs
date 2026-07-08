@@ -39,37 +39,42 @@
     <!-- Bouton qui ouvre/ferme le panneau d'ajout d'un aliment au stock -->
     <button type="button" id="btnToggleAjout" class="filter-btn">+ Ajouter un aliment</button>
 
-    <!-- Panneau d'ajout : caché par défaut (classe "hidden"), affiché en cliquant sur le bouton ci-dessus -->
-    <div id="panneauAjoutStock" class="panneau-ajout hidden">
-      <form action="/stock/ajouter" method="post" id="formAjouterStock">
-        <!-- Champ caché : stocke l'id de l'aliment choisi dans la liste de suggestions, rempli par le JavaScript -->
-        <input type="hidden" name="idAliment" id="idAlimentCache" />
+    <!-- Panneau d'ajout : fermé par défaut, ouvert/fermé en cliquant sur le bouton ci-dessus.
+         La classe "ouvert" (ajoutée/retirée par stock.js) anime la hauteur du panneau (voir style.css) -->
+    <div id="panneauAjoutStock" class="panneau-ajout">
+      <div class="panneau-ajout__piege">
+      <div class="panneau-ajout__interieur">
+        <form action="/stock/ajouter" method="post" id="formAjouterStock">
+          <!-- Champ caché : stocke l'id de l'aliment choisi dans la liste de suggestions, rempli par le JavaScript -->
+          <input type="hidden" name="idAliment" id="idAlimentCache" />
 
-        <div id="autocomplete">
-          <input type="text" id="rechercheAliment" placeholder="Rechercher un aliment..." autocomplete="off" />
-          <!-- La liste complète des aliments est générée ici côté serveur (avec EJS),
-               puis filtrée dynamiquement par le JavaScript selon ce que l'utilisateur tape -->
-          <ul id="listeAliments">
-            <% aliments.forEach(function(aliment) { %>
-            <li data-id="<%= aliment.id %>" data-type="<%= aliment.tracking_type %>">
-              <%= aliment.emoji %> <%= aliment.nom %>
-            </li>
-            <% }) %>
-          </ul>
-        </div>
+          <div id="autocomplete">
+            <input type="text" id="rechercheAliment" placeholder="Rechercher un aliment..." autocomplete="off" />
+            <!-- La liste complète des aliments est générée ici côté serveur (avec EJS),
+                 puis filtrée dynamiquement par le JavaScript selon ce que l'utilisateur tape -->
+            <ul id="listeAliments">
+              <% aliments.forEach(function(aliment) { %>
+              <li data-id="<%= aliment.id %>" data-type="<%= aliment.tracking_type %>">
+                <%= aliment.emoji %> <%= aliment.nom %>
+              </li>
+              <% }) %>
+            </ul>
+          </div>
 
-        <!-- Ces deux champs sont cachés au départ : le JavaScript n'en affiche qu'un seul,
-             selon le type de suivi (tracking_type) de l'aliment sélectionné -->
-        <input type="number" name="quantiteAliment" id="champQuantite" placeholder="Quantité" min="1" class="hidden" disabled />
-        <select name="quantiteAliment" id="champCL" class="hidden" disabled>
-          <option value="">-- Choisir --</option>
-          <option value="plein">Plein</option>
-          <option value="à moitié">À moitié</option>
-          <option value="presque vide">Presque vide</option>
-          <option value="vide">Vide</option>
-        </select>
-        <button type="submit" id="btnAjouter" disabled>Ajouter</button>
-      </form>
+          <!-- Ces deux champs sont cachés au départ : le JavaScript n'en affiche qu'un seul,
+               selon le type de suivi (tracking_type) de l'aliment sélectionné -->
+          <input type="number" name="quantiteAliment" id="champQuantite" placeholder="Quantité" min="1" class="hidden" disabled />
+          <select name="quantiteAliment" id="champCL" class="hidden" disabled>
+            <option value="">-- Choisir --</option>
+            <option value="plein">Plein</option>
+            <option value="à moitié">À moitié</option>
+            <option value="presque vide">Presque vide</option>
+            <option value="vide">Vide</option>
+          </select>
+          <button type="submit" id="btnAjouter" disabled>Ajouter</button>
+        </form>
+      </div>
+      </div>
     </div>
 
     <!-- Liste des articles actuellement en stock, générée côté serveur -->
