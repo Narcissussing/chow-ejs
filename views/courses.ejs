@@ -16,38 +16,49 @@
 
     <div id="listeCourses">
       <% courses.forEach(function(item) { %>
-      <div class="course-item" data-nom="<%= item.nom.toLowerCase() %>" data-categorie="<%= item.categorie || 'zzz' %>">
+      <div class="course-item carte-article" data-nom="<%= item.nom.toLowerCase() %>" data-categorie="<%= item.categorie || 'zzz' %>">
         <span class="course-nom" data-id="<%= item.id %>"><%= item.emoji %> <%= item.nom %></span>
+
+        <form action="/courses/supprimer" method="post" class="form-supprimer">
+          <input type="hidden" name="idCourse" value="<%= item.id %>" />
+          <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
+        </form>
+
         <% if (item.commentaire) { %>
         <p class="note-affichee" data-id="<%= item.id %>">📝 <%= item.commentaire %></p>
         <% } %>
-        <input type="text" class="input-commentaire hidden" placeholder="Ajouter une note" value="<%= item.commentaire || '' %>" data-id="<%= item.id %>" /> <% if (item.food_id && item.tracking_type === 'cl') { %>
+        <input type="text" class="input-commentaire hidden" placeholder="Ajouter une note" value="<%= item.commentaire || '' %>" data-id="<%= item.id %>" />
+
+        <% if (item.food_id && item.tracking_type === 'cl') { %>
         <form action="/courses/acheter" method="post" class="form-acheter">
           <input type="hidden" name="idCourse" value="<%= item.id %>" />
-          <button type="submit">Acheté</button>
+          <div class="course-item__shop-slot">
+            <button type="submit" class="btn-icone-rond btn-acheter-icone">Acheté</button>
+          </div>
         </form>
         <% } else if (item.food_id) { %>
         <form action="/courses/acheter" method="post" class="form-acheter form-quantite">
           <input type="hidden" name="idCourse" value="<%= item.id %>" />
-          <div class="suggestions-quantite">
-            <button type="button" class="suggestion" data-valeur="1">1</button>
-            <button type="button" class="suggestion" data-valeur="2">2</button>
-            <button type="button" class="suggestion" data-valeur="5">5</button>
+          <div class="course-item__quantite-groupe">
+            <div class="suggestions-quantite">
+              <button type="button" class="suggestion" data-valeur="1">1</button>
+              <button type="button" class="suggestion" data-valeur="2">2</button>
+              <button type="button" class="suggestion" data-valeur="5">5</button>
+            </div>
+            <input type="number" name="quantiteAchetee" class="champ-quantite-achat" min="1" placeholder="Quantité" />
           </div>
-          <input type="number" name="quantiteAchetee" class="champ-quantite-achat" min="1" placeholder="Quantité" />
-          <button type="submit" class="btn-enregistrer-achat" disabled>Acheté</button>
+          <div class="course-item__shop-slot">
+            <button type="submit" class="btn-icone-rond btn-acheter-icone btn-enregistrer-achat" disabled>Acheté</button>
+          </div>
         </form>
         <% } else { %>
         <form action="/courses/acheter" method="post" class="form-acheter">
           <input type="hidden" name="idCourse" value="<%= item.id %>" />
-          <button type="submit">Acheté</button>
+          <div class="course-item__shop-slot">
+            <button type="submit" class="btn-icone-rond btn-acheter-icone">Acheté</button>
+          </div>
         </form>
         <% } %>
-
-        <form action="/courses/supprimer" method="post" class="form-supprimer">
-          <input type="hidden" name="idCourse" value="<%= item.id %>" />
-          <button type="submit">Supprimer</button>
-        </form>
       </div>
       <% }) %>
     </div>
@@ -65,8 +76,6 @@
           <% }) %>
         </ul>
       </div>
-
-      <button type="submit" id="btnAjouterCourses" disabled>Ajouter</button>
     </form>
 
     <script src="/js/courses.js" defer></script>

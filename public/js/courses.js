@@ -6,7 +6,6 @@ const toggleMagasin = document.getElementById("toggleMagasin");
 const rechercheAlimentCourses = document.getElementById("rechercheAlimentCourses");
 const listeAlimentsCourses = document.getElementById("listeAlimentsCourses");
 const idAlimentCacheCourses = document.getElementById("idAlimentCacheCourses");
-const btnAjouterCourses = document.getElementById("btnAjouterCourses");
 const formAjouterCourse = document.getElementById("formAjouterCourse");
 
 // ============================================
@@ -266,7 +265,7 @@ document.querySelectorAll(".course-item").forEach(activerItem);
 
 function construireItemDOM(item) {
     const div = document.createElement("div");
-    div.className = "course-item";
+    div.className = "course-item carte-article";
     div.dataset.nom = item.nom.toLowerCase();
     div.dataset.categorie = item.categorie || "zzz";
 
@@ -275,43 +274,51 @@ function construireItemDOM(item) {
         formAchat = `
       <form action="/courses/acheter" method="post" class="form-acheter">
         <input type="hidden" name="idCourse" value="${item.id}" />
-        <button type="submit">Acheté</button>
+        <div class="course-item__shop-slot">
+          <button type="submit" class="btn-icone-rond btn-acheter-icone">Acheté</button>
+        </div>
       </form>`;
     } else if (item.food_id) {
         formAchat = `
       <form action="/courses/acheter" method="post" class="form-acheter form-quantite">
         <input type="hidden" name="idCourse" value="${item.id}" />
-        <div class="suggestions-quantite">
-          <button type="button" class="suggestion" data-valeur="1">1</button>
-          <button type="button" class="suggestion" data-valeur="2">2</button>
-          <button type="button" class="suggestion" data-valeur="5">5</button>
+        <div class="course-item__quantite-groupe">
+          <div class="suggestions-quantite">
+            <button type="button" class="suggestion" data-valeur="1">1</button>
+            <button type="button" class="suggestion" data-valeur="2">2</button>
+            <button type="button" class="suggestion" data-valeur="5">5</button>
+          </div>
+          <input type="number" name="quantiteAchetee" class="champ-quantite-achat" min="1" placeholder="Quantité" />
         </div>
-        <input type="number" name="quantiteAchetee" class="champ-quantite-achat" min="1" placeholder="Quantité" />
-        <button type="submit" class="btn-enregistrer-achat" disabled>Acheté</button>
+        <div class="course-item__shop-slot">
+          <button type="submit" class="btn-icone-rond btn-acheter-icone btn-enregistrer-achat" disabled>Acheté</button>
+        </div>
       </form>`;
     } else {
         formAchat = `
       <form action="/courses/acheter" method="post" class="form-acheter">
         <input type="hidden" name="idCourse" value="${item.id}" />
-        <button type="submit">Acheté</button>
+        <div class="course-item__shop-slot">
+          <button type="submit" class="btn-icone-rond btn-acheter-icone">Acheté</button>
+        </div>
       </form>`;
     }
 
     div.innerHTML = `
     <span class="course-nom" data-id="${item.id}">${item.emoji} ${item.nom}</span>
-    <input type="text" class="input-commentaire hidden" placeholder="Ajouter une note" value="" data-id="${item.id}" />
-    ${formAchat}
     <form action="/courses/supprimer" method="post" class="form-supprimer">
       <input type="hidden" name="idCourse" value="${item.id}" />
-      <button type="submit">Supprimer</button>
+      <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
     </form>
+    <input type="text" class="input-commentaire hidden" placeholder="Ajouter une note" value="" data-id="${item.id}" />
+    ${formAchat}
   `;
 
     return div;
 }
 
 // ============================================
-// AUTOCOMPLETE + AJOUT (fetch, sans rechargement)
+// AUTOCOMPLETE + AJOUT INSTANTANÉ (fetch, sans rechargement)
 // ============================================
 
 listeAlimentsCourses.hidden = true;
@@ -321,7 +328,6 @@ rechercheAlimentCourses.addEventListener("input", function () {
     idAlimentCacheCourses.value = "";
 
     const recherche = this.value.toLowerCase();
-    btnAjouterCourses.disabled = recherche.trim() === "";
 
     if (recherche === "") {
         listeAlimentsCourses.hidden = true;
@@ -344,10 +350,8 @@ rechercheAlimentCourses.addEventListener("input", function () {
 
 itemsAutocomplete.forEach(function (item) {
     item.addEventListener("click", function () {
-        idAlimentCacheCourses.value = this.dataset.id;
-        rechercheAlimentCourses.value = this.textContent.trim();
+        ajouterArticle(item.dataset.id, null);
         listeAlimentsCourses.hidden = true;
-        btnAjouterCourses.disabled = false;
     });
 });
 
@@ -357,20 +361,24 @@ document.addEventListener("click", function (e) {
     }
 });
 
-formAjouterCourse.addEventListener("submit", function (event) {
+// Entrée dans le champ de recherche : ajoute en texte libre si rien n'a été sélectionné dans la liste
+rechercheAlimentCourses.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter") return;
     event.preventDefault();
 
     const idAliment = idAlimentCacheCourses.value || null;
     const texte = rechercheAlimentCourses.value.trim();
 
-    if (!idAliment && texte === "") {
-        return;
-    }
+    if (!idAliment && texte === "") return;
 
+    ajouterArticle(idAliment, idAliment ? null : texte);
+});
+
+function ajouterArticle(idAliment, texteLibre) {
     fetch("/courses/ajouter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idAliment: idAliment, rechercheAliment: texte })
+        body: JSON.stringify({ idAliment: idAliment, rechercheAliment: texteLibre })
     })
         .then(function (response) { return response.json(); })
         .then(function (data) {
@@ -386,6 +394,5 @@ formAjouterCourse.addEventListener("submit", function (event) {
 
             rechercheAlimentCourses.value = "";
             idAlimentCacheCourses.value = "";
-            btnAjouterCourses.disabled = true;
         });
-});
+}

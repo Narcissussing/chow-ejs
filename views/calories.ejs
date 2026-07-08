@@ -44,7 +44,7 @@
       </div>
 
       <select id="selectRecette">
-        <option value="">-- Ajouter une recette --</option>
+        <option value="">Ajouter une recette</option>
         <% recettes.forEach(function(recette) { %>
         <option value="<%= recette.id %>"><%= recette.nom %></option>
         <% }) %>
@@ -76,13 +76,18 @@
 
     <div id="listeJournal">
       <% journal.forEach(function(entree) { %>
-      <div class="journal-item" data-id="<%= entree.id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>">
-        <span class="journal-nom"><%= entree.emoji %> <%= entree.nom %></span>
-        <input type="number" class="journal-grammes-input" value="<%= entree.quantite_g %>" min="1" />
-        <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
+      <div class="journal-item carte-article" data-id="<%= entree.id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>">
+        <div class="journal-nom-groupe">
+          <span class="journal-nom"><%= entree.emoji %> <%= entree.nom %></span>
+          <span class="journal-categorie"><%= entree.categorie %></span>
+        </div>
+        <div class="journal-valeurs">
+          <input type="number" class="journal-grammes-input" value="<%= parseFloat(entree.quantite_g) %>" min="1" />
+          <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
+        </div>
         <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
           <input type="hidden" name="idEntree" value="<%= entree.id %>" />
-          <button type="submit">Supprimer</button>
+          <button type="submit" class="btn-supprimer-dash">Supprimer</button>
         </form>
       </div>
       <% }) %>

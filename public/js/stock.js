@@ -7,8 +7,6 @@ const btnAjouter = document.getElementById("btnAjouter");
 const formAjouterStock = document.getElementById("formAjouterStock");
 const listeStock = document.getElementById("listeStock");
 
-const btnModifierListe = document.getElementById("btnModifierListe");
-
 const filterButtonsStock = document.querySelectorAll(".filter-btn[data-emplacement]");
 const searchInput = document.getElementById("searchInput");
 const sortSelect = document.getElementById("sortSelect");
@@ -19,6 +17,13 @@ const panneauAjoutStock = document.getElementById("panneauAjoutStock");
 
 let emplacementActif = "tous";
 
+const OPTIONS_CL = [
+  { valeur: "plein", texte: "Plein" },
+  { valeur: "à moitié", texte: "À moitié" },
+  { valeur: "presque vide", texte: "Presque vide" },
+  { valeur: "vide", texte: "Vide" }
+];
+
 // ============================================
 // PANNEAU D'AJOUT (repliable)
 // ============================================
@@ -28,7 +33,7 @@ btnToggleAjout.addEventListener("click", function () {
 });
 
 // ============================================
-// AUTOCOMPLETE
+// AUTOCOMPLETE + RÉVÉLATION DU BON CHAMP
 // ============================================
 
 listeAliments.hidden = true;
@@ -38,9 +43,11 @@ rechercheAliment.addEventListener("input", function () {
   idAlimentCache.value = "";
   btnAjouter.disabled = true;
 
+  champQuantite.classList.add("hidden");
   champQuantite.disabled = true;
   champQuantite.value = "";
 
+  champCL.classList.add("hidden");
   champCL.disabled = true;
   champCL.selectedIndex = 0;
 
@@ -65,19 +72,7 @@ rechercheAliment.addEventListener("input", function () {
   });
 });
 
-function appliquerModeEdition(actif) {
-  document.body.classList.toggle("mode-edition-stock", actif);
-  btnModifierListe.classList.toggle("actif", actif);
-}
-
-const modeEditionSauvegarde = localStorage.getItem("modeEditionStock") === "true";
-appliquerModeEdition(modeEditionSauvegarde);
-
-btnModifierListe.addEventListener("click", function () {
-  const nouvelEtat = !document.body.classList.contains("mode-edition-stock");
-  appliquerModeEdition(nouvelEtat);
-  localStorage.setItem("modeEditionStock", nouvelEtat);
-});
+// (mode d'édition retiré : le tap fonctionne partout, tout le temps)
 
 items.forEach(function (item) {
   item.addEventListener("click", function () {
@@ -87,11 +82,15 @@ items.forEach(function (item) {
     listeAliments.hidden = true;
 
     if (type === "cl") {
+      champCL.classList.remove("hidden");
       champCL.disabled = false;
+      champQuantite.classList.add("hidden");
       champQuantite.disabled = true;
       champQuantite.value = "";
     } else {
+      champQuantite.classList.remove("hidden");
       champQuantite.disabled = false;
+      champCL.classList.add("hidden");
       champCL.disabled = true;
     }
   });
@@ -112,7 +111,7 @@ document.addEventListener("click", function (e) {
 });
 
 // ============================================
-// FILTRE EMPLACEMENT + RECHERCHE (en direct)
+// FILTRE EMPLACEMENT + RECHERCHE
 // ============================================
 
 filterButtonsStock.forEach(function (bouton) {
@@ -182,45 +181,29 @@ function trierStock(critere) {
 
 function construireStockItemDOM(item) {
   const div = document.createElement("div");
-  div.className = "stock-item";
+  div.className = "stock-item carte-article";
   div.dataset.id = item.id;
   div.dataset.nom = item.nom.toLowerCase();
   div.dataset.emplacement = item.emplacement;
   div.dataset.trackingType = item.tracking_type;
   div.dataset.jours = 0;
 
-  let formModif;
-  if (item.tracking_type === "cl") {
-    formModif = `
-      <form action="/stock/modifier" method="post" class="form-modif">
-        <input type="hidden" name="idStock" value="${item.id}" />
-        <select name="nouvelleQuantite" class="champ-modif" data-initial="${item.quantite}" disabled>
-          <option value="plein" ${item.quantite === "plein" ? "selected" : ""}>Plein</option>
-          <option value="à moitié" ${item.quantite === "à moitié" ? "selected" : ""}>À moitié</option>
-          <option value="presque vide" ${item.quantite === "presque vide" ? "selected" : ""}>Presque vide</option>
-          <option value="vide" ${item.quantite === "vide" ? "selected" : ""}>Vide</option>
-        </select>
-        <button type="button" class="btn-editer">Modifier</button>
-        <button type="submit" class="btn-sauvegarder" disabled hidden>Enregistrer</button>
-      </form>`;
-  } else {
-    formModif = `
-      <form action="/stock/modifier" method="post" class="form-modif">
-        <input type="hidden" name="idStock" value="${item.id}" />
-        <input type="number" name="nouvelleQuantite" class="champ-modif" value="${item.quantite}" data-initial="${item.quantite}" min="0" disabled />
-        <button type="button" class="btn-editer">Modifier</button>
-        <button type="submit" class="btn-sauvegarder" disabled hidden>Enregistrer</button>
-      </form>`;
-  }
+  const infosHtml =
+    item.tracking_type === "cl"
+      ? `<div class="stock-barre-cl" title="${item.quantite}"><div class="stock-barre-cl-remplissage niveau-plein"></div></div>`
+      : `<span class="stock-quantite">${item.quantite}</span>`;
 
   div.innerHTML = `
-    <span class="stock-nom">${item.nom}</span>
-    <span class="stock-quantite">${item.quantite}</span>
-    <span class="stock-jours">aujourd'hui</span>
-    ${formModif}
+    <div class="stock-nom-groupe">
+      <span class="stock-nom">${item.nom}</span>
+      <span class="stock-jours">aujourd'hui</span>
+    </div>
+    <div class="stock-editable-zone" data-valeur-actuelle="${item.quantite}">
+      ${infosHtml}
+    </div>
     <form action="/stock/supprimer" method="post" class="form-supprimer-stock">
       <input type="hidden" name="idStock" value="${item.id}" />
-      <button type="submit">Supprimer</button>
+      <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
     </form>
   `;
 
@@ -254,15 +237,17 @@ formAjouterStock.addEventListener("submit", function (event) {
 
       const nouvelItem = construireStockItemDOM(data.item);
       listeStock.appendChild(nouvelItem);
-      activerItemModif(nouvelItem);
+      activerEditionInline(nouvelItem);
       activerItemSuppression(nouvelItem);
       nouvelItem.classList.add("entree");
 
       rechercheAliment.value = "";
       idAlimentCache.value = "";
       champQuantite.value = "";
+      champQuantite.classList.add("hidden");
       champQuantite.disabled = true;
       champCL.selectedIndex = 0;
+      champCL.classList.add("hidden");
       champCL.disabled = true;
       btnAjouter.disabled = true;
 
@@ -271,83 +256,124 @@ formAjouterStock.addEventListener("submit", function (event) {
 });
 
 // ============================================
-// MODIFIER (édition inline + fetch + flash)
+// ÉDITION INLINE PAR CLIC (pas de bouton modifier/enregistrer)
 // ============================================
 
-function activerItemModif(item) {
-  const form = item.querySelector(".form-modif");
-  const champ = form.querySelector(".champ-modif");
-  const btnEditer = form.querySelector(".btn-editer");
-  const btnSauvegarder = form.querySelector(".btn-sauvegarder");
-  const spanQuantite = item.querySelector(".stock-quantite");
+let itemOuvertActuellement = null;
 
-  btnEditer.addEventListener("click", function () {
-    document.querySelectorAll(".form-modif").forEach(function (autreForm) {
-      const autreChamp = autreForm.querySelector(".champ-modif");
-      const autreBtnEditer = autreForm.querySelector(".btn-editer");
-      const autreBtnSauvegarder = autreForm.querySelector(".btn-sauvegarder");
+function activerEditionInline(item) {
+  const zone = item.querySelector(".stock-editable-zone");
+  const trackingType = item.dataset.trackingType;
 
-      autreChamp.disabled = true;
-      autreChamp.value = autreChamp.dataset.initial;
-      autreBtnEditer.hidden = false;
-      autreBtnSauvegarder.hidden = true;
-      autreBtnSauvegarder.disabled = true;
+  item.addEventListener("click", function (e) {
+    // Ignore les clics sur le bouton/formulaire de suppression
+    if (e.target.closest(".form-supprimer-stock")) return;
+
+    // Ignore les clics sur le champ éditable lui-même (laisser taper/choisir normalement)
+    if (e.target.closest(".stock-quantite-edit, .stock-cl-edit")) return;
+
+    if (!item.classList.contains("en-edition")) {
+      fermerItemOuvert();
+      ouvrirEdition(item, zone, trackingType);
+      itemOuvertActuellement = item;
+    } else {
+      fermerEditionEtSauvegarder(item, zone, trackingType);
+      itemOuvertActuellement = null;
+    }
+  });
+}
+
+function fermerItemOuvert() {
+  if (!itemOuvertActuellement) return;
+  const autreItem = itemOuvertActuellement;
+  const autreZone = autreItem.querySelector(".stock-editable-zone");
+  const autreTracking = autreItem.dataset.trackingType;
+  fermerEditionEtSauvegarder(autreItem, autreZone, autreTracking);
+  itemOuvertActuellement = null;
+}
+
+// Cliquer en dehors de tous les items ferme et sauvegarde celui qui est ouvert
+document.addEventListener("click", function (e) {
+  if (itemOuvertActuellement && !e.target.closest(".stock-item")) {
+    fermerItemOuvert();
+  }
+});
+
+function ouvrirEdition(item, zone, trackingType) {
+  item.classList.add("en-edition");
+  const valeurActuelle = zone.dataset.valeurActuelle;
+
+  if (trackingType === "cl") {
+    const select = document.createElement("select");
+    select.className = "stock-cl-edit anim-fondu";
+    OPTIONS_CL.forEach(function (option) {
+      const opt = document.createElement("option");
+      opt.value = option.valeur;
+      opt.textContent = option.texte;
+      if (option.valeur === valeurActuelle) opt.selected = true;
+      select.appendChild(opt);
     });
+    zone.innerHTML = "";
+    zone.appendChild(select);
+  } else {
+    const input = document.createElement("input");
+    input.type = "number";
+    input.className = "stock-quantite-edit anim-fondu";
+    input.value = valeurActuelle;
+    input.min = "0";
+    zone.innerHTML = "";
+    zone.appendChild(input);
+    input.focus();
+    input.select();
+  }
+}
 
-    champ.disabled = false;
-    champ.focus();
-    btnEditer.hidden = true;
-    btnSauvegarder.hidden = false;
-  });
+function fermerEditionEtSauvegarder(item, zone, trackingType) {
+  const champ = zone.querySelector(".stock-quantite-edit, .stock-cl-edit");
+  const nouvelleValeur = champ ? champ.value : zone.dataset.valeurActuelle;
+  const valeurActuelle = zone.dataset.valeurActuelle;
 
-  champ.addEventListener("input", function () {
-    const valeur = champ.value;
-    const initial = champ.dataset.initial;
-    const estValide =
-      champ.tagName === "SELECT" ? valeur !== "" : valeur !== "" && Number(valeur) >= 0;
+  if (!nouvelleValeur || nouvelleValeur === valeurActuelle) {
+    // Rien n'a changé : on revient simplement à l'affichage normal
+    zone.innerHTML = construireAffichageStatique(valeurActuelle, trackingType);
+    item.classList.remove("en-edition");
+    return;
+  }
 
-    btnSauvegarder.disabled = !(valeur !== initial && estValide);
-  });
+  fetch("/stock/modifier", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idStock: item.dataset.id, nouvelleQuantite: nouvelleValeur })
+  })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (data.erreur) {
+        alert(data.erreur);
+        zone.innerHTML = construireAffichageStatique(valeurActuelle, trackingType);
+        item.classList.remove("en-edition");
+        return;
+      }
 
-  champ.addEventListener("change", function () {
-    champ.dispatchEvent(new Event("input"));
-  });
+      zone.dataset.valeurActuelle = data.quantite;
+      zone.innerHTML = construireAffichageStatique(data.quantite, trackingType);
+      item.classList.remove("en-edition");
 
-  form.addEventListener("submit", function (event) {
-    event.preventDefault();
-
-    const donnees = new FormData(form);
-    const objet = {};
-    donnees.forEach(function (valeur, cle) {
-      objet[cle] = valeur;
+      item.classList.add("maj-flash");
+      setTimeout(function () {
+        item.classList.remove("maj-flash");
+      }, 600);
     });
+}
 
-    fetch("/stock/modifier", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(objet)
-    })
-      .then(function (response) { return response.json(); })
-      .then(function (data) {
-        if (data.erreur) {
-          alert(data.erreur);
-          return;
-        }
-
-        spanQuantite.textContent = data.quantite;
-
-        champ.dataset.initial = data.quantite;
-        champ.disabled = true;
-        btnEditer.hidden = false;
-        btnSauvegarder.hidden = true;
-        btnSauvegarder.disabled = true;
-
-        item.classList.add("maj-flash");
-        setTimeout(function () {
-          item.classList.remove("maj-flash");
-        }, 600);
-      });
-  });
+function construireAffichageStatique(valeur, trackingType) {
+  if (trackingType === "cl") {
+    let classeNiveau = "niveau-vide";
+    if (valeur === "plein") classeNiveau = "niveau-plein";
+    else if (valeur === "à moitié") classeNiveau = "niveau-moitie";
+    else if (valeur === "presque vide") classeNiveau = "niveau-presque-vide";
+    return `<div class="stock-barre-cl anim-fondu" title="${valeur}"><div class="stock-barre-cl-remplissage ${classeNiveau}"></div></div>`;
+  }
+  return `<span class="stock-quantite anim-fondu">${valeur}</span>`;
 }
 
 // ============================================
@@ -391,7 +417,7 @@ function activerItemSuppression(item) {
 // ============================================
 
 document.querySelectorAll(".stock-item").forEach(function (item) {
-  activerItemModif(item);
+  activerEditionInline(item);
   activerItemSuppression(item);
 });
 

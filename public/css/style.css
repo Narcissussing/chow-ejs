@@ -143,6 +143,30 @@ body {
   color: var(--text-muted);
 }
 
+/* ============================================
+   MISE EN PAGE UNIFIÉE DES CARTES D'ARTICLE
+   (stock, courses, calories) — même structure partout
+   ============================================ */
+
+.carte-article {
+  position: relative;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 58px 16px 20px;
+  transition: border-color 0.2s ease;
+}
+
+.carte-article:hover {
+  border-color: var(--accent-2);
+}
+
+.form-supprimer-stock {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
 /* ---------- HERO ---------- */
 
 .hero {
@@ -599,46 +623,66 @@ body {
 }
 
 .course-item {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
-  transition: border-color 0.2s ease;
-}
-
-.course-item:hover {
-  border-color: var(--accent-2);
+  column-gap: 14px;
+  row-gap: 8px;
+  padding: 16px 20px;
 }
 
 .course-nom {
+  grid-column: 1;
+  grid-row: 1;
   font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text);
-  flex: 1;
-  min-width: 160px;
+  cursor: pointer;
 }
 
-/* Caché par défaut, visible seulement en mode magasin */
+.course-item .form-supprimer {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.note-affichee,
+.input-commentaire {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* Les formulaires d'achat sont transparents pour la grille : leurs enfants
+   (groupe quantité + bouton) se placent directement dans les cellules voulues */
 .form-acheter,
 .form-quantite {
+  display: contents;
+}
+
+.course-item__quantite-groupe {
   display: none;
-}
-
-body.mode-magasin .form-acheter,
-body.mode-magasin .form-quantite {
-  display: flex;
-}
-
-.form-acheter,
-.form-quantite {
+  grid-column: 1;
+  grid-row: 3;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.course-item__shop-slot {
+  display: none;
+  grid-column: 2;
+  grid-row: 3;
+  align-items: center;
+  justify-content: center;
+}
+
+body.mode-magasin .course-item__quantite-groupe {
+  display: flex;
+}
+
+body.mode-magasin .course-item__shop-slot {
+  display: flex;
 }
 
 .suggestions-quantite {
@@ -667,7 +711,7 @@ body.mode-magasin .form-quantite {
 }
 
 .champ-quantite-achat {
-  width: 80px;
+  width: 100px;
   background: var(--bg);
   border: 1.5px solid var(--border);
   border-radius: 999px;
@@ -875,20 +919,17 @@ body.mode-magasin .form-quantite {
 }
 
 .stock-item {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  flex-wrap: wrap;
   gap: 14px;
-  justify-content: space-between;
-  transition: border-color 0.2s ease;
+  cursor: pointer;
 }
 
-.stock-item:hover {
-  border-color: var(--accent-2);
+.stock-nom-groupe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .stock-nom {
@@ -896,12 +937,10 @@ body.mode-magasin .form-quantite {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text);
-  flex: 0 1 auto;
-  min-width: 100px;
 }
 
 .stock-quantite {
-  font-size: 1.3rem;
+  font-size: 1.8rem;
   font-weight: 800;
   color: var(--accent-2);
   font-family: var(--font-display);
@@ -910,20 +949,63 @@ body.mode-magasin .form-quantite {
 .stock-jours {
   font-size: 0.78rem;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
-.stock-infos {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto;
+.stock-editable-zone {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+  text-align: right;
 }
 
-.stock-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
+.stock-editable-zone:hover {
+  background: var(--bg);
+}
+
+.stock-item.en-edition {
+  border-color: var(--accent);
+}
+
+@keyframes stockFondu {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.anim-fondu {
+  animation: stockFondu 0.15s ease;
+}
+
+.stock-item.en-edition .stock-editable-zone {
+  cursor: default;
+  background: transparent;
+}
+
+.stock-quantite-edit,
+.stock-cl-edit {
+  background: var(--bg);
+  border: 1.5px solid var(--accent);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.stock-quantite-edit {
+  width: 95px;
+  text-align: center;
+}
+
+.stock-quantite-edit:focus,
+.stock-cl-edit:focus {
+  outline: none;
 }
 
 /* ---- Barre de remplissage (cl) ---- */
@@ -962,21 +1044,14 @@ body.mode-magasin .form-quantite {
   background: #c8472b;
 }
 
-/* ---- Édition inline (modifier / sauvegarder) ---- */
+/* ---- Suppression (visible uniquement en mode édition, par item) ---- */
 
-.form-modif,
-.form-supprimer-stock {
+.stock-item .form-supprimer-stock {
   display: none;
 }
 
-body.mode-edition-stock .form-modif,
-body.mode-edition-stock .form-supprimer-stock {
-  display: flex;
-}
-
-.form-modif {
-  align-items: center;
-  gap: 8px;
+.stock-item.en-edition .form-supprimer-stock {
+  display: block;
 }
 
 .champ-modif {
@@ -1118,39 +1193,37 @@ body.mode-edition-stock .form-supprimer-stock {
 }
 
 /* ---------- ICÔNES SUR LES BOUTONS D'ACTION ---------- */
-/* (texte masqué via font-size:0, icône injectée en ::before) */
+/* Un seul système, utilisé par supprimer ET acheté, pour garantir une taille identique partout */
 
-.btn-editer,
-.form-supprimer-stock button[type="submit"],
-.form-supprimer button[type="submit"],
-.form-acheter button[type="submit"],
-.btn-enregistrer-achat {
-  width: 40px;
-  height: 40px;
+.btn-icone-rond {
+  width: 30px;
+  height: 30px;
   padding: 0;
   font-size: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
-.btn-editer::before {
-  content: "✏️";
-  font-size: 1.05rem;
+.btn-icone-rond:hover {
+  border-color: var(--accent);
 }
 
-.form-supprimer-stock button[type="submit"]::before,
-.form-supprimer button[type="submit"]::before {
-  content: "🗑️";
-  font-size: 1.05rem;
+.btn-icone-rond:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
-.form-acheter button[type="submit"]::before,
-.btn-enregistrer-achat::before {
+.btn-acheter-icone::before {
   content: "🛍️";
-  font-size: 1.05rem;
+  font-size: 0.85rem;
 }
 
 /* ---------- FOOTER ---------- */
@@ -1423,14 +1496,9 @@ body.mode-edition-stock .form-supprimer-stock {
   }
 
   /* Boutons icônes un peu plus grands pour le tactile, mais toujours compacts */
-  .btn-editer,
-  .form-supprimer-stock button[type="submit"],
-  .form-supprimer button[type="submit"],
-  .form-acheter button[type="submit"],
-  .btn-sauvegarder,
-  .btn-enregistrer-achat {
-    width: 42px;
-    height: 42px;
+  .btn-icone-rond {
+    width: 34px;
+    height: 34px;
     flex-shrink: 0;
   }
 
@@ -1514,7 +1582,7 @@ body.mode-edition-stock .form-supprimer-stock {
 }
 
 .journal-grammes-input {
-  width: 80px;
+  width: 95px;
   background: var(--bg);
   border: 1.5px solid var(--border);
   border-radius: 999px;
@@ -1762,19 +1830,16 @@ body.mode-edition-stock .form-supprimer-stock {
 }
 
 .journal-item {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
-  transition: border-color 0.2s ease;
+  gap: 12px;
 }
 
-.journal-item:hover {
-  border-color: var(--accent-2);
+.journal-nom-groupe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .journal-nom {
@@ -1782,13 +1847,21 @@ body.mode-edition-stock .form-supprimer-stock {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text);
-  flex: 1;
-  min-width: 160px;
 }
 
-.journal-grammes {
-  font-size: 0.85rem;
+.journal-categorie {
+  font-size: 0.7rem;
   color: var(--text-muted);
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.journal-valeurs {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .journal-kcal {
@@ -1796,23 +1869,42 @@ body.mode-edition-stock .form-supprimer-stock {
   font-weight: 700;
   color: var(--accent);
   font-family: var(--font-display);
+  text-align: right;
 }
 
-.form-supprimer-journal button[type="submit"] {
-  background: transparent;
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 6px 16px;
-  font-family: var(--font-body);
-  font-size: 0.8rem;
-  color: var(--text-muted);
+/* Bouton supprimer : petit rond rouge avec un signe moins, style iOS,
+   posé en dehors du cadre de la carte */
+.form-supprimer-journal {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.btn-supprimer-dash {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
   cursor: pointer;
-  transition: all 0.2s ease;
+  font-size: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
 }
 
-.form-supprimer-journal button[type="submit"]:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+.btn-supprimer-dash::before {
+  content: "−";
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.btn-supprimer-dash:hover {
+  opacity: 0.85;
 }
 
 /* ---- Recettes : boutons rapides + cartes ---- */

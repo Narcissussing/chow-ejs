@@ -3,9 +3,6 @@
 <main>
   <div class="stock-section">
     <h1>Stock</h1>
-    <div id="toggleEditionStock">
-      <button type="button" id="btnModifierListe">✏️ Modifier la liste</button>
-    </div>
     <% if (typeof error !== 'undefined') { %>
     <p class="erreur"><%= error %></p>
     <% } %>
@@ -28,84 +25,12 @@
       <div class="sort-wrapper">
         <label for="sortSelect">Trier par :</label>
         <select id="sortSelect">
-          <option value="alpha">Alphabétique</option>
-          <option value="ancien">Plus ancien</option>
-          <option value="recent">Plus récent</option>
+          <option value="alpha">Nom</option>
+          <option value="ancien">Ancien</option>
+          <option value="recent">Récent</option>
         </select>
       </div>
     </div>
-
-    <div id="listeStock">
-      <% stock.forEach(function(aliment) { %>
-      <div
-        class="stock-item"
-        data-id="<%= aliment.id %>"
-        data-nom="<%= aliment.nom.toLowerCase() %>"
-        data-emplacement="<%= aliment.emplacement %>"
-        data-tracking-type="<%= aliment.tracking_type %>"
-        data-jours="<%= aliment.jours_depuis %>"
-        <% if (aliment.tracking_type !== 'cl') { %>
-        data-quantite="<%= aliment.quantite %>"
-        <% } %>
-      >
-        <span class="stock-nom"><%= aliment.nom %></span>
-
-        <div class="stock-infos">
-          <% if (aliment.tracking_type === 'cl') { %>
-          <%
-            let classeNiveau = 'niveau-vide';
-            if (aliment.quantite === 'plein') classeNiveau = 'niveau-plein';
-            else if (aliment.quantite === 'à moitié') classeNiveau = 'niveau-moitie';
-            else if (aliment.quantite === 'presque vide') classeNiveau = 'niveau-presque-vide';
-          %>
-          <div class="stock-barre-cl" title="<%= aliment.quantite %>">
-            <div class="stock-barre-cl-remplissage <%= classeNiveau %>"></div>
-          </div>
-          <% } else { %>
-          <span class="stock-quantite"><%= aliment.quantite %></span>
-          <% } %>
-
-          <% if (aliment.jours_depuis === 0) { %>
-          <span class="stock-jours">aujourd'hui</span>
-          <% } else if (aliment.jours_depuis === 1) { %>
-          <span class="stock-jours">il y a 1 jour</span>
-          <% } else { %>
-          <span class="stock-jours">il y a <%= aliment.jours_depuis %> jours</span>
-          <% } %>
-        </div>
-
-        <div class="stock-actions">
-          <% if (aliment.tracking_type === 'cl') { %>
-          <form action="/stock/modifier" method="post" class="form-modif">
-            <input type="hidden" name="idStock" value="<%= aliment.id %>" />
-            <select name="nouvelleQuantite" class="champ-modif" data-initial="<%= aliment.quantite %>" disabled>
-              <option value="plein" <%= aliment.quantite === 'plein' ? 'selected' : '' %>>Plein</option>
-              <option value="à moitié" <%= aliment.quantite === 'à moitié' ? 'selected' : '' %>>À moitié</option>
-              <option value="presque vide" <%= aliment.quantite === 'presque vide' ? 'selected' : '' %>>Presque vide</option>
-              <option value="vide" <%= aliment.quantite === 'vide' ? 'selected' : '' %>>Vide</option>
-            </select>
-            <button type="button" class="btn-editer">Modifier</button>
-            <button type="submit" class="btn-sauvegarder" disabled hidden>Enregistrer</button>
-          </form>
-          <% } else { %>
-          <form action="/stock/modifier" method="post" class="form-modif">
-            <input type="hidden" name="idStock" value="<%= aliment.id %>" />
-            <input type="number" name="nouvelleQuantite" class="champ-modif" value="<%= aliment.quantite %>" data-initial="<%= aliment.quantite %>" min="0" disabled />
-            <button type="button" class="btn-editer">Modifier</button>
-            <button type="submit" class="btn-sauvegarder" disabled hidden>Enregistrer</button>
-          </form>
-          <% } %>
-
-          <form action="/stock/supprimer" method="post" class="form-supprimer-stock">
-            <input type="hidden" name="idStock" value="<%= aliment.id %>" />
-            <button type="submit">Supprimer</button>
-          </form>
-        </div>
-      </div>
-      <% }) %>
-    </div>
-
-    <p class="no-results hidden" id="noResultsStock">Aucun article ne correspond à ce filtre.</p>
 
     <button type="button" id="btnToggleAjout" class="filter-btn">+ Ajouter un aliment</button>
 
@@ -124,8 +49,8 @@
           </ul>
         </div>
 
-        <input type="number" name="quantiteAliment" id="champQuantite" placeholder="Quantité" min="1" disabled />
-        <select name="quantiteAliment" id="champCL" disabled>
+        <input type="number" name="quantiteAliment" id="champQuantite" placeholder="Quantité" min="1" class="hidden" disabled />
+        <select name="quantiteAliment" id="champCL" class="hidden" disabled>
           <option value="">-- Choisir --</option>
           <option value="plein">Plein</option>
           <option value="à moitié">À moitié</option>
@@ -135,6 +60,53 @@
         <button type="submit" id="btnAjouter" disabled>Ajouter</button>
       </form>
     </div>
+
+    <div id="listeStock">
+      <% stock.forEach(function(aliment) { %>
+      <div
+        class="stock-item carte-article"
+        data-id="<%= aliment.id %>"
+        data-nom="<%= aliment.nom.toLowerCase() %>"
+        data-emplacement="<%= aliment.emplacement %>"
+        data-tracking-type="<%= aliment.tracking_type %>"
+        data-jours="<%= aliment.jours_depuis %>"
+      >
+        <div class="stock-nom-groupe">
+          <span class="stock-nom"><%= aliment.nom %></span>
+          <% if (aliment.jours_depuis === 0) { %>
+          <span class="stock-jours">aujourd'hui</span>
+          <% } else if (aliment.jours_depuis === 1) { %>
+          <span class="stock-jours">il y a 1 jour</span>
+          <% } else { %>
+          <span class="stock-jours">il y a <%= aliment.jours_depuis %> jours</span>
+          <% } %>
+        </div>
+
+        <div class="stock-editable-zone" data-valeur-actuelle="<%= aliment.quantite %>">
+          <% if (aliment.tracking_type === 'cl') { %>
+          <%
+            let classeNiveau = 'niveau-vide';
+            if (aliment.quantite === 'plein') classeNiveau = 'niveau-plein';
+            else if (aliment.quantite === 'à moitié') classeNiveau = 'niveau-moitie';
+            else if (aliment.quantite === 'presque vide') classeNiveau = 'niveau-presque-vide';
+          %>
+          <div class="stock-barre-cl" title="<%= aliment.quantite %>">
+            <div class="stock-barre-cl-remplissage <%= classeNiveau %>"></div>
+          </div>
+          <% } else { %>
+          <span class="stock-quantite"><%= aliment.quantite %></span>
+          <% } %>
+        </div>
+
+        <form action="/stock/supprimer" method="post" class="form-supprimer-stock">
+          <input type="hidden" name="idStock" value="<%= aliment.id %>" />
+          <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
+        </form>
+      </div>
+      <% }) %>
+    </div>
+
+    <p class="no-results hidden" id="noResultsStock">Aucun article ne correspond à ce filtre.</p>
 
     <script src="/js/stock.js" defer></script>
   </div>

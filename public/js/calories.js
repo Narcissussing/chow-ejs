@@ -113,7 +113,7 @@ function recalculerTotaux() {
 
 function construireJournalItemDOM(entree) {
   const div = document.createElement("div");
-  div.className = "journal-item";
+  div.className = "journal-item carte-article";
   div.dataset.id = entree.id;
   div.dataset.kcal = entree.calories_calc;
   div.dataset.glucides = entree.glucides_calc;
@@ -122,11 +122,13 @@ function construireJournalItemDOM(entree) {
 
   div.innerHTML = `
     <span class="journal-nom">${entree.emoji} ${entree.nom}</span>
-    <input type="number" class="journal-grammes-input" value="${entree.quantite_g}" min="1" />
-    <span class="journal-kcal">${Number(entree.calories_calc).toFixed(0)} kcal</span>
+    <div class="journal-valeurs">
+      <input type="number" class="journal-grammes-input" value="${Number(entree.quantite_g)}" min="1" />
+      <span class="journal-kcal">${Number(entree.calories_calc).toFixed(0)} kcal</span>
+    </div>
     <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
       <input type="hidden" name="idEntree" value="${entree.id}" />
-      <button type="submit">Supprimer</button>
+      <button type="submit" class="btn-icone-rond btn-supprimer-icone">Supprimer</button>
     </form>
   `;
 
