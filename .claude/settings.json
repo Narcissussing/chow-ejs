@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check public/js/courses.js)",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -X POST http://localhost:3031/courses/preset-hebdo -H \"Content-Type: application/json\" -d '{}')"
+    ]
+  }
+}

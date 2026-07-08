@@ -16,6 +16,10 @@
       <button type="button" id="toggleMagasin">🛒 Au magasin</button>
     </div>
 
+    <!-- Ajoute d'un coup les courses habituelles de la semaine, sans effacer ce qui est déjà dans la liste
+         (contrairement au bouton recette de la page Calories, qui lui remplace tout) -->
+    <button type="button" id="btnPresetHebdo" class="filter-btn">🧺 Courses de la semaine</button>
+
     <!-- Liste des articles à acheter, générée côté serveur -->
     <div id="listeCourses">
       <% courses.forEach(function(item) { %>

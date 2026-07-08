@@ -6,6 +6,7 @@ const listeCourses = document.getElementById("listeCourses"); // conteneur de to
 const triAlpha = document.getElementById("triAlpha"); // bouton "trier par nom"
 const triCategorie = document.getElementById("triCategorie"); // bouton "trier par catégorie"
 const toggleMagasin = document.getElementById("toggleMagasin"); // bouton pour activer/désactiver le "mode magasin"
+const btnPresetHebdo = document.getElementById("btnPresetHebdo"); // bouton "Courses de la semaine" (ajout groupé)
 
 const rechercheAlimentCourses = document.getElementById("rechercheAlimentCourses"); // champ de recherche pour ajouter un article
 const listeAlimentsCourses = document.getElementById("listeAlimentsCourses"); // liste de suggestions d'aliments
@@ -97,6 +98,40 @@ toggleMagasin.addEventListener("click", function () {
     const nouvelEtat = !document.body.classList.contains("mode-magasin");
     appliquerModeMagasin(nouvelEtat);
     localStorage.setItem("modeMagasin", nouvelEtat);
+});
+
+// ============================================
+// PRESET "COURSES DE LA SEMAINE" (ajout groupé, sans rien effacer)
+// ============================================
+
+btnPresetHebdo.addEventListener("click", function () {
+    fetch("/courses/preset-hebdo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+    })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            if (data.erreur) {
+                alert(data.erreur);
+                return;
+            }
+
+            // Le serveur n'a renvoyé que les articles pas encore dans la liste : s'il n'y en a aucun,
+            // tout le preset était déjà présent, on ne fait rien de plus
+            if (data.items.length === 0) {
+                alert("Tout est déjà dans la liste de courses.");
+                return;
+            }
+
+            // On ajoute chaque nouvel article au bon endroit (selon le tri actif), sans toucher au reste
+            data.items.forEach(function (item) {
+                const nouvelItem = construireItemDOM(item);
+                inserrerSelonTri(nouvelItem);
+                activerItem(nouvelItem);
+                nouvelItem.classList.add("entree");
+            });
+        });
 });
 
 // ============================================

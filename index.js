@@ -46,6 +46,27 @@ app.set("view engine", "ejs");
 // (par exemple : "unite" -> "unités", "pack" -> "packs", "cl" -> "cl")
 const uniteParType = { unite: 'unités', pack: 'packs', cl: 'cl' };
 
+// Liste fixe des courses habituelles de la semaine (bouton "preset" sur la page Courses).
+// Chaque entrée a soit un food_id (aliment connu dans la table "foods"), soit un nom_libre
+// (texte libre, pour "Lait PPC Vanille" qui n'existe pas encore comme aliment).
+const PRESET_COURSES_HEBDO = [
+    { food_id: "yaourt-grec" },
+    { food_id: "carotte" },
+    { food_id: "tomate" },
+    { food_id: "banane" },
+    { food_id: "yaourt" },
+    { food_id: "pomme-de-terre" },
+    { food_id: "patate-douce" },
+    { food_id: "corne-verte" },
+    { food_id: "corne-rouge" },
+    { food_id: "mozzarella" },
+    { food_id: "feta" },
+    { food_id: "roquette" },
+    { food_id: "mache" },
+    { nom_libre: "Lait PPC Vanille" },
+    { food_id: "chips" },
+];
+
 //Function
 
 // Récupère la liste de tous les aliments connus dans la table "foods"
@@ -308,6 +329,57 @@ app.post("/courses/ajouter", async (req, res) => {
         );
 
         res.json({ succes: true, item: itemResult.rows[0] });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
+// Ajouter d'un coup toutes les courses habituelles de la semaine (voir PRESET_COURSES_HEBDO).
+// Contrairement à la recette de /calories/ajouter-recette, on n'efface rien : on ajoute seulement
+// les articles du preset qui ne sont pas déjà dans la liste de courses en attente (pour ne pas créer
+// de doublons si on clique plusieurs fois sur le bouton).
+app.post("/courses/preset-hebdo", async (req, res) => {
+    try {
+        // On récupère ce qui est déjà dans la liste (pas encore acheté), pour savoir quoi ne pas dupliquer
+        const dejaLa = await db.query("SELECT food_id, nom_libre FROM courses WHERE achete = false");
+        const foodIdsDejaLa = new Set(dejaLa.rows.map(r => r.food_id).filter(Boolean));
+        const nomsLibresDejaLa = new Set(
+            dejaLa.rows.filter(r => !r.food_id && r.nom_libre).map(r => r.nom_libre.toLowerCase())
+        );
+
+        const nouveauxIds = [];
+
+        for (const article of PRESET_COURSES_HEBDO) {
+            if (article.food_id) {
+                if (foodIdsDejaLa.has(article.food_id)) continue; // déjà présent, on ne l'ajoute pas une 2e fois
+                const insertResult = await db.query(
+                    "INSERT INTO courses (food_id, nom_libre) VALUES ($1, NULL) RETURNING id",
+                    [article.food_id]
+                );
+                nouveauxIds.push(insertResult.rows[0].id);
+            } else {
+                if (nomsLibresDejaLa.has(article.nom_libre.toLowerCase())) continue;
+                const insertResult = await db.query(
+                    "INSERT INTO courses (food_id, nom_libre) VALUES (NULL, $1) RETURNING id",
+                    [article.nom_libre]
+                );
+                nouveauxIds.push(insertResult.rows[0].id);
+            }
+        }
+
+        // Si tout était déjà dans la liste, on renvoie une liste vide (rien de neuf à afficher)
+        if (nouveauxIds.length === 0) {
+            return res.json({ succes: true, items: [] });
+        }
+
+        // On relit tous les articles fraîchement ajoutés, avec leurs infos affichables (nom, emoji, etc.)
+        const itemsResult = await db.query(
+            "SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji, foods.unite AS food_unite, foods.tracking_type, foods.categorie FROM courses LEFT JOIN foods ON courses.food_id = foods.id WHERE courses.id = ANY($1)",
+            [nouveauxIds]
+        );
+
+        res.json({ succes: true, items: itemsResult.rows });
     } catch (err) {
         console.log("ERREUR:", err.message);
         res.status(500).json({ erreur: err.message });
