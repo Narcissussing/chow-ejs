@@ -52,7 +52,20 @@ const OPTIONS_CL = [
 // La classe "ouvert" pilote une vraie animation de hauteur (voir .panneau-ajout dans style.css),
 // au lieu d'un simple show/hide instantané.
 btnToggleAjout.addEventListener("click", function () {
-  panneauAjoutStock.classList.toggle("ouvert");
+  const estOuvert = panneauAjoutStock.classList.toggle("ouvert");
+  if (!estOuvert) {
+    // On ferme : on retire "pret" tout de suite pour que l'animation de fermeture
+    // parte bien d'un panneau "coupé" (overflow:hidden), voir style.css
+    panneauAjoutStock.classList.remove("pret");
+  }
+});
+
+// Une fois l'animation d'ouverture terminée, on ajoute "pret" : le panneau repasse en overflow:visible,
+// pour que la liste de suggestions (qui dépasse volontairement sous le panneau) redevienne visible
+panneauAjoutStock.addEventListener("transitionend", function (event) {
+  if (event.propertyName === "grid-template-rows" && panneauAjoutStock.classList.contains("ouvert")) {
+    panneauAjoutStock.classList.add("pret");
+  }
 });
 
 // ============================================
@@ -89,19 +102,12 @@ rechercheAliment.addEventListener("input", function () {
     return;
   }
 
-  let count = 0;
   listeAliments.hidden = false;
 
-  // On parcourt tous les aliments disponibles : on affiche seulement ceux qui contiennent le texte tapé,
-  // et on limite l'affichage à 3 résultats maximum pour ne pas surcharger la liste
+  // On parcourt tous les aliments disponibles et on affiche tous ceux qui contiennent le texte tapé.
+  // Aucune limite de nombre : si la liste est longue, elle défile (voir max-height dans style.css)
   items.forEach(function (item) {
-    const match = item.textContent.toLowerCase().includes(recherche);
-    if (match && count < 3) {
-      item.hidden = false;
-      count++;
-    } else {
-      item.hidden = true;
-    }
+    item.hidden = !item.textContent.toLowerCase().includes(recherche);
   });
 });
 
@@ -334,6 +340,7 @@ formAjouterStock.addEventListener("submit", function (event) {
 
       // On referme le panneau d'ajout automatiquement après un ajout réussi
       panneauAjoutStock.classList.remove("ouvert");
+      panneauAjoutStock.classList.remove("pret");
     });
 });
 

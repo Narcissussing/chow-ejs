@@ -1,26 +1,29 @@
 <%- include('partials/header') %>
 
 <main>
-  <div class="stock-section">
+  <div class="page-header">
     <h1>Stock</h1>
     <% if (typeof error !== 'undefined') { %>
     <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
     <p class="erreur"><%= error %></p>
     <% } %>
+  </div>
 
-    <!-- Boutons de filtre par emplacement : cliquer dessus ne recharge pas la page,
-         c'est du JavaScript (public/js/stock.js) qui cache/affiche les articles -->
-    <div class="filters">
-      <div class="filters__inner">
-        <div class="filter-buttons">
-          <button type="button" class="filter-btn active" data-emplacement="tous">Tous</button>
-          <button type="button" class="filter-btn" data-emplacement="fg">🧊 Frigo</button>
-          <button type="button" class="filter-btn" data-emplacement="fz">❄️ Congélateur</button>
-          <button type="button" class="filter-btn" data-emplacement="st">📦 Réserve</button>
-        </div>
+  <!-- Boutons de filtre par emplacement : cliquer dessus ne recharge pas la page,
+       c'est du JavaScript (public/js/stock.js) qui cache/affiche les articles.
+       Même barre pleine largeur que sur Aliments, pour que les deux pages se ressemblent. -->
+  <div class="filters">
+    <div class="filters__inner">
+      <div class="filter-buttons">
+        <button type="button" class="filter-btn active" data-emplacement="tous">Tous</button>
+        <button type="button" class="filter-btn" data-emplacement="fg">🧊 Frigo</button>
+        <button type="button" class="filter-btn" data-emplacement="fz">❄️ Congélateur</button>
+        <button type="button" class="filter-btn" data-emplacement="st">📦 Réserve</button>
       </div>
     </div>
+  </div>
 
+  <div class="stock-section">
     <!-- Barre de recherche + menu de tri, également gérés par stock.js -->
     <div class="search-sort-wrapper">
       <div class="search-wrapper">
@@ -100,14 +103,23 @@
         <div class="stock-item__body">
           <div class="stock-nom-groupe">
             <span class="stock-nom"><%= aliment.nom %></span>
-            <!-- Affichage du nombre de jours depuis la dernière mise à jour, avec un texte adapté selon le cas -->
-            <% if (aliment.jours_depuis === 0) { %>
-            <span class="stock-jours">aujourd'hui</span>
-            <% } else if (aliment.jours_depuis === 1) { %>
-            <span class="stock-jours">il y a 1 jour</span>
-            <% } else { %>
-            <span class="stock-jours">il y a <%= aliment.jours_depuis %> jours</span>
-            <% } %>
+            <!-- Petite étiquette d'emplacement, même style que la catégorie sur une carte Aliments -->
+            <div class="stock-meta">
+              <span class="stock-emplacement">
+                <% if (aliment.emplacement === 'fg') { %>Frigo
+                <% } else if (aliment.emplacement === 'fz') { %>Congélateur
+                <% } else { %>Réserve
+                <% } %>
+              </span>
+              <!-- Affichage du nombre de jours depuis la dernière mise à jour, avec un texte adapté selon le cas -->
+              <% if (aliment.jours_depuis === 0) { %>
+              <span class="stock-jours">· aujourd'hui</span>
+              <% } else if (aliment.jours_depuis === 1) { %>
+              <span class="stock-jours">· il y a 1 jour</span>
+              <% } else { %>
+              <span class="stock-jours">· il y a <%= aliment.jours_depuis %> jours</span>
+              <% } %>
+            </div>
           </div>
 
           <!-- Zone cliquable pour modifier la quantité : le contenu affiché dépend du type de suivi de l'aliment -->

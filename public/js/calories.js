@@ -51,18 +51,12 @@ rechercheAlimentCalories.addEventListener("input", function () {
     return;
   }
 
-  let count = 0;
   listeAlimentsCalories.hidden = false;
 
-  // On affiche seulement les aliments qui contiennent le texte tapé, limité à 5 suggestions
+  // On affiche tous les aliments qui contiennent le texte tapé. Aucune limite de nombre :
+  // si la liste est longue, elle défile (voir max-height dans style.css)
   itemsAutocomplete.forEach(function (item) {
-    const match = item.textContent.toLowerCase().includes(recherche);
-    if (match && count < 5) {
-      item.hidden = false;
-      count++;
-    } else {
-      item.hidden = true;
-    }
+    item.hidden = !item.textContent.toLowerCase().includes(recherche);
   });
 });
 
@@ -349,7 +343,20 @@ btnToutEffacer.addEventListener("click", function () {
 // La classe "ouvert" pilote une vraie animation de hauteur (voir .panneau-ajout dans style.css),
 // au lieu d'un simple show/hide instantané.
 btnToggleRecette.addEventListener("click", function () {
-  panneauCreerRecette.classList.toggle("ouvert");
+  const estOuvert = panneauCreerRecette.classList.toggle("ouvert");
+  if (!estOuvert) {
+    // On ferme : on retire "pret" tout de suite pour que l'animation de fermeture
+    // parte bien d'un panneau "coupé" (overflow:hidden), voir style.css
+    panneauCreerRecette.classList.remove("pret");
+  }
+});
+
+// Une fois l'animation d'ouverture terminée, on ajoute "pret" : le panneau repasse en overflow:visible,
+// pour que la liste de suggestions d'ingrédients (qui dépasse volontairement sous le panneau) redevienne visible
+panneauCreerRecette.addEventListener("transitionend", function (event) {
+  if (event.propertyName === "grid-template-rows" && panneauCreerRecette.classList.contains("ouvert")) {
+    panneauCreerRecette.classList.add("pret");
+  }
 });
 
 // Crée une ligne représentant un ingrédient dans le formulaire de création de recette
@@ -397,17 +404,12 @@ rechercheIngredient.addEventListener("input", function () {
     return;
   }
 
-  let count = 0;
   listeIngredientsRecherche.hidden = false;
 
+  // On affiche tous les ingrédients qui contiennent le texte tapé. Aucune limite de nombre :
+  // si la liste est longue, elle défile (voir max-height dans style.css)
   itemsIngredientsRecherche.forEach(function (item) {
-    const match = item.textContent.toLowerCase().includes(recherche);
-    if (match && count < 5) {
-      item.hidden = false;
-      count++;
-    } else {
-      item.hidden = true;
-    }
+    item.hidden = !item.textContent.toLowerCase().includes(recherche);
   });
 });
 
@@ -477,6 +479,7 @@ formCreerRecette.addEventListener("submit", function (event) {
       nomRecette.value = "";
       listeIngredients.innerHTML = "";
       panneauCreerRecette.classList.remove("ouvert");
+      panneauCreerRecette.classList.remove("pret");
     });
 });
 

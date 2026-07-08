@@ -91,7 +91,16 @@ async function chercherStock() {
 // Récupère la liste de courses (uniquement les articles pas encore achetés)
 // Si l'article existe dans "foods" on prend son nom/emoji, sinon on utilise le nom libre tapé par l'utilisateur
 async function chercherCourses() {
-    const result = await db.query("SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji, foods.unite AS food_unite, foods.tracking_type, foods.categorie FROM courses LEFT JOIN foods ON courses.food_id = foods.id WHERE achete = false");
+    // Le LEFT JOIN sur stock permet d'afficher, sur chaque article de la liste de courses,
+    // la quantité déjà présente à la maison (quantite_stock vaut NULL si l'aliment n'est pas en stock)
+    const result = await db.query(
+        `SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji,
+                foods.unite AS food_unite, foods.tracking_type, foods.categorie, stock.quantite AS quantite_stock
+         FROM courses
+         LEFT JOIN foods ON courses.food_id = foods.id
+         LEFT JOIN stock ON stock.food_id = courses.food_id
+         WHERE achete = false`
+    );
     return result.rows
 }
 
@@ -322,9 +331,14 @@ app.post("/courses/ajouter", async (req, res) => {
         );
         const nouvelId = insertResult.rows[0].id;
 
-        // On relit la ligne fraîchement créée, avec toutes ses infos affichables (nom, emoji, etc.)
+        // On relit la ligne fraîchement créée, avec toutes ses infos affichables (nom, emoji, quantité en stock, etc.)
         const itemResult = await db.query(
-            "SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji, foods.unite AS food_unite, foods.tracking_type, foods.categorie FROM courses LEFT JOIN foods ON courses.food_id = foods.id WHERE courses.id = $1",
+            `SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji,
+                    foods.unite AS food_unite, foods.tracking_type, foods.categorie, stock.quantite AS quantite_stock
+             FROM courses
+             LEFT JOIN foods ON courses.food_id = foods.id
+             LEFT JOIN stock ON stock.food_id = courses.food_id
+             WHERE courses.id = $1`,
             [nouvelId]
         );
 
@@ -373,9 +387,14 @@ app.post("/courses/preset-hebdo", async (req, res) => {
             return res.json({ succes: true, items: [] });
         }
 
-        // On relit tous les articles fraîchement ajoutés, avec leurs infos affichables (nom, emoji, etc.)
+        // On relit tous les articles fraîchement ajoutés, avec leurs infos affichables (nom, emoji, quantité en stock, etc.)
         const itemsResult = await db.query(
-            "SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji, foods.unite AS food_unite, foods.tracking_type, foods.categorie FROM courses LEFT JOIN foods ON courses.food_id = foods.id WHERE courses.id = ANY($1)",
+            `SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji,
+                    foods.unite AS food_unite, foods.tracking_type, foods.categorie, stock.quantite AS quantite_stock
+             FROM courses
+             LEFT JOIN foods ON courses.food_id = foods.id
+             LEFT JOIN stock ON stock.food_id = courses.food_id
+             WHERE courses.id = ANY($1)`,
             [nouveauxIds]
         );
 

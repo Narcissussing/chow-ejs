@@ -1,21 +1,28 @@
 <%- include('partials/header') %>
 
 <main>
-  <div class="courses-section">
+  <div class="page-header">
     <h1>Courses</h1>
 
     <% if (typeof error !== 'undefined') { %>
     <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
     <p class="erreur"><%= error %></p>
     <% } %>
+  </div>
 
-    <!-- Boutons de tri (nom/catégorie) et bouton "mode magasin", tous gérés par courses.js -->
-    <div id="triCourses">
-      <button type="button" id="triAlpha" class="tri-actif">Trier par nom</button>
-      <button type="button" id="triCategorie">Trier par catégorie</button>
-      <button type="button" id="toggleMagasin">🛒 Au magasin</button>
+  <!-- Boutons de tri (nom/catégorie) et bouton "mode magasin", tous gérés par courses.js.
+       Même barre pleine largeur que sur Aliments/Stock, pour que les trois pages se ressemblent. -->
+  <div class="filters">
+    <div class="filters__inner">
+      <div id="triCourses" class="filter-buttons">
+        <button type="button" id="triAlpha" class="filter-btn tri-actif">Trier par nom</button>
+        <button type="button" id="triCategorie" class="filter-btn">Trier par catégorie</button>
+        <button type="button" id="toggleMagasin" class="filter-btn">🛒 Au magasin</button>
+      </div>
     </div>
+  </div>
 
+  <div class="courses-section">
     <!-- Ajoute d'un coup les courses habituelles de la semaine, sans effacer ce qui est déjà dans la liste
          (contrairement au bouton recette de la page Calories, qui lui remplace tout) -->
     <button type="button" id="btnPresetHebdo" class="filter-btn">🧺 Courses de la semaine</button>
@@ -26,6 +33,19 @@
       <!-- data-nom et data-categorie servent au tri fait en JavaScript ; "zzz" place les articles
            sans catégorie tout à la fin quand on trie par catégorie -->
       <div class="course-item carte-article" data-nom="<%= item.nom.toLowerCase() %>" data-categorie="<%= item.categorie || 'zzz' %>">
+        <!-- Combien on en a déjà en stock à la maison (pastille en haut à gauche) :
+             un nombre pour les aliments suivis en quantité, un point de couleur pour les "cl" (ex: bouteille) -->
+        <% if (item.quantite_stock !== null && item.tracking_type !== 'cl') { %>
+        <span class="course-stock-indicator course-stock-badge" title="Déjà <%= item.quantite_stock %> en stock"><%= item.quantite_stock %></span>
+        <% } else if (item.quantite_stock !== null && item.tracking_type === 'cl') { %>
+        <%
+          let classeNiveauCourse = 'niveau-vide';
+          if (item.quantite_stock === 'plein') classeNiveauCourse = 'niveau-plein';
+          else if (item.quantite_stock === 'à moitié') classeNiveauCourse = 'niveau-moitie';
+          else if (item.quantite_stock === 'presque vide') classeNiveauCourse = 'niveau-presque-vide';
+        %>
+        <span class="course-stock-indicator course-stock-dot <%= classeNiveauCourse %>" title="En stock : <%= item.quantite_stock %>"></span>
+        <% } %>
         <!-- Cliquer sur le nom ouvre le champ pour ajouter/modifier une note (voir courses.js) -->
         <span class="course-nom" data-id="<%= item.id %>"><%= item.emoji %> <%= item.nom %></span>
 

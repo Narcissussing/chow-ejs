@@ -17,7 +17,8 @@
       "Bash(curl -s http://localhost:9333/json)",
       "Bash(node --check public/js/calories.js)",
       "Bash(node -e \"require\\('fs'\\).readFileSync\\('public/css/style.css','utf8'\\); console.log\\('css read ok'\\)\")",
-      "Bash(curl -s http://localhost:9335/json/version)"
+      "Bash(curl -s http://localhost:9335/json/version)",
+      "Bash(node -e \"require\\('fs'\\).readFileSync\\('public/css/style.css','utf8'\\); console.log\\('css ok'\\)\")"
     ]
   }
 }

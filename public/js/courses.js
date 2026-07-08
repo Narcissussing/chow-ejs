@@ -24,6 +24,15 @@ function escapeHtml(value) {
         .replaceAll("'", "&#039;");
 }
 
+// Renvoie le nom de la classe CSS correspondant au niveau de remplissage d'un aliment suivi en "cl"
+// (même mapping que public/js/stock.js), utilisé pour le petit point de couleur "déjà en stock"
+function classeNiveauCL(valeur) {
+    if (valeur === "plein") return "niveau-plein";
+    if (valeur === "à moitié") return "niveau-moitie";
+    if (valeur === "presque vide") return "niveau-presque-vide";
+    return "niveau-vide";
+}
+
 // ============================================
 // TRI
 // ============================================
@@ -395,7 +404,18 @@ function construireItemDOM(item) {
       </form>`;
     }
 
+    // Combien on en a déjà en stock (pastille en haut à gauche) :
+    // un nombre pour les aliments suivis en quantité, un point de couleur pour les "cl" (ex: bouteille)
+    const aDuStock = item.quantite_stock !== null && item.quantite_stock !== undefined;
+    let badgeStock = "";
+    if (aDuStock && item.tracking_type !== "cl") {
+        badgeStock = `<span class="course-stock-indicator course-stock-badge" title="Déjà ${escapeHtml(item.quantite_stock)} en stock">${escapeHtml(item.quantite_stock)}</span>`;
+    } else if (aDuStock && item.tracking_type === "cl") {
+        badgeStock = `<span class="course-stock-indicator course-stock-dot ${classeNiveauCL(item.quantite_stock)}" title="En stock : ${escapeHtml(item.quantite_stock)}"></span>`;
+    }
+
     div.innerHTML = `
+    ${badgeStock}
     <span class="course-nom" data-id="${id}">${emoji} ${nom}</span>
     <form action="/courses/supprimer" method="post" class="form-supprimer">
       <input type="hidden" name="idCourse" value="${id}" />
@@ -427,18 +447,12 @@ rechercheAlimentCourses.addEventListener("input", function () {
         return;
     }
 
-    let count = 0;
     listeAlimentsCourses.hidden = false;
 
-    // On affiche seulement les aliments correspondants, limité à 5 suggestions
+    // On affiche tous les aliments correspondants. Aucune limite de nombre :
+    // si la liste est longue, elle défile (voir max-height dans style.css)
     itemsAutocomplete.forEach(function (item) {
-        const match = item.textContent.toLowerCase().includes(recherche);
-        if (match && count < 5) {
-            item.hidden = false;
-            count++;
-        } else {
-            item.hidden = true;
-        }
+        item.hidden = !item.textContent.toLowerCase().includes(recherche);
     });
 });
 

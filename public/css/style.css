@@ -591,44 +591,19 @@ body {
 /* ---------- PAGE COURSES ---------- */
 
 .courses-section {
-  max-width: 900px;
+  /* Même largeur max que les autres pages (voir .page-header) */
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 50px 40px 80px;
-}
-
-.courses-section h1 {
-  font-family: var(--font-display);
-  font-size: 2.6rem;
-  font-weight: 900;
-  color: var(--text);
-  margin-bottom: 30px;
+  padding: 30px 40px 80px;
 }
 
 #triCourses {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
+  /* Les boutons eux-mêmes reprennent le style partagé .filter-btn (comme sur Aliments/Stock) */
+  width: 100%;
 }
 
-#triAlpha,
-#triCategorie {
-  background: transparent;
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 7px 18px;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-#triAlpha:hover,
-#triCategorie:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+#toggleMagasin {
+  margin-left: auto; /* pousse ce bouton tout à droite de sa ligne */
 }
 
 #triAlpha.tri-actif,
@@ -637,20 +612,6 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
-}
-
-#toggleMagasin {
-  background: transparent;
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 7px 18px;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-left: auto; /* pousse ce bouton tout à droite de sa ligne */
 }
 
 #toggleMagasin:hover {
@@ -699,6 +660,55 @@ body {
   right: -8px;
 }
 
+/* Indicateur "j'en ai déjà à la maison", posé sur le coin supérieur gauche de la carte
+   (symétrique au bouton supprimer, à droite). Deux variantes : un badge numéroté façon
+   pastille de notification iOS (aliments suivis en quantité), ou un simple point de couleur
+   (aliments suivis en "cl", ex: bouteille) reprenant les mêmes couleurs que la barre de niveau
+   utilisée sur la page Stock (.stock-barre-cl-remplissage). */
+.course-stock-indicator {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  border: 2px solid var(--surface);
+}
+
+.course-stock-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.course-stock-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.course-stock-dot.niveau-plein {
+  background: #4caf50;
+}
+
+.course-stock-dot.niveau-moitie {
+  background: #e8a838;
+}
+
+.course-stock-dot.niveau-presque-vide {
+  background: #e0752b;
+}
+
+.course-stock-dot.niveau-vide {
+  background: #c8472b;
+}
+
 .note-affichee,
 .input-commentaire {
   /* Ligne 2 de la grille : sous le nom de l'article */
@@ -724,8 +734,12 @@ body {
 
 .course-item__shop-slot {
   display: none;
+  /* Aligné sur la même ligne que le nom (ligne 1), pour tous les types d'articles :
+     avant, ce bouton se retrouvait plus bas pour les aliments "cl" (pas de champ
+     quantité au-dessus) et plus bas encore pour les autres, donc jamais aligné
+     avec le nom ni cohérent d'un article à l'autre. */
   grid-column: 2;
-  grid-row: 3;
+  grid-row: 1;
   align-items: center;
   justify-content: center;
 }
@@ -848,20 +862,31 @@ body.mode-magasin .course-item__shop-slot {
   border-color: var(--accent);
 }
 
-/* ---------- PAGE STOCK ---------- */
+/* ---------- EN-TÊTE PARTAGÉ (Stock / Courses) ---------- */
+/* Même gabarit que la section .hero d'Aliments : titre + largeur max, juste au-dessus
+   de la barre de filtres pleine largeur, pour que les trois pages se ressemblent. */
 
-.stock-section {
-  max-width: 900px;
+.page-header {
+  /* Même largeur max que .grid-section/.filters__inner (Aliments), pour que les grilles
+     de cartes de Stock aient exactement le même nombre de colonnes qu'Aliments */
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 50px 40px 80px;
+  padding: 50px 40px 20px;
 }
 
-.stock-section h1 {
+.page-header h1 {
   font-family: var(--font-display);
   font-size: 2.6rem;
   font-weight: 900;
   color: var(--text);
-  margin-bottom: 30px;
+}
+
+/* ---------- PAGE STOCK ---------- */
+
+.stock-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 40px 80px;
 }
 
 /* ---- Panneau d'ajout (repliable) ---- */
@@ -908,6 +933,15 @@ body.mode-magasin .course-item__shop-slot {
   min-height: 0;
 }
 
+/* Une fois l'ouverture terminée (classe "pret", ajoutée par JS via l'événement "transitionend"),
+   on repasse en overflow:visible : sinon la liste de suggestions (#listeAliments, #listeIngredientsRecherche),
+   qui dépasse volontairement sous le panneau, resterait coupée/invisible en permanence à cause de
+   l'overflow:hidden nécessaire pendant l'animation. On repasse en "hidden" dès le début de la fermeture
+   (retiré par JS avant même que l'animation de fermeture ne démarre) pour que celle-ci reste bien coupée. */
+.panneau-ajout.ouvert.pret .panneau-ajout__piege {
+  overflow: visible;
+}
+
 .panneau-ajout__interieur {
   background: var(--surface);
   border: 1.5px solid var(--border);
@@ -919,10 +953,10 @@ body.mode-magasin .course-item__shop-slot {
 
 #listeStock {
   display: grid;
-  /* Chaque carte fait au moins 160px de large ; le nombre de colonnes s'ajuste
-     automatiquement selon la largeur de l'écran (même technique que .food-grid) */
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 20px;
+  /* Exactement les mêmes proportions que .food-grid (Aliments), pour que les deux
+     grilles de cartes donnent le même rythme visuel (mêmes colonnes, même espacement) */
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 28px;
   margin-bottom: 30px;
 }
 
@@ -937,11 +971,19 @@ body.mode-magasin .course-item__shop-slot {
      un overflow:hidden sur la carte entière le couperait et le rendrait invisible. On arrondit
      donc seulement les coins du haut de l'emoji, plus bas, plutôt que de couper toute la carte. */
   cursor: pointer; /* toute la carte est cliquable pour ouvrir l'édition (voir stock.js) */
-  transition: transform 0.15s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.stock-item:hover {
+  /* Même effet de survol qu'une .food-card, pour que les deux grilles se comportent pareil */
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  border-color: var(--accent-2);
 }
 
 .stock-item:active {
-  transform: scale(0.98); /* léger effet "pressé" au tap, tant que la carte n'est pas déjà en édition */
+  /* Après :hover pour gagner sur le translateY pendant le clic/tap */
+  transform: scale(0.98);
 }
 
 .stock-item__emoji {
@@ -986,6 +1028,23 @@ body.mode-magasin .course-item__shop-slot {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text);
+}
+
+.stock-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.stock-emplacement {
+  /* Même style que .food-card__category, pour que les deux types de cartes
+     affichent une petite étiquette identique juste sous le nom */
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
 }
 
 .stock-quantite {
@@ -1174,10 +1233,33 @@ body.mode-magasin .course-item__shop-slot {
   cursor: not-allowed;
 }
 
+.btn-acheter-icone {
+  /* Style "coche" façon iOS (Rappels, Santé...) plutôt que l'emoji panier,
+     qui rendait dans une teinte rose/violette peu cohérente avec le reste de l'app */
+  border-color: rgba(52, 199, 89, 0.4);
+  color: #34c759;
+}
+
+.btn-acheter-icone:hover {
+  background: rgba(52, 199, 89, 0.12);
+  border-color: #34c759;
+}
+
+.btn-acheter-icone:disabled {
+  /* Toujours le même vert, juste très clair tant que le bouton n'est pas prêt (au lieu de
+     passer au gris, ce qui donnait l'impression de deux boutons différents plutôt que le
+     même bouton dans deux états) : un article "cl" (jamais désactivé) reste vert vif, un
+     article à quantité (désactivé tant qu'aucune quantité n'est saisie) est un vert très pâle. */
+  opacity: 1;
+  color: rgba(52, 199, 89, 0.45);
+  border-color: rgba(52, 199, 89, 0.2);
+}
+
 .btn-acheter-icone::before {
-  /* ::before insère du contenu juste avant le contenu réel du bouton : ici, l'emoji du panier */
-  content: "🛍️";
-  font-size: 0.85rem; /* on redonne une taille à l'icône, puisque le bouton lui-même a font-size: 0 */
+  /* ::before insère du contenu juste avant le contenu réel du bouton : ici, la coche */
+  content: "✓";
+  font-size: 1rem; /* on redonne une taille à l'icône, puisque le bouton lui-même a font-size: 0 */
+  font-weight: 700;
 }
 
 /* ---------- FOOTER ---------- */
@@ -1409,28 +1491,15 @@ body.mode-magasin .course-item__shop-slot {
 
   .courses-section,
   .stock-section {
-    padding: 30px 20px 60px;
+    padding: 20px 20px 60px;
   }
 
-  .courses-section h1,
-  .stock-section h1 {
+  .page-header {
+    padding: 30px 20px 14px;
+  }
+
+  .page-header h1 {
     font-size: 2rem;
-  }
-
-  .stock-filtres-bar {
-    padding: 16px 20px;
-  }
-
-  .stock-sort-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .stock-sort-row > div {
-    display: flex;
-    align-items: center;
-    gap: 10px;
   }
 
   /* Le nom passe sur sa propre ligne, tout le reste reste en ligne et wrap librement */
@@ -1893,9 +1962,13 @@ body.mode-magasin .course-item__shop-slot {
   border: 1.5px solid var(--border);
   border-radius: 10px;
   list-style: none;
-  overflow: hidden;
   z-index: 50;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  /* On affiche tous les résultats correspondants (plus de limite arbitraire côté JS),
+     mais on ne montre que ~5 lignes à la fois : au-delà, on peut faire défiler */
+  max-height: 215px;
+  overflow-y: auto;
+  overflow-x: hidden; /* garde les coins arrondis nets même pendant le défilement vertical */
 }
 
 #listeAlimentsCourses li,
