@@ -407,6 +407,21 @@ app.post("/calories/modifier", async (req, res) => {
 });
 
 // -- POST /calories/supprimer : identique à avant, garder tel quel --
+app.post("/calories/supprimer", async (req, res) => {
+    try {
+        const idEntree = req.body.idEntree;
+        if (!idEntree) {
+            return res.status(400).json({ erreur: "Aucune ligne sélectionnée" });
+        }
+
+        await db.query("DELETE FROM journal_repas WHERE id = $1", [idEntree]);
+        res.json({ succes: true });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
 
 // -- POST /calories/vider : nouvelle route, Tout Effacer --
 
