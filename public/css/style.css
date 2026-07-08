@@ -899,6 +899,15 @@ body.mode-magasin .course-item__shop-slot {
   padding: 20px;
   margin-bottom: 20px;
   animation: slideDownNote 0.2s ease both; /* petite animation d'ouverture quand le panneau apparaît */
+  /* L'animation ci-dessus se termine sur "transform: translateY(0)", qui — même si ça ne bouge plus
+     rien visuellement — n'est techniquement pas "none". Or toute valeur de transform autre que "none"
+     crée un nouveau "contexte d'empilement" pour cet élément. Sans z-index explicite ici, ce contexte
+     piège le z-index:50 de la liste de suggestions (#listeAliments) à l'intérieur du panneau, et la
+     grille du stock juste après (#listeStock), venant plus tard dans le HTML, finit par s'afficher
+     par-dessus tout le panneau — dropdown compris. On fixe donc nous-mêmes un z-index sur le panneau
+     entier pour qu'il passe toujours au-dessus de la grille, peu importe cet effet de bord de l'animation. */
+  position: relative;
+  z-index: 60;
 }
 
 /* ---- Liste stock (grille de cartes, avec emoji en attendant de vraies photos) ---- */
