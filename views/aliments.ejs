@@ -1,6 +1,8 @@
 <%- include('partials/header') %>
 
 <%
+  // On construit la liste des catégories uniques présentes parmi les aliments, triée alphabétiquement.
+  // "new Set(...)" élimine automatiquement les doublons (ex: si "Fruits" apparaît 10 fois, on ne le garde qu'une fois).
   const categories = [...new Set(aliments.map(a => a.categorie))].sort();
 %>
 
@@ -16,6 +18,7 @@
     </div>
   </section>
 
+  <!-- Boutons de filtre par catégorie : un bouton "Tous" fixe, puis un bouton généré pour chaque catégorie trouvée -->
   <div class="filters">
     <div class="filters__inner">
       <div class="filter-buttons">
@@ -28,6 +31,7 @@
   </div>
 
   <section class="grid-section">
+    <!-- Barre de recherche + menu de tri, gérés par public/js/aliments.js -->
     <div class="search-sort-wrapper">
       <div class="search-wrapper">
         <input type="text" id="searchInput" placeholder="Rechercher un aliment..." autocomplete="off" />
@@ -45,8 +49,11 @@
       </div>
     </div>
 
+    <!-- Grille de toutes les cartes d'aliments, générée côté serveur -->
     <div class="food-grid" id="foodGrid">
       <% aliments.forEach(function(aliment) { %>
+      <!-- Toute la carte est un lien cliquable vers la page détail de l'aliment.
+           Les attributs data-* servent au filtre/tri fait en JavaScript -->
       <a
         href="/aliments/<%= aliment.id %>"
         class="food-card"
@@ -55,7 +62,12 @@
         data-calories="<%= aliment.calories %>"
         data-proteines="<%= aliment.proteines %>"
       >
+        <!-- On affiche la vraie photo si elle existe, sinon l'emoji comme solution de secours -->
+        <% if (aliment.image) { %>
+        <img src="/<%= aliment.image %>" alt="<%= aliment.nom %>" class="food-card__img" />
+        <% } else { %>
         <div class="food-card__img-placeholder"><%= aliment.emoji %></div>
+        <% } %>
         <div class="food-card__body">
           <p class="food-card__name"><%= aliment.nom %></p>
           <p class="food-card__category"><%= aliment.categorie %></p>
@@ -64,6 +76,7 @@
       <% }) %>
     </div>
 
+    <!-- Message affiché uniquement quand la recherche/le filtre ne donne aucun résultat -->
     <p class="no-results hidden" id="noResults">Aucun aliment ne correspond à ta recherche.</p>
   </section>
 </main>

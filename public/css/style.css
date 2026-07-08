@@ -8,32 +8,37 @@
    ================================================================ */
 
 /* ---------- VARIABLES ---------- */
+/* Les "variables CSS" (--nom) permettent de définir une valeur une seule fois
+   et de la réutiliser partout avec var(--nom). Pratique pour les couleurs :
+   si on veut changer la couleur principale du site, on ne la change qu'ici. */
 
 :root {
-  --bg: #f5f0e8;
-  --surface: #fffdf8;
-  --text: #1a1a1a;
-  --text-muted: #6b6257;
-  --accent: #c8472b;
-  --accent-2: #e8a838;
-  --border: #e0d8cc;
-  --radius: 14px;
-  --font-display: "Playfair Display", Georgia, serif;
-  --font-body: "DM Sans", sans-serif;
+  --bg: #f5f0e8;              /* couleur de fond générale du site */
+  --surface: #fffdf8;         /* couleur de fond des "cartes" (blocs blancs/crème) */
+  --text: #1a1a1a;            /* couleur du texte principal (presque noir) */
+  --text-muted: #6b6257;      /* couleur du texte secondaire, plus discret */
+  --accent: #c8472b;          /* couleur d'accent principale (rouge-orangé) */
+  --accent-2: #e8a838;        /* couleur d'accent secondaire (jaune-orangé) */
+  --border: #e0d8cc;          /* couleur des bordures */
+  --radius: 14px;             /* arrondi des coins utilisé sur les grandes cartes */
+  --font-display: "Playfair Display", Georgia, serif; /* police utilisée pour les titres */
+  --font-body: "DM Sans", sans-serif;                 /* police utilisée pour le texte courant */
 }
 
 /* ---------- RESET & BASE ---------- */
+/* Le "reset" enlève les marges/paddings par défaut que chaque navigateur
+   applique différemment, pour repartir sur une base identique partout. */
 
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+  box-sizing: border-box; /* la largeur/hauteur d'un élément inclut son padding et sa bordure (plus simple à calculer) */
   margin: 0;
   padding: 0;
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: smooth; /* les clics vers une ancre (#section) font défiler la page en douceur au lieu d'un saut brusque */
 }
 
 body {
@@ -50,14 +55,14 @@ body {
   background: var(--surface);
   border-bottom: 1.5px solid var(--border);
   padding: 18px 40px;
-  position: sticky;
+  position: sticky; /* "collé" en haut de l'écran : reste visible même quand on défile la page */
   top: 0;
-  z-index: 100;
+  z-index: 100; /* s'affiche au-dessus des autres éléments de la page */
 }
 
 .header__inner {
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 0 auto; /* centre le contenu horizontalement */
   display: flex;
   align-items: center;
   gap: 20px;
@@ -68,7 +73,7 @@ body {
   font-size: 1.7rem;
   font-weight: 900;
   color: var(--accent);
-  text-decoration: none;
+  text-decoration: none; /* enlève le soulignement par défaut des liens */
   letter-spacing: -0.5px;
 }
 
@@ -83,7 +88,7 @@ body {
 .nav {
   display: flex;
   gap: 24px;
-  margin-left: auto;
+  margin-left: auto; /* pousse le menu de navigation tout à droite du header */
 }
 
 .nav__link {
@@ -92,7 +97,7 @@ body {
   font-weight: 500;
   color: var(--text-muted);
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease; /* le changement de couleur au survol se fait en douceur plutôt que d'un coup */
 }
 
 .nav__link:hover {
@@ -103,6 +108,8 @@ body {
 
 .home-links {
   display: grid;
+  /* Grille dont les colonnes font au moins 220px, et se répètent automatiquement
+     pour remplir l'espace disponible : le nombre de colonnes s'adapte tout seul à la largeur de l'écran */
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 24px;
 }
@@ -116,13 +123,13 @@ body {
   flex-direction: column;
   gap: 8px;
   text-decoration: none;
-  color: inherit;
+  color: inherit; /* utilise la couleur du texte du parent plutôt que le bleu/violet par défaut des liens */
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  animation: fadeIn 0.35s ease both;
+  animation: fadeIn 0.35s ease both; /* petite apparition en fondu à l'affichage (voir @keyframes fadeIn plus bas) */
 }
 
 .home-link-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-4px); /* la carte se soulève légèrement au survol de la souris */
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
   border-color: var(--accent-2);
 }
@@ -149,11 +156,11 @@ body {
    ============================================ */
 
 .carte-article {
-  position: relative;
+  position: relative; /* nécessaire pour que le bouton "supprimer" (position: absolute) se positionne par rapport à cette carte */
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px 58px 16px 20px;
+  padding: 16px 58px 16px 20px; /* padding à droite plus large pour laisser la place au bouton supprimer */
   transition: border-color 0.2s ease;
 }
 
@@ -162,12 +169,13 @@ body {
 }
 
 .form-supprimer-stock {
-  position: absolute;
+  position: absolute; /* sort du flux normal, se positionne par rapport à la carte parente (position: relative) */
   top: -8px;
   right: -8px;
 }
 
 /* ---------- HERO ---------- */
+/* Le "hero" est le grand bloc d'introduction en haut d'une page (titre + texte d'accroche) */
 
 .hero {
   max-width: 1200px;
@@ -181,6 +189,8 @@ body {
 
 .hero__text h1 {
   font-family: var(--font-display);
+  /* clamp(min, valeur idéale, max) : la taille de police s'adapte à la largeur de l'écran (5vw),
+     mais ne descend jamais sous 2.4rem ni ne dépasse 4rem */
   font-size: clamp(2.4rem, 5vw, 4rem);
   font-weight: 900;
   line-height: 1.1;
@@ -200,17 +210,17 @@ body {
 }
 
 .hero__badge {
-  flex-shrink: 0;
+  flex-shrink: 0; /* empêche ce badge rond de rétrécir si l'espace vient à manquer */
   width: 110px;
   height: 110px;
   background: var(--accent);
-  border-radius: 50%;
+  border-radius: 50%; /* transforme le carré en cercle parfait */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: white;
-  animation: rotate-slow 12s linear infinite;
+  animation: rotate-slow 12s linear infinite; /* tourne lentement et en continu (voir @keyframes rotate-slow) */
 }
 
 .hero__badge span {
@@ -235,7 +245,7 @@ body {
   border-bottom: 1.5px solid var(--border);
   padding: 18px 40px;
   position: sticky;
-  top: 65px;
+  top: 65px; /* reste collé juste en dessous du header, qui lui-même est sticky */
   z-index: 90;
 }
 
@@ -243,7 +253,7 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap; /* les boutons de filtre passent à la ligne si l'écran est trop étroit */
   gap: 10px;
 }
 
@@ -256,7 +266,7 @@ body {
 .filter-btn {
   background: transparent;
   border: 1.5px solid var(--border);
-  border-radius: 999px;
+  border-radius: 999px; /* valeur très grande = bouton en forme de pilule/capsule */
   padding: 7px 18px;
   font-family: var(--font-body);
   font-size: 0.85rem;
@@ -286,7 +296,7 @@ body {
 }
 
 .search-wrapper {
-  flex: 1;
+  flex: 1; /* prend tout l'espace restant disponible dans la ligne */
   min-width: 220px;
 }
 
@@ -307,8 +317,8 @@ body {
 }
 
 #searchInput:focus {
-  outline: none;
-  border-color: var(--accent);
+  outline: none; /* enlève le contour bleu par défaut du navigateur quand on clique dans le champ */
+  border-color: var(--accent); /* et on le remplace par notre propre indication visuelle (la bordure colorée) */
 }
 
 .sort-wrapper {
@@ -321,28 +331,39 @@ body {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-weight: 500;
-  white-space: nowrap;
+  white-space: nowrap; /* empêche le texte du label de se couper sur deux lignes */
 }
 
-#sortSelect {
+#sortSelect,
+#selectRecette {
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 999px;
-  padding: 7px 32px 7px 16px;
+  padding: 7px 32px 7px 16px; /* padding à droite plus large pour laisser la place à la flèche personnalisée */
   font-family: var(--font-body);
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--text);
   cursor: pointer;
-  appearance: none;
+  appearance: none; /* supprime l'apparence par défaut du navigateur (dont sa petite flèche) */
+  /* On dessine nous-mêmes une flèche (chevron) en SVG directement dans le CSS, pour la remplacer */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c8472b' stroke-width='3'><polyline points='6 9 12 15 18 9'/></svg>");
   background-repeat: no-repeat;
   background-position: right 12px center;
   transition: border-color 0.2s ease;
 }
 
+#selectRecette {
+  flex: 0 1 220px; /* ne grandit pas, peut rétrécir si besoin, taille de base 220px */
+  min-width: 190px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
 #sortSelect:hover,
-#sortSelect:focus {
+#sortSelect:focus,
+#selectRecette:hover,
+#selectRecette:focus {
   border-color: var(--accent);
   outline: none;
 }
@@ -357,6 +378,8 @@ body {
 
 .food-grid {
   display: grid;
+  /* Chaque carte fait au moins 220px de large ; le nombre de colonnes s'ajuste automatiquement
+     selon la largeur de l'écran (contrairement à auto-fit, auto-fill garde des colonnes vides visibles) */
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 28px;
 }
@@ -365,7 +388,7 @@ body {
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow: hidden; /* coupe net l'image aux coins arrondis de la carte, au lieu qu'elle déborde en carré */
   cursor: pointer;
   text-decoration: none;
   color: inherit;
@@ -382,13 +405,14 @@ body {
 
 .food-card__img {
   width: 100%;
-  aspect-ratio: 4/3;
-  object-fit: cover;
+  aspect-ratio: 4/3; /* garde toujours ce ratio largeur/hauteur, quelle que soit la taille réelle de l'image */
+  object-fit: cover; /* l'image remplit tout l'espace sans se déformer, quitte à être recadrée */
   background: var(--bg);
   display: block;
 }
 
 .food-card__img-placeholder {
+  /* Bloc affiché à la place d'une vraie photo, tant qu'aucune image n'a été ajoutée pour cet aliment */
   width: 100%;
   aspect-ratio: 4/3;
   background: var(--bg);
@@ -445,6 +469,7 @@ body {
   border-radius: var(--radius);
   overflow: hidden;
   display: grid;
+  /* Deux colonnes : la 2e (les infos texte) est un peu plus large que la 1ère (l'image) */
   grid-template-columns: 1fr 1.3fr;
 }
 
@@ -453,8 +478,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8rem;
+  font-size: 8rem; /* utilisé seulement pour l'emoji de secours, si l'aliment n'a pas encore de photo */
   min-height: 400px;
+  overflow: hidden; /* empêche la photo de déborder des coins arrondis de la carte */
+}
+
+.detail-image__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* la photo remplit tout l'espace disponible sans se déformer */
+  display: block;
 }
 
 .detail-infos {
@@ -495,7 +528,7 @@ body {
 
 .detail-macros {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, 1fr); /* 4 colonnes de taille égale (calories/glucides/protéines/lipides) */
   gap: 12px;
 }
 
@@ -511,6 +544,7 @@ body {
 }
 
 .macro-card.macro-calories {
+  /* La carte "calories" est mise en avant visuellement par rapport aux autres macros */
   background: var(--accent);
   border-color: var(--accent);
   color: white;
@@ -530,7 +564,7 @@ body {
 }
 
 .macro-card.macro-calories .macro-label {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.85); /* label légèrement transparent, pour rester lisible sur le fond coloré */
 }
 
 .not-found {
@@ -585,6 +619,7 @@ body {
 
 #triAlpha.tri-actif,
 #triCategorie.tri-actif {
+  /* Style appliqué par JavaScript (courses.js) au bouton de tri actuellement actif */
   background: var(--accent);
   border-color: var(--accent);
   color: white;
@@ -601,7 +636,7 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-left: auto;
+  margin-left: auto; /* pousse ce bouton tout à droite de sa ligne */
 }
 
 #toggleMagasin:hover {
@@ -624,14 +659,17 @@ body {
 
 .course-item {
   display: grid;
+  /* Grille à 2 colonnes : la 1ère prend tout l'espace disponible (le nom),
+     la 2ème s'ajuste à son contenu (les boutons d'action) */
   grid-template-columns: 1fr auto;
   align-items: center;
   column-gap: 14px;
   row-gap: 8px;
-  padding: 16px 20px;
+  padding: 16px 58px 16px 20px;
 }
 
 .course-nom {
+  /* On place explicitement cet élément dans la grille : colonne 1, ligne 1 */
   grid-column: 1;
   grid-row: 1;
   font-family: var(--font-display);
@@ -649,6 +687,7 @@ body {
 
 .note-affichee,
 .input-commentaire {
+  /* Ligne 2 de la grille : sous le nom de l'article */
   grid-column: 1;
   grid-row: 2;
 }
@@ -657,11 +696,11 @@ body {
    (groupe quantité + bouton) se placent directement dans les cellules voulues */
 .form-acheter,
 .form-quantite {
-  display: contents;
+  display: contents; /* le <form> "disparaît" visuellement : ses enfants se comportent comme s'ils étaient directement dans .course-item */
 }
 
 .course-item__quantite-groupe {
-  display: none;
+  display: none; /* caché par défaut, seulement visible en "mode magasin" (voir plus bas) */
   grid-column: 1;
   grid-row: 3;
   align-items: center;
@@ -677,6 +716,8 @@ body {
   justify-content: center;
 }
 
+/* Quand le body a la classe "mode-magasin" (ajoutée par courses.js),
+   ces deux blocs redeviennent visibles */
 body.mode-magasin .course-item__quantite-groupe {
   display: flex;
 }
@@ -692,6 +733,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .form-quantite .suggestion {
+  /* Boutons de raccourci "1", "2", "5" pour remplir rapidement la quantité achetée */
   background: var(--bg);
   border: 1.5px solid var(--border);
   border-radius: 999px;
@@ -737,7 +779,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 #autocompleteCourses {
-  position: relative;
+  position: relative; /* sert de repère pour positionner la liste de suggestions juste en dessous (position: absolute) */
   flex: 1;
   min-width: 220px;
 }
@@ -759,16 +801,17 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 #listeAlimentsCourses {
+  /* La liste de suggestions flotte juste en dessous du champ de recherche */
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 6px); /* juste sous le champ, avec un petit espace de 6px */
   left: 0;
   right: 0;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 10px;
-  list-style: none;
+  list-style: none; /* enlève les puces par défaut d'une liste <ul> */
   overflow: hidden;
-  z-index: 50;
+  z-index: 50; /* passe au-dessus du contenu normal de la page */
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
@@ -782,29 +825,6 @@ body.mode-magasin .course-item__shop-slot {
 
 #listeAlimentsCourses li:hover {
   background: var(--bg);
-}
-
-#btnAjouterCourses {
-  background: var(--accent);
-  border: none;
-  border-radius: 999px;
-  padding: 9px 24px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: white;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-#btnAjouterCourses:disabled {
-  background: var(--border);
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
-#btnAjouterCourses:not(:disabled):hover {
-  opacity: 0.85;
 }
 
 /* ---- Erreur ---- */
@@ -826,7 +846,7 @@ body.mode-magasin .course-item__shop-slot {
   font-style: italic;
   cursor: pointer;
   margin-top: 4px;
-  flex-basis: 100%;
+  flex-basis: 100%; /* force cet élément à prendre toute la largeur, comme s'il était seul sur sa ligne */
 }
 
 .note-affichee:hover {
@@ -866,34 +886,6 @@ body.mode-magasin .course-item__shop-slot {
   margin-bottom: 30px;
 }
 
-#toggleEditionStock {
-  margin-bottom: 20px;
-}
-
-#btnModifierListe {
-  background: transparent;
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 7px 18px;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-#btnModifierListe:hover {
-  border-color: var(--accent-2);
-  color: var(--accent-2);
-}
-
-#btnModifierListe.actif {
-  background: var(--accent-2);
-  border-color: var(--accent-2);
-  color: white;
-}
-
 /* ---- Panneau d'ajout (repliable) ---- */
 
 #btnToggleAjout {
@@ -906,24 +898,62 @@ body.mode-magasin .course-item__shop-slot {
   border-radius: var(--radius);
   padding: 20px;
   margin-bottom: 20px;
-  animation: slideDownNote 0.2s ease both;
+  animation: slideDownNote 0.2s ease both; /* petite animation d'ouverture quand le panneau apparaît */
 }
 
-/* ---- Liste stock ---- */
+/* ---- Liste stock (grille de cartes, avec emoji en attendant de vraies photos) ---- */
 
 #listeStock {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  /* Chaque carte fait au moins 160px de large ; le nombre de colonnes s'ajuste
+     automatiquement selon la largeur de l'écran (même technique que .food-grid) */
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
   margin-bottom: 30px;
 }
 
 .stock-item {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  /* On repart d'une mise en page en colonne (au lieu de la ligne 1fr/auto d'origine) :
+     emoji en haut, infos en dessous, comme une .food-card */
+  display: flex;
+  flex-direction: column;
+  padding: 0; /* le padding de .carte-article est retiré ici : il est géré par .stock-item__body */
+  /* Pas de overflow:hidden ici : le bouton supprimer (.form-supprimer-stock) est positionné
+     volontairement en dehors du cadre de la carte (top/right négatifs) pour flotter sur le coin ;
+     un overflow:hidden sur la carte entière le couperait et le rendrait invisible. On arrondit
+     donc seulement les coins du haut de l'emoji, plus bas, plutôt que de couper toute la carte. */
+  cursor: pointer; /* toute la carte est cliquable pour ouvrir l'édition (voir stock.js) */
+}
+
+.stock-item__emoji {
+  aspect-ratio: 4/3;
+  display: flex;
   align-items: center;
-  gap: 14px;
-  cursor: pointer;
+  justify-content: center;
+  font-size: 2.6rem;
+  background: var(--bg);
+  /* On arrondit seulement les coins du haut, pour suivre le coin arrondi de la carte (var(--radius))
+     sans avoir besoin d'un overflow:hidden sur toute la carte */
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
+.stock-item__img {
+  /* Même boîte que .stock-item__emoji, mais pour une vraie photo plutôt qu'un emoji */
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  display: block;
+  background: var(--bg);
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
+.stock-item__body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .stock-nom-groupe {
@@ -940,7 +970,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .stock-quantite {
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: var(--accent-2);
   font-family: var(--font-display);
@@ -956,7 +986,7 @@ body.mode-magasin .course-item__shop-slot {
   cursor: pointer;
   border-radius: 8px;
   transition: background 0.15s ease;
-  text-align: right;
+  text-align: left; /* aligné à gauche dans la carte (au lieu d'à droite dans l'ancienne mise en page en ligne) */
 }
 
 .stock-editable-zone:hover {
@@ -964,10 +994,12 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .stock-item.en-edition {
+  /* Classe ajoutée par JavaScript quand un article de stock est en train d'être modifié */
   border-color: var(--accent);
 }
 
 @keyframes stockFondu {
+  /* Petit fondu enchaîné : l'élément apparaît en grossissant légèrement depuis 94% de sa taille normale */
   from {
     opacity: 0;
     transform: scale(0.94);
@@ -989,6 +1021,7 @@ body.mode-magasin .course-item__shop-slot {
 
 .stock-quantite-edit,
 .stock-cl-edit {
+  /* Champs affichés uniquement quand on clique pour modifier la quantité/niveau d'un article */
   background: var(--bg);
   border: 1.5px solid var(--accent);
   border-radius: 999px;
@@ -1009,95 +1042,51 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 /* ---- Barre de remplissage (cl) ---- */
+/* Pour les aliments suivis en "cl" (ex: une bouteille), on affiche une petite barre
+   qui se remplit plus ou moins selon le niveau (plein / à moitié / presque vide / vide) */
 
 .stock-barre-cl {
   width: 50px;
   height: 8px;
   background: var(--border);
   border-radius: 999px;
-  overflow: hidden;
+  overflow: hidden; /* la barre de remplissage à l'intérieur ne dépasse jamais du contour arrondi */
 }
 
 .stock-barre-cl-remplissage {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.3s ease, background 0.3s ease;
+  transition: width 0.3s ease, background 0.3s ease; /* le changement de niveau s'anime en douceur */
 }
 
 .stock-barre-cl-remplissage.niveau-plein {
   width: 100%;
-  background: #4caf50;
+  background: #4caf50; /* vert */
 }
 
 .stock-barre-cl-remplissage.niveau-moitie {
   width: 50%;
-  background: #e8a838;
+  background: #e8a838; /* orange */
 }
 
 .stock-barre-cl-remplissage.niveau-presque-vide {
   width: 25%;
-  background: #e0752b;
+  background: #e0752b; /* orange foncé */
 }
 
 .stock-barre-cl-remplissage.niveau-vide {
-  width: 6%;
-  background: #c8472b;
+  width: 6%; /* jamais totalement à 0%, pour que la barre reste visible même vide */
+  background: #c8472b; /* rouge */
 }
 
 /* ---- Suppression (visible uniquement en mode édition, par item) ---- */
 
 .stock-item .form-supprimer-stock {
-  display: none;
+  display: none; /* le bouton supprimer est caché tant que l'article n'est pas en cours d'édition */
 }
 
 .stock-item.en-edition .form-supprimer-stock {
   display: block;
-}
-
-.champ-modif {
-  width: 90px;
-  height: 36px;
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 0 14px;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  color: var(--text);
-  box-sizing: border-box;
-}
-
-.champ-modif:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.btn-sauvegarder {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  font-size: 0;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--accent-2);
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.btn-sauvegarder::before {
-  content: "💾";
-  font-size: 1rem;
-}
-
-.btn-sauvegarder:disabled {
-  background: var(--border);
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
-.btn-sauvegarder:not(:disabled):hover {
-  opacity: 0.85;
 }
 
 /* ---- Formulaire ajout stock ---- */
@@ -1183,6 +1172,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 #btnAjouter:disabled {
+  /* Le bouton est grisé et non cliquable tant que le formulaire n'est pas complet (géré par stock.js) */
   background: var(--border);
   color: var(--text-muted);
   cursor: not-allowed;
@@ -1199,7 +1189,7 @@ body.mode-magasin .course-item__shop-slot {
   width: 30px;
   height: 30px;
   padding: 0;
-  font-size: 0;
+  font-size: 0; /* cache le texte du bouton (ex: "Acheté") pour ne garder que l'icône affichée via ::before */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1222,8 +1212,9 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .btn-acheter-icone::before {
+  /* ::before insère du contenu juste avant le contenu réel du bouton : ici, l'emoji du panier */
   content: "🛍️";
-  font-size: 0.85rem;
+  font-size: 0.85rem; /* on redonne une taille à l'icône, puisque le bouton lui-même a font-size: 0 */
 }
 
 /* ---------- FOOTER ---------- */
@@ -1237,8 +1228,11 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 /* ---------- ANIMATIONS ---------- */
+/* Chaque @keyframes définit les étapes d'une animation, qu'on applique ensuite
+   à un élément avec la propriété "animation" (nom + durée + type de vitesse) */
 
 @keyframes fadeIn {
+  /* Apparition en fondu, en montant légèrement depuis le bas */
   from {
     opacity: 0;
     transform: translateY(12px);
@@ -1250,6 +1244,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 @keyframes rotate-slow {
+  /* Rotation complète et continue (utilisée sur le badge du hero) */
   from {
     transform: rotate(0deg);
   }
@@ -1259,6 +1254,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 @keyframes popIn {
+  /* Apparition avec un léger effet de "rebond" (utilisée quand un nouvel article est ajouté) */
   from {
     opacity: 0;
     transform: scale(0.92) translateY(-10px);
@@ -1270,6 +1266,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 @keyframes slideOutLeft {
+  /* Disparition vers la gauche, en réduisant aussi la hauteur pour que les éléments du dessous remontent en douceur */
   from {
     opacity: 1;
     transform: translateX(0);
@@ -1286,6 +1283,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 @keyframes popOutSuccess {
+  /* Disparition utilisée quand un article de courses est marqué "Acheté" : léger agrandissement puis disparition */
   0% {
     opacity: 1;
     transform: scale(1);
@@ -1305,6 +1303,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 @keyframes slideDownNote {
+  /* Petite apparition vers le bas, utilisée pour les notes/commentaires et le panneau d'ajout */
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -1316,6 +1315,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 @keyframes fadeOutNote {
+  /* L'inverse de slideDownNote : disparition d'une note */
   from {
     opacity: 1;
     transform: translateY(0);
@@ -1327,6 +1327,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 @keyframes flashMaj {
+  /* Petit flash de couleur de fond, pour signaler visuellement qu'un article vient d'être mis à jour */
   0% {
     background: var(--surface);
   }
@@ -1340,6 +1341,7 @@ body.mode-magasin .course-item__shop-slot {
 
 .course-item.entree,
 .stock-item.entree {
+  /* Classe ajoutée par le JavaScript juste après la création d'un nouvel article */
   animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
@@ -1370,6 +1372,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 /* ---------- RESPONSIVE — MOBILE ---------- */
+/* Cette section ne s'applique que sur les écrans de 768px de large ou moins (tablettes/mobiles) */
 
 @media (max-width: 768px) {
   .header {
@@ -1377,7 +1380,7 @@ body.mode-magasin .course-item__shop-slot {
   }
 
   .tagline {
-    display: none;
+    display: none; /* on cache l'accroche du header sur petit écran, faute de place */
   }
 
   .nav {
@@ -1390,12 +1393,12 @@ body.mode-magasin .course-item__shop-slot {
 
   .hero {
     padding: 40px 20px 30px;
-    flex-direction: column;
+    flex-direction: column; /* le texte et le badge s'empilent au lieu d'être côte à côte */
     align-items: flex-start;
   }
 
   .hero__badge {
-    display: none;
+    display: none; /* le badge décoratif est masqué pour gagner de la place sur mobile */
   }
 
   .filters {
@@ -1408,7 +1411,7 @@ body.mode-magasin .course-item__shop-slot {
   }
 
   .food-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* cartes plus petites sur mobile */
     gap: 16px;
   }
 
@@ -1417,7 +1420,7 @@ body.mode-magasin .course-item__shop-slot {
   }
 
   .detail-carte {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* l'image et les infos s'empilent au lieu d'être côte à côte */
   }
 
   .detail-image {
@@ -1434,11 +1437,11 @@ body.mode-magasin .course-item__shop-slot {
   }
 
   .detail-macros {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr); /* 2 colonnes au lieu de 4 sur mobile */
   }
 
   .home-links {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* une seule colonne sur mobile */
   }
 
   .courses-section,
@@ -1486,11 +1489,6 @@ body.mode-magasin .course-item__shop-slot {
     justify-content: flex-end;
   }
 
-  .champ-modif {
-    flex: 0 1 90px;
-    max-width: 110px;
-  }
-
   .suggestions-quantite {
     flex-shrink: 0;
   }
@@ -1504,7 +1502,7 @@ body.mode-magasin .course-item__shop-slot {
 
   #formAjouterCourse,
   #formAjouterStock {
-    flex-direction: column;
+    flex-direction: column; /* les champs du formulaire s'empilent verticalement sur mobile */
     align-items: stretch;
   }
 
@@ -1513,8 +1511,7 @@ body.mode-magasin .course-item__shop-slot {
     width: 100%;
   }
 
-  #btnAjouter,
-  #btnAjouterCourses {
+  #btnAjouter {
     width: 100%;
   }
 
@@ -1529,6 +1526,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 @media (max-width: 420px) {
+  /* Réglages supplémentaires pour les très petits écrans (petits téléphones) */
   .hero__text h1 {
     font-size: 2rem;
   }
@@ -1546,6 +1544,7 @@ body.mode-magasin .course-item__shop-slot {
    ================================================================ */
 
 .hidden {
+  /* Classe générique utilisée un peu partout (en JS) pour cacher/afficher un élément */
   display: none;
 }
 
@@ -1564,17 +1563,6 @@ body.mode-magasin .course-item__shop-slot {
   flex-wrap: wrap;
   align-items: center;
   margin-bottom: 16px;
-}
-
-#selectRecette {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 9px 16px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--text);
-  cursor: pointer;
 }
 
 #btnToggleRecette {
@@ -1728,17 +1716,9 @@ body.mode-magasin .course-item__shop-slot {
 
 .journal-totaux {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, 1fr); /* 4 colonnes égales : kcal / glucides / protéines / lipides */
   gap: 12px;
   margin-bottom: 30px;
-}
-
-#formAjouterCalories {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
 }
 
 #autocompleteCalories {
@@ -1787,40 +1767,6 @@ body.mode-magasin .course-item__shop-slot {
 
 #listeAlimentsCalories li:hover {
   background: var(--bg);
-}
-
-#champGrammes {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 9px 16px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--text);
-  width: 120px;
-}
-
-#btnAjouterCalories {
-  background: var(--accent);
-  border: none;
-  border-radius: 999px;
-  padding: 9px 24px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: white;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-#btnAjouterCalories:disabled {
-  background: var(--border);
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
-#btnAjouterCalories:not(:disabled):hover {
-  opacity: 0.85;
 }
 
 #listeJournal {
@@ -1889,7 +1835,7 @@ body.mode-magasin .course-item__shop-slot {
   background: var(--accent);
   color: white;
   cursor: pointer;
-  font-size: 0;
+  font-size: 0; /* le texte du bouton est caché, seul le signe "−" ajouté via ::before est visible */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1897,7 +1843,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .btn-supprimer-dash::before {
-  content: "−";
+  content: "−"; /* signe moins, dessiné via le pseudo-élément ::before plutôt qu'écrit dans le HTML */
   font-size: 15px;
   font-weight: 700;
   line-height: 1;
@@ -1907,125 +1853,122 @@ body.mode-magasin .course-item__shop-slot {
   opacity: 0.85;
 }
 
-/* ---- Recettes : boutons rapides + cartes ---- */
+/* ---------- CONTRÔLES PARTAGÉS ---------- */
+/* Système de "custom select" : on cache le vrai <select> HTML (moche et impossible à styliser
+   finement dans tous les navigateurs) et on affiche à la place notre propre menu déroulant en HTML/CSS,
+   généré et piloté par public/js/custom-selects.js */
 
-#listeRecettesRapides {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
+.custom-select-native {
+  /* Technique classique pour cacher un élément visuellement tout en le gardant accessible/fonctionnel :
+     on le réduit à 1px et on le rend invisible, plutôt que d'utiliser display:none (qui le retirerait complètement) */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
-#listeRecettes {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 20px 0;
+.custom-select {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
-.recette-carte {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-}
-
-.recette-nom {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 8px;
-}
-
-.recette-ingredients-liste {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.recette-ingredients-liste li {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-/* ---- Formulaire nouvelle recette ---- */
-
-#formNouvelleRecette {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 20px;
-}
-
-#champNomRecette {
+.custom-select__button {
+  width: 100%;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 999px;
-  padding: 9px 18px;
+  padding: 9px 36px 9px 16px;
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
   color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c8472b' stroke-width='3'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-#champNomRecette:focus {
+.custom-select__button:hover,
+.custom-select__button:focus {
   outline: none;
   border-color: var(--accent);
 }
 
-#listeIngredientsForm {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.custom-select--open .custom-select__button {
+  /* Classe ajoutée par custom-selects.js quand la liste déroulante est actuellement ouverte */
+  border-color: var(--accent);
 }
 
-.ingredient-form-row {
-  background: var(--bg);
+.custom-select__label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis; /* si le texte est trop long pour la largeur disponible, on affiche "..." à la fin */
+  white-space: nowrap;
+}
+
+.custom-select__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 10px;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  list-style: none;
+  overflow: hidden;
+  z-index: 80;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
-.ingredient-form-nom {
+.custom-select__option {
+  padding: 10px 18px;
   font-size: 0.9rem;
   color: var(--text);
-}
-
-.btn-retirer-ingredient {
-  background: transparent;
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 4px 14px;
-  font-size: 0.8rem;
-  color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.btn-retirer-ingredient:hover {
-  border-color: var(--accent);
+.custom-select__option:hover,
+.custom-select__option--selected {
+  background: var(--bg);
+}
+
+.custom-select__option--selected {
   color: var(--accent);
+  font-weight: 500;
 }
 
-#ajoutIngredientRow {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
+.custom-select__option--disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
-#autocompleteRecette {
-  position: relative;
-  flex: 1;
-  min-width: 220px;
+.custom-select--disabled .custom-select__button {
+  background: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
 }
 
-#rechercheAlimentRecette {
+.sort-wrapper .custom-select,
+.journal-actions-row .custom-select {
+  flex: 0 1 220px;
+  min-width: 190px;
+}
+
+.stock-editable-zone .custom-select {
+  min-width: 140px;
+}
+
+#rechercheAlimentCourses,
+#rechercheAliment,
+#rechercheAlimentCalories,
+#rechercheIngredient {
   width: 100%;
   background: var(--surface);
   border: 1.5px solid var(--border);
@@ -2036,12 +1979,21 @@ body.mode-magasin .course-item__shop-slot {
   color: var(--text);
 }
 
-#rechercheAlimentRecette:focus {
+#rechercheAlimentCourses:focus,
+#rechercheAliment:focus,
+#rechercheAlimentCalories:focus,
+#rechercheIngredient:focus,
+#selectRecette:focus,
+#champQuantite:focus,
+#champCL:focus {
   outline: none;
   border-color: var(--accent);
 }
 
-#listeAlimentsRecette {
+#listeAlimentsCourses,
+#listeAliments,
+#listeAlimentsCalories,
+#listeIngredientsRecherche {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
@@ -2055,7 +2007,10 @@ body.mode-magasin .course-item__shop-slot {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
-#listeAlimentsRecette li {
+#listeAlimentsCourses li,
+#listeAliments li,
+#listeAlimentsCalories li,
+#listeIngredientsRecherche li {
   padding: 10px 18px;
   font-size: 0.9rem;
   color: var(--text);
@@ -2063,23 +2018,15 @@ body.mode-magasin .course-item__shop-slot {
   transition: background 0.15s ease;
 }
 
-#listeAlimentsRecette li:hover {
+#listeAlimentsCourses li:hover,
+#listeAliments li:hover,
+#listeAlimentsCalories li:hover,
+#listeIngredientsRecherche li:hover {
   background: var(--bg);
 }
 
-#champGrammesRecette {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 9px 16px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--text);
-  width: 120px;
-}
-
-#btnAjouterIngredient,
-#btnCreerRecette {
+#btnAjouter,
+#formCreerRecette #btnCreerRecette {
   background: var(--accent);
   border: none;
   border-radius: 999px;
@@ -2092,33 +2039,16 @@ body.mode-magasin .course-item__shop-slot {
   transition: opacity 0.2s ease;
 }
 
-#btnAjouterIngredient:disabled,
-#btnCreerRecette:disabled {
+#btnAjouter:disabled,
+#formCreerRecette #btnCreerRecette:disabled {
   background: var(--border);
   color: var(--text-muted);
   cursor: not-allowed;
 }
 
-#btnAjouterIngredient:not(:disabled):hover,
-#btnCreerRecette:not(:disabled):hover {
+#btnAjouter:not(:disabled):hover,
+#formCreerRecette #btnCreerRecette:not(:disabled):hover {
   opacity: 0.85;
-}
-
-/* ---- Édition inline de la quantité (page Calories) ---- */
-
-.form-modif-journal {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.journal-unite {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-#btnToutSupprimer {
-  margin-top: 20px;
 }
 
 @media (max-width: 768px) {
@@ -2127,15 +2057,19 @@ body.mode-magasin .course-item__shop-slot {
   }
 
   .journal-totaux {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr); /* 2 colonnes au lieu de 4 sur mobile */
   }
-
-  #formAjouterCalories {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   #autocompleteCalories {
+    width: 100%;
+  }
+
+  #selectRecette {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .journal-actions-row .custom-select {
+    flex-basis: 100%;
     width: 100%;
   }
 }

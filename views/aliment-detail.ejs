@@ -4,16 +4,23 @@
   <div class="detail-section">
     <a href="/aliments" class="btn-retour">← Retour aux aliments</a>
 
+    <!-- "aliment" vaut null si l'id demandé dans l'URL ne correspond à aucun aliment en base (voir index.js) -->
     <% if (aliment) { %>
     <div class="detail-carte">
+      <!-- On affiche la vraie photo si elle existe, sinon l'emoji comme solution de secours -->
       <div class="detail-image">
+        <% if (aliment.image) { %>
+        <img src="/<%= aliment.image %>" alt="<%= aliment.nom %>" class="detail-image__photo" />
+        <% } else { %>
         <%= aliment.emoji %>
+        <% } %>
       </div>
 
       <div class="detail-infos">
         <p class="detail-categorie"><%= aliment.categorie %></p>
         <h1 class="detail-nom"><%= aliment.nom %></h1>
 
+        <!-- Ces deux informations sont facultatives : on ne les affiche que si elles existent en base -->
         <% if (aliment.origine) { %>
         <p class="detail-origine">Origine : <%= aliment.origine %></p>
         <% } %>
@@ -22,6 +29,7 @@
         <p class="detail-description"><%= aliment.description %></p>
         <% } %>
 
+        <!-- Les 4 valeurs nutritionnelles principales, pour 100g de cet aliment -->
         <div class="detail-macros">
           <div class="macro-card macro-calories">
             <span class="macro-valeur"><%= aliment.calories %></span>
@@ -43,6 +51,7 @@
       </div>
     </div>
     <% } else { %>
+    <!-- Message affiché si aucun aliment ne correspond à l'id demandé -->
     <p class="not-found">Aliment introuvable.</p>
     <% } %>
   </div>

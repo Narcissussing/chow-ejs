@@ -1,9 +1,21 @@
+// On importe les outils dont on a besoin :
+// - express : pour créer le serveur web (recevoir des requêtes, envoyer des pages)
+// - pg : pour parler avec la base de données PostgreSQL
+// - dotenv/config : pour lire les informations secrètes (mot de passe, etc.) depuis un fichier .env
 import express from "express";
 import pg from "pg";
 import "dotenv/config";
 
+// On crée notre application Express (le "serveur")
 const app = express();
-const port = process.env.PORT;
+
+// Le port sur lequel le serveur va écouter (ex: http://localhost:3000)
+// Si la variable PORT existe (par exemple sur un hébergeur en ligne), on l'utilise, sinon 3000 par défaut
+const port = process.env.PORT || 3000;
+
+// On crée la connexion à la base de données.
+// Si on a une "DATABASE_URL" (utilisé en production), on l'utilise directement.
+// Sinon, on utilise les infos séparées (utilisateur, hôte, nom de la base, mot de passe, port) pour développer en local.
 const db = new pg.Client(
     process.env.DATABASE_URL
         ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
@@ -16,44 +28,60 @@ const db = new pg.Client(
         }
 );
 
+// On se connecte réellement à la base de données avant de continuer
 await db.connect();
 
+// On dit à Express de comprendre les données envoyées par les formulaires HTML classiques
 app.use(express.urlencoded({ extended: true }));
+// On dit à Express de servir les fichiers du dossier "public" tels quels (CSS, JS, images...)
 app.use(express.static("public"));
+// On dit à Express de comprendre les données envoyées en JSON (utilisé par nos appels fetch())
 app.use(express.json());
 
 
+// On indique à Express qu'on utilise le moteur de templates "EJS" pour générer les pages HTML
 app.set("view engine", "ejs");
 
+// Petit dictionnaire qui donne le nom d'unité à afficher selon le type de suivi d'un aliment
+// (par exemple : "unite" -> "unités", "pack" -> "packs", "cl" -> "cl")
 const uniteParType = { unite: 'unités', pack: 'packs', cl: 'cl' };
 
 //Function
 
+// Récupère la liste de tous les aliments connus dans la table "foods"
 async function chercherAliments() {
     const result = await db.query("SELECT * FROM foods");
     return result.rows
 }
 
+// Récupère tout le stock actuel, en associant chaque ligne de stock à son aliment (nom, emoji, photo, type, emplacement)
 async function chercherStock() {
-    const result = await db.query("SELECT stock.*, foods.nom, foods.emoji, foods.tracking_type, foods.emplacement FROM stock JOIN foods ON stock.food_id = foods.id");
+    const result = await db.query("SELECT stock.*, foods.nom, foods.emoji, foods.image, foods.tracking_type, foods.emplacement FROM stock JOIN foods ON stock.food_id = foods.id");
+    // Pour chaque article du stock, on calcule le nombre de jours écoulés depuis sa dernière mise à jour
     const aujourdhui = new Date();
     result.rows.forEach(row => {
         const diff = aujourdhui - new Date(row.date_maj);
+        // On convertit la différence (en millisecondes) en nombre de jours entiers
         row.jours_depuis = Math.floor(diff / (1000 * 60 * 60 * 24));
     });
     return result.rows
 }
 
+// Récupère la liste de courses (uniquement les articles pas encore achetés)
+// Si l'article existe dans "foods" on prend son nom/emoji, sinon on utilise le nom libre tapé par l'utilisateur
 async function chercherCourses() {
     const result = await db.query("SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji, foods.unite AS food_unite, foods.tracking_type, foods.categorie FROM courses LEFT JOIN foods ON courses.food_id = foods.id WHERE achete = false");
     return result.rows
 }
 
+// Récupère la liste des recettes (juste id + nom), triée par ordre alphabétique
 async function chercherRecettes() {
     const result = await db.query("SELECT id, nom FROM recettes ORDER BY nom ASC");
     return result.rows;
 }
 
+// Récupère le journal alimentaire du jour (tout ce qui a été mangé aujourd'hui)
+// et calcule les calories/glucides/protéines/lipides réels en fonction de la quantité mangée
 async function chercherJournalDuJour() {
     const result = await db.query(
         `SELECT journal_repas.*, foods.nom, foods.emoji, foods.categorie,
@@ -69,6 +97,11 @@ async function chercherJournalDuJour() {
     return result.rows;
 }
 
+// ============================================
+// PAGE D'ACCUEIL
+// ============================================
+
+// Page d'accueil : on affiche simplement la vue "index.ejs"
 app.get("/", async (req, res) => {
     try {
         res.render("index.ejs", { title: "Accueil" });
@@ -78,6 +111,11 @@ app.get("/", async (req, res) => {
     }
 });
 
+// ============================================
+// ALIMENTS
+// ============================================
+
+// Page listant tous les aliments connus
 app.get("/aliments", async (req, res) => {
     try {
         const aliments = await chercherAliments()
@@ -92,11 +130,13 @@ app.get("/aliments", async (req, res) => {
     }
 });
 
+// Page détail d'un seul aliment, retrouvé grâce à son id dans l'URL (ex: /aliments/5)
 app.get("/aliments/:idAliment", async (req, res) => {
     try {
         const idAliment = req.params.idAliment;
         const result = await db.query("SELECT * FROM foods WHERE id = $1", [idAliment]);
         const aliment = result.rows[0];
+        // Si aucun aliment ne correspond à cet id, on affiche quand même la page mais avec un message "introuvable"
         if (!aliment) { return res.status(404).render("aliment-detail.ejs", { title: "Aliment introuvable", aliment: null }); }
         res.render("aliment-detail.ejs", {
             title: aliment.nom,
@@ -108,6 +148,11 @@ app.get("/aliments/:idAliment", async (req, res) => {
     }
 });
 
+// ============================================
+// STOCK
+// ============================================
+
+// Page du stock : on affiche le stock actuel + la liste des aliments (utile pour l'autocomplétion d'ajout)
 app.get("/stock", async (req, res) => {
     try {
         const stock = await chercherStock()
@@ -125,42 +170,53 @@ app.get("/stock", async (req, res) => {
     }
 });
 
+// Ajouter un nouvel article dans le stock
 app.post("/stock/ajouter", async (req, res) => {
     const idAliment = req.body.idAliment;
     const quantiteAliment = req.body.quantiteAliment;
     try {
+        // On vérifie que les champs obligatoires ont bien été envoyés
         if (!idAliment || !quantiteAliment) {
             return res.status(400).json({ erreur: "Champs requis." });
         }
-        const result = await db.query("SELECT tracking_type, nom FROM foods WHERE id = $1", [idAliment]);
+        // On va chercher les infos de cet aliment (son type de suivi, son nom, son emplacement, son emoji, sa photo)
+        const result = await db.query("SELECT tracking_type, nom, emplacement, emoji, image FROM foods WHERE id = $1", [idAliment]);
         if (result.rows.length === 0) {
             return res.status(400).json({ erreur: "Article introuvable." });
         }
         const tracking_type = result.rows[0].tracking_type;
         const nom = result.rows[0].nom;
+        const emoji = result.rows[0].emoji;
+        const image = result.rows[0].image;
+        // On déduit l'unité à utiliser (unités, packs ou cl) grâce au dictionnaire défini plus haut
         const unite = uniteParType[tracking_type];
         const emplacement = result.rows[0].emplacement;
 
 
+        // On vérifie que cet aliment n'est pas déjà présent dans le stock (on ne veut pas de doublon)
         const existeDeja = await db.query("SELECT 1 FROM stock WHERE food_id = $1", [idAliment]);
         if (existeDeja.rows.length > 0) {
             return res.status(400).json({ erreur: `L'article ${nom} est déjà dans le stock.` });
         }
 
+        // On insère la nouvelle ligne de stock, avec la date de mise à jour = maintenant
         const insertResult = await db.query(
             "INSERT INTO stock (food_id, quantite, unite, date_maj) VALUES ($1, $2, $3, NOW()) RETURNING id",
             [idAliment, quantiteAliment, unite]
         );
 
+        // On renvoie au navigateur les infos du nouvel article, pour qu'il puisse l'afficher sans recharger la page
         res.json({
             succes: true,
             item: {
                 id: insertResult.rows[0].id,
                 nom: nom,
+                emoji: emoji,
+                image: image,
                 quantite: quantiteAliment,
                 unite: unite,
                 tracking_type: tracking_type,
-                jemplacement: emplacement,
+                emplacement: emplacement,
                 jours_depuis: 0
             }
         });
@@ -170,6 +226,7 @@ app.post("/stock/ajouter", async (req, res) => {
     }
 });
 
+// Modifier la quantité d'un article déjà présent dans le stock (édition inline)
 app.post("/stock/modifier", async (req, res) => {
     try {
         const nouvelleQuantite = req.body.nouvelleQuantite;
@@ -179,6 +236,7 @@ app.post("/stock/modifier", async (req, res) => {
             return res.status(400).json({ erreur: "Champs requis." });
         }
 
+        // On met à jour la quantité et la date de mise à jour (pour recalculer "il y a X jours")
         await db.query("UPDATE stock SET quantite = $1, date_maj = NOW() WHERE id = $2", [nouvelleQuantite, idStock]);
         res.json({ succes: true, quantite: nouvelleQuantite });
     } catch (err) {
@@ -187,6 +245,7 @@ app.post("/stock/modifier", async (req, res) => {
     }
 });
 
+// Supprimer un article du stock
 app.post("/stock/supprimer", async (req, res) => {
     try {
         const idStock = req.body.idStock;
@@ -202,6 +261,11 @@ app.post("/stock/supprimer", async (req, res) => {
     }
 });
 
+// ============================================
+// COURSES
+// ============================================
+
+// Page de la liste de courses : on affiche les courses à faire + la liste des aliments (autocomplétion) + le stock actuel
 app.get("/courses", async (req, res) => {
     try {
         const courses = await chercherCourses()
@@ -220,6 +284,8 @@ app.get("/courses", async (req, res) => {
     }
 });
 
+// Ajouter un article à la liste de courses
+// On peut soit choisir un aliment existant (idAliment), soit taper un nom libre qui n'existe pas encore dans "foods"
 app.post("/courses/ajouter", async (req, res) => {
     const idAliment = req.body.idAliment || null;
     const texteTape = req.body.rechercheAliment;
@@ -228,12 +294,14 @@ app.post("/courses/ajouter", async (req, res) => {
             return res.status(400).json({ erreur: "Champs requis." });
         }
 
+        // Si on a un idAliment, on ne remplit pas nom_libre (et inversement)
         const insertResult = await db.query(
             "INSERT INTO courses (food_id, nom_libre) VALUES ($1, $2) RETURNING id",
             [idAliment || null, idAliment ? null : texteTape]
         );
         const nouvelId = insertResult.rows[0].id;
 
+        // On relit la ligne fraîchement créée, avec toutes ses infos affichables (nom, emoji, etc.)
         const itemResult = await db.query(
             "SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji, foods.unite AS food_unite, foods.tracking_type, foods.categorie FROM courses LEFT JOIN foods ON courses.food_id = foods.id WHERE courses.id = $1",
             [nouvelId]
@@ -246,6 +314,7 @@ app.post("/courses/ajouter", async (req, res) => {
     }
 });
 
+// Ajouter/modifier un commentaire sur un article de la liste de courses
 app.post("/courses/commentaire", async (req, res) => {
     try {
         const idCourse = req.body.idCourse;
@@ -263,6 +332,7 @@ app.post("/courses/commentaire", async (req, res) => {
     }
 });
 
+// Supprimer un article de la liste de courses
 app.post("/courses/supprimer", async (req, res) => {
     try {
         const idCourse = req.body.idCourse;
@@ -278,6 +348,7 @@ app.post("/courses/supprimer", async (req, res) => {
     }
 });
 
+// Marquer un article de courses comme acheté, et l'ajouter (ou le mettre à jour) dans le stock
 app.post("/courses/acheter", async (req, res) => {
     try {
         let tracking_type = null;
@@ -288,25 +359,31 @@ app.post("/courses/acheter", async (req, res) => {
             return res.status(400).json({ erreur: "Aucun article sélectionné." });
         }
 
+        // On retrouve à quel aliment (foods) correspond cette ligne de courses
         const courseResult = await db.query("SELECT food_id FROM courses WHERE id = $1", [idCourse]);
         if (courseResult.rows.length === 0) {
             return res.status(400).json({ erreur: "Article introuvable." });
         }
         const foodId = courseResult.rows[0].food_id;
 
+        // Si l'article de courses correspond bien à un aliment connu (et pas juste un nom libre), on met à jour le stock
         if (foodId) {
             const resultFood = await db.query("SELECT tracking_type FROM foods WHERE id = $1", [foodId]);
             tracking_type = resultFood.rows[0].tracking_type;
 
             if (tracking_type === 'cl') {
+                // Pour les aliments suivis en "cl" (bouteille), acheter = remettre le niveau à "plein"
+                // ON CONFLICT : si l'aliment est déjà dans le stock, on met juste à jour au lieu de créer un doublon
                 await db.query(
                     "INSERT INTO stock (food_id, quantite, date_maj) VALUES ($1, 'plein', NOW()) ON CONFLICT (food_id) DO UPDATE SET quantite = 'plein', date_maj = NOW()",
                     [foodId]
                 );
             } else {
+                // Pour les autres aliments (unités, packs), on demande la quantité achetée
                 if (!quantiteAchetee) {
                     return res.status(400).json({ erreur: "Quantité requise." });
                 }
+                // Si l'aliment est déjà dans le stock, on additionne la quantité achetée à celle qui existe déjà
                 await db.query(
                     "INSERT INTO stock (food_id, quantite, date_maj) VALUES ($1, $2, NOW()) ON CONFLICT (food_id) DO UPDATE SET quantite = (stock.quantite::integer + $2::integer)::text, date_maj = NOW()",
                     [foodId, quantiteAchetee]
@@ -314,6 +391,7 @@ app.post("/courses/acheter", async (req, res) => {
             }
         }
 
+        // Dans tous les cas, on marque l'article de courses comme acheté
         await db.query("UPDATE courses SET achete = true WHERE id = $1", [idCourse]);
         res.json({ succes: true });
     } catch (err) {
@@ -322,6 +400,11 @@ app.post("/courses/acheter", async (req, res) => {
     }
 });
 
+// ============================================
+// CALORIES
+// ============================================
+
+// Page calories : on affiche le journal du jour + la liste des aliments + la liste des recettes
 app.get("/calories", async (req, res) => {
     try {
         const journal = await chercherJournalDuJour();
@@ -341,6 +424,7 @@ app.get("/calories", async (req, res) => {
 
 // -- POST /calories/ajouter : remplace l'ancienne (quantiteG optionnelle, défaut 100) --
 
+// Ajouter un aliment mangé dans le journal du jour (par défaut 100g si aucune quantité n'est précisée)
 app.post("/calories/ajouter", async (req, res) => {
     try {
         const idAliment = req.body.idAliment;
@@ -356,6 +440,7 @@ app.post("/calories/ajouter", async (req, res) => {
         );
         const nouvelId = insertResult.rows[0].id;
 
+        // On relit la nouvelle entrée avec ses valeurs nutritionnelles déjà calculées
         const itemResult = await db.query(
             `SELECT journal_repas.*, foods.nom, foods.emoji, foods.categorie,
             ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
@@ -376,6 +461,7 @@ app.post("/calories/ajouter", async (req, res) => {
 
 // -- POST /calories/modifier : nouvelle route, édition inline de la quantité --
 
+// Modifier la quantité (en grammes) d'une entrée déjà présente dans le journal du jour
 app.post("/calories/modifier", async (req, res) => {
     try {
         const idEntree = req.body.idEntree;
@@ -387,6 +473,7 @@ app.post("/calories/modifier", async (req, res) => {
 
         await db.query("UPDATE journal_repas SET quantite_g = $1 WHERE id = $2", [nouvelleQuantite, idEntree]);
 
+        // On relit l'entrée mise à jour, avec ses valeurs nutritionnelles recalculées
         const itemResult = await db.query(
             `SELECT journal_repas.*, foods.nom, foods.emoji,
                     ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
@@ -407,6 +494,7 @@ app.post("/calories/modifier", async (req, res) => {
 });
 
 // -- POST /calories/supprimer : identique à avant, garder tel quel --
+// Supprimer une entrée du journal alimentaire
 app.post("/calories/supprimer", async (req, res) => {
     try {
         const idEntree = req.body.idEntree;
@@ -425,6 +513,7 @@ app.post("/calories/supprimer", async (req, res) => {
 
 // -- POST /calories/vider : nouvelle route, Tout Effacer --
 
+// Vider complètement le journal du jour (bouton "Tout effacer")
 app.post("/calories/vider", async (req, res) => {
     try {
         await db.query("DELETE FROM journal_repas WHERE date_entree = CURRENT_DATE");
@@ -437,7 +526,11 @@ app.post("/calories/vider", async (req, res) => {
 
 // -- POST /calories/ajouter-recette : nouvelle route, applique une recette --
 
+// Remplace le journal du jour par tous les ingrédients d'une recette sélectionnée
 app.post("/calories/ajouter-recette", async (req, res) => {
+    // On garde une trace si une transaction SQL a été démarrée, pour savoir si on doit l'annuler en cas d'erreur
+    let transactionStarted = false;
+
     try {
         const idRecette = req.body.idRecette;
 
@@ -447,11 +540,7 @@ app.post("/calories/ajouter-recette", async (req, res) => {
             });
         }
 
-        // Wipe today's journal
-        await db.query(
-            "DELETE FROM journal_repas WHERE date_entree = CURRENT_DATE"
-        );
-
+        // On récupère la liste des ingrédients de cette recette
         const ingredients = await db.query(
             "SELECT food_id, quantite_g FROM recette_ingredients WHERE recette_id = $1",
             [idRecette]
@@ -463,8 +552,19 @@ app.post("/calories/ajouter-recette", async (req, res) => {
             });
         }
 
+        // On démarre une transaction : soit toutes les opérations réussissent, soit aucune n'est appliquée
+        // (utile ici car on supprime le journal du jour ET on insère plusieurs lignes d'un coup)
+        await db.query("BEGIN");
+        transactionStarted = true;
+
+        // On vide d'abord le journal du jour (la recette remplace tout ce qui a été mangé aujourd'hui)
+        await db.query(
+            "DELETE FROM journal_repas WHERE date_entree = CURRENT_DATE"
+        );
+
         const nouvellesEntrees = [];
 
+        // On insère une ligne de journal pour chaque ingrédient de la recette
         for (const ingredient of ingredients.rows) {
             const insertResult = await db.query(
                 "INSERT INTO journal_repas (food_id, quantite_g) VALUES ($1, $2) RETURNING id",
@@ -474,6 +574,7 @@ app.post("/calories/ajouter-recette", async (req, res) => {
             nouvellesEntrees.push(insertResult.rows[0].id);
         }
 
+        // On relit toutes les nouvelles entrées créées, avec leurs valeurs nutritionnelles calculées
         const itemsResult = await db.query(`
             SELECT
                 journal_repas.*,
@@ -491,12 +592,22 @@ app.post("/calories/ajouter-recette", async (req, res) => {
             ORDER BY journal_repas.heure_entree ASC
         `, [nouvellesEntrees]);
 
+        // Tout s'est bien passé : on valide définitivement la transaction
+        await db.query("COMMIT");
+        transactionStarted = false;
+
         res.json({
             succes: true,
             items: itemsResult.rows
         });
 
     } catch (err) {
+        // En cas d'erreur, si une transaction avait été démarrée, on annule tout (ROLLBACK)
+        // pour ne pas laisser la base de données dans un état à moitié modifié
+        if (transactionStarted) {
+            await db.query("ROLLBACK");
+        }
+
         console.log(err);
         res.status(500).json({
             erreur: err.message
@@ -506,6 +617,7 @@ app.post("/calories/ajouter-recette", async (req, res) => {
 
 // -- POST /recettes/creer : nouvelle route, création d'une recette --
 
+// Créer une nouvelle recette avec sa liste d'ingrédients
 app.post("/recettes/creer", async (req, res) => {
     try {
         const nom = req.body.nom;
@@ -515,12 +627,14 @@ app.post("/recettes/creer", async (req, res) => {
             return res.status(400).json({ erreur: "Nom et au moins un ingrédient requis." });
         }
 
+        // On crée d'abord la recette elle-même
         const recetteResult = await db.query(
             "INSERT INTO recettes (nom) VALUES ($1) RETURNING id",
             [nom]
         );
         const idRecette = recetteResult.rows[0].id;
 
+        // Puis on ajoute chacun de ses ingrédients, un par un
         for (const ingredient of ingredients) {
             await db.query(
                 "INSERT INTO recette_ingredients (recette_id, food_id, quantite_g) VALUES ($1, $2, $3)",
@@ -535,6 +649,7 @@ app.post("/recettes/creer", async (req, res) => {
     }
 });
 
+// On démarre le serveur : à partir de maintenant, il écoute les requêtes sur le port choisi
 app.listen(port, () => {
     console.log(`API is running at http://localhost:${port}`);
 });

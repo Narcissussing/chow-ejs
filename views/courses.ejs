@@ -5,30 +5,45 @@
     <h1>Courses</h1>
 
     <% if (typeof error !== 'undefined') { %>
+    <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
     <p class="erreur"><%= error %></p>
     <% } %>
 
+    <!-- Boutons de tri (nom/catégorie) et bouton "mode magasin", tous gérés par courses.js -->
     <div id="triCourses">
       <button type="button" id="triAlpha" class="tri-actif">Trier par nom</button>
       <button type="button" id="triCategorie">Trier par catégorie</button>
       <button type="button" id="toggleMagasin">🛒 Au magasin</button>
     </div>
 
+    <!-- Liste des articles à acheter, générée côté serveur -->
     <div id="listeCourses">
       <% courses.forEach(function(item) { %>
+      <!-- data-nom et data-categorie servent au tri fait en JavaScript ; "zzz" place les articles
+           sans catégorie tout à la fin quand on trie par catégorie -->
       <div class="course-item carte-article" data-nom="<%= item.nom.toLowerCase() %>" data-categorie="<%= item.categorie || 'zzz' %>">
+        <!-- Cliquer sur le nom ouvre le champ pour ajouter/modifier une note (voir courses.js) -->
         <span class="course-nom" data-id="<%= item.id %>"><%= item.emoji %> <%= item.nom %></span>
 
+        <!-- Formulaire de suppression, intercepté par courses.js pour l'envoyer sans recharger la page -->
         <form action="/courses/supprimer" method="post" class="form-supprimer">
           <input type="hidden" name="idCourse" value="<%= item.id %>" />
           <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
         </form>
 
+        <!-- La note n'est affichée que si un commentaire existe déjà pour cet article -->
         <% if (item.commentaire) { %>
         <p class="note-affichee" data-id="<%= item.id %>">📝 <%= item.commentaire %></p>
         <% } %>
+        <!-- Champ de saisie de la note, cadré par défaut (affiché seulement au clic, voir courses.js) -->
         <input type="text" class="input-commentaire hidden" placeholder="Ajouter une note" value="<%= item.commentaire || '' %>" data-id="<%= item.id %>" />
 
+        <!--
+          Le bloc "Acheté" est différent selon le type de l'article :
+          - aliment connu suivi en "cl" (ex: bouteille) → juste un bouton (remet le niveau à plein)
+          - aliment connu suivi en quantité → un champ de quantité + suggestions rapides (1/2/5)
+          - article "libre" (nom tapé à la main, pas encore un aliment connu) → juste un bouton
+        -->
         <% if (item.food_id && item.tracking_type === 'cl') { %>
         <form action="/courses/acheter" method="post" class="form-acheter">
           <input type="hidden" name="idCourse" value="<%= item.id %>" />
@@ -48,6 +63,7 @@
             <input type="number" name="quantiteAchetee" class="champ-quantite-achat" min="1" placeholder="Quantité" />
           </div>
           <div class="course-item__shop-slot">
+            <!-- Ce bouton reste désactivé tant qu'aucune quantité n'a été saisie (activé par courses.js) -->
             <button type="submit" class="btn-icone-rond btn-acheter-icone btn-enregistrer-achat" disabled>Acheté</button>
           </div>
         </form>
@@ -63,7 +79,9 @@
       <% }) %>
     </div>
 
+    <!-- Formulaire pour ajouter un nouvel article à la liste de courses, avec autocomplétion -->
     <form action="/courses/ajouter" method="post" id="formAjouterCourse">
+      <!-- Champ caché : rempli par le JavaScript avec l'id de l'aliment choisi dans la liste de suggestions -->
       <input type="hidden" name="idAliment" id="idAlimentCacheCourses" />
 
       <div id="autocompleteCourses">

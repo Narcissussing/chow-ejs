@@ -4,9 +4,12 @@
   <div class="stock-section">
     <h1>Stock</h1>
     <% if (typeof error !== 'undefined') { %>
+    <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
     <p class="erreur"><%= error %></p>
     <% } %>
 
+    <!-- Boutons de filtre par emplacement : cliquer dessus ne recharge pas la page,
+         c'est du JavaScript (public/js/stock.js) qui cache/affiche les articles -->
     <div class="filters">
       <div class="filters__inner">
         <div class="filter-buttons">
@@ -18,6 +21,7 @@
       </div>
     </div>
 
+    <!-- Barre de recherche + menu de tri, également gérés par stock.js -->
     <div class="search-sort-wrapper">
       <div class="search-wrapper">
         <input type="text" id="searchInput" placeholder="Rechercher dans le stock..." autocomplete="off" />
@@ -32,14 +36,19 @@
       </div>
     </div>
 
+    <!-- Bouton qui ouvre/ferme le panneau d'ajout d'un aliment au stock -->
     <button type="button" id="btnToggleAjout" class="filter-btn">+ Ajouter un aliment</button>
 
+    <!-- Panneau d'ajout : caché par défaut (classe "hidden"), affiché en cliquant sur le bouton ci-dessus -->
     <div id="panneauAjoutStock" class="panneau-ajout hidden">
       <form action="/stock/ajouter" method="post" id="formAjouterStock">
+        <!-- Champ caché : stocke l'id de l'aliment choisi dans la liste de suggestions, rempli par le JavaScript -->
         <input type="hidden" name="idAliment" id="idAlimentCache" />
 
         <div id="autocomplete">
           <input type="text" id="rechercheAliment" placeholder="Rechercher un aliment..." autocomplete="off" />
+          <!-- La liste complète des aliments est générée ici côté serveur (avec EJS),
+               puis filtrée dynamiquement par le JavaScript selon ce que l'utilisateur tape -->
           <ul id="listeAliments">
             <% aliments.forEach(function(aliment) { %>
             <li data-id="<%= aliment.id %>" data-type="<%= aliment.tracking_type %>">
@@ -49,6 +58,8 @@
           </ul>
         </div>
 
+        <!-- Ces deux champs sont cachés au départ : le JavaScript n'en affiche qu'un seul,
+             selon le type de suivi (tracking_type) de l'aliment sélectionné -->
         <input type="number" name="quantiteAliment" id="champQuantite" placeholder="Quantité" min="1" class="hidden" disabled />
         <select name="quantiteAliment" id="champCL" class="hidden" disabled>
           <option value="">-- Choisir --</option>
@@ -61,8 +72,11 @@
       </form>
     </div>
 
+    <!-- Liste des articles actuellement en stock, générée côté serveur -->
     <div id="listeStock">
       <% stock.forEach(function(aliment) { %>
+      <!-- Chaque article stocke ses infos dans des attributs data-*, réutilisés ensuite par stock.js
+           pour filtrer, trier, et savoir comment l'afficher/le modifier sans recharger la page -->
       <div
         class="stock-item carte-article"
         data-id="<%= aliment.id %>"
@@ -71,33 +85,51 @@
         data-tracking-type="<%= aliment.tracking_type %>"
         data-jours="<%= aliment.jours_depuis %>"
       >
-        <div class="stock-nom-groupe">
-          <span class="stock-nom"><%= aliment.nom %></span>
-          <% if (aliment.jours_depuis === 0) { %>
-          <span class="stock-jours">aujourd'hui</span>
-          <% } else if (aliment.jours_depuis === 1) { %>
-          <span class="stock-jours">il y a 1 jour</span>
-          <% } else { %>
-          <span class="stock-jours">il y a <%= aliment.jours_depuis %> jours</span>
-          <% } %>
-        </div>
+        <!-- On affiche la vraie photo si elle existe, sinon l'emoji comme solution de secours -->
+        <% if (aliment.image) { %>
+        <img src="/<%= aliment.image %>" alt="<%= aliment.nom %>" class="stock-item__img" />
+        <% } else { %>
+        <div class="stock-item__emoji"><%= aliment.emoji %></div>
+        <% } %>
 
-        <div class="stock-editable-zone" data-valeur-actuelle="<%= aliment.quantite %>">
-          <% if (aliment.tracking_type === 'cl') { %>
-          <%
-            let classeNiveau = 'niveau-vide';
-            if (aliment.quantite === 'plein') classeNiveau = 'niveau-plein';
-            else if (aliment.quantite === 'à moitié') classeNiveau = 'niveau-moitie';
-            else if (aliment.quantite === 'presque vide') classeNiveau = 'niveau-presque-vide';
-          %>
-          <div class="stock-barre-cl" title="<%= aliment.quantite %>">
-            <div class="stock-barre-cl-remplissage <%= classeNiveau %>"></div>
+        <div class="stock-item__body">
+          <div class="stock-nom-groupe">
+            <span class="stock-nom"><%= aliment.nom %></span>
+            <!-- Affichage du nombre de jours depuis la dernière mise à jour, avec un texte adapté selon le cas -->
+            <% if (aliment.jours_depuis === 0) { %>
+            <span class="stock-jours">aujourd'hui</span>
+            <% } else if (aliment.jours_depuis === 1) { %>
+            <span class="stock-jours">il y a 1 jour</span>
+            <% } else { %>
+            <span class="stock-jours">il y a <%= aliment.jours_depuis %> jours</span>
+            <% } %>
           </div>
-          <% } else { %>
-          <span class="stock-quantite"><%= aliment.quantite %></span>
-          <% } %>
+
+          <!-- Zone cliquable pour modifier la quantité : le contenu affiché dépend du type de suivi de l'aliment -->
+          <div class="stock-editable-zone" data-valeur-actuelle="<%= aliment.quantite %>">
+            <% if (aliment.tracking_type === 'cl') { %>
+            <!--
+              Pour les aliments suivis en "cl" (ex: une bouteille), on affiche une petite barre
+              dont le remplissage dépend du niveau actuel (plein / à moitié / presque vide / vide)
+            -->
+            <%
+              let classeNiveau = 'niveau-vide';
+              if (aliment.quantite === 'plein') classeNiveau = 'niveau-plein';
+              else if (aliment.quantite === 'à moitié') classeNiveau = 'niveau-moitie';
+              else if (aliment.quantite === 'presque vide') classeNiveau = 'niveau-presque-vide';
+            %>
+            <div class="stock-barre-cl" title="<%= aliment.quantite %>">
+              <div class="stock-barre-cl-remplissage <%= classeNiveau %>"></div>
+            </div>
+            <% } else { %>
+            <!-- Pour les autres aliments (unités, packs), on affiche simplement le nombre -->
+            <span class="stock-quantite"><%= aliment.quantite %></span>
+            <% } %>
+          </div>
         </div>
 
+        <!-- Formulaire de suppression : normalement il rechargerait la page en soumettant vers /stock/supprimer,
+             mais le JavaScript intercepte cet envoi pour le faire en arrière-plan (voir stock.js) -->
         <form action="/stock/supprimer" method="post" class="form-supprimer-stock">
           <input type="hidden" name="idStock" value="<%= aliment.id %>" />
           <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
@@ -106,6 +138,7 @@
       <% }) %>
     </div>
 
+    <!-- Message affiché uniquement quand un filtre/recherche ne donne aucun résultat (géré par stock.js) -->
     <p class="no-results hidden" id="noResultsStock">Aucun article ne correspond à ce filtre.</p>
 
     <script src="/js/stock.js" defer></script>

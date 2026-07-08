@@ -1,10 +1,13 @@
 <%- include('partials/header') %>
 
 <%
+  // Ce bloc de code (sans le signe =) exécute du JavaScript côté serveur, sans rien afficher directement.
+  // On calcule ici les totaux du jour en additionnant les valeurs de chaque entrée du journal (reduce = "additionner tout").
   const totalKcal = journal.reduce((sum, j) => sum + Number(j.calories_calc), 0);
   const totalGlucides = journal.reduce((sum, j) => sum + Number(j.glucides_calc), 0);
   const totalProteines = journal.reduce((sum, j) => sum + Number(j.proteines_calc), 0);
   const totalLipides = journal.reduce((sum, j) => sum + Number(j.lipides_calc), 0);
+  // On trie les aliments par ordre alphabétique pour la liste de suggestions d'ingrédients (recette)
   const alimentsTries = [...aliments].sort((a, b) => a.nom.localeCompare(b.nom));
 %>
 
@@ -12,6 +15,8 @@
   <div class="journal-section">
     <h1>Calories</h1>
 
+    <!-- Les 4 totaux du jour, calculés ci-dessus. Les id (totalKcal, etc.) permettent
+         au JavaScript (calories.js) de les mettre à jour en direct sans recharger la page -->
     <div class="journal-totaux">
       <div class="macro-card macro-calories">
         <span class="macro-valeur" id="totalKcal"><%= totalKcal.toFixed(0) %></span>
@@ -32,6 +37,7 @@
     </div>
 
     <div class="journal-actions-row">
+      <!-- Champ de recherche + liste de suggestions pour ajouter instantanément un aliment au journal -->
       <div id="autocompleteCalories">
         <input type="text" id="rechercheAlimentCalories" placeholder="Rechercher un aliment..." autocomplete="off" />
         <ul id="listeAlimentsCalories">
@@ -43,6 +49,7 @@
         </ul>
       </div>
 
+      <!-- Menu déroulant pour appliquer directement une recette (remplace le journal du jour par ses ingrédients) -->
       <select id="selectRecette">
         <option value="">Ajouter une recette</option>
         <% recettes.forEach(function(recette) { %>
@@ -53,8 +60,10 @@
       <button type="button" id="btnToutEffacer" class="filter-btn">Tout effacer</button>
     </div>
 
+    <!-- Bouton qui ouvre/ferme le panneau de création d'une nouvelle recette -->
     <button type="button" id="btnToggleRecette" class="filter-btn">+ Créer une recette</button>
 
+    <!-- Panneau caché par défaut : formulaire pour créer une nouvelle recette (nom + liste d'ingrédients) -->
     <div id="panneauCreerRecette" class="panneau-ajout hidden">
       <form id="formCreerRecette">
         <input type="text" id="nomRecette" placeholder="Nom de la recette" required />
@@ -68,23 +77,29 @@
           </ul>
         </div>
 
+        <!-- Les lignes d'ingrédients ajoutées à la recette sont créées dynamiquement en JavaScript ici -->
         <div id="listeIngredients"></div>
 
         <button type="submit" id="btnCreerRecette">Créer la recette</button>
       </form>
     </div>
 
+    <!-- Liste des aliments déjà mangés aujourd'hui, générée côté serveur -->
     <div id="listeJournal">
       <% journal.forEach(function(entree) { %>
+      <!-- Les valeurs nutritionnelles sont stockées dans des attributs data-*, réutilisées par calories.js
+           pour recalculer les totaux sans avoir à redemander ces infos au serveur -->
       <div class="journal-item carte-article" data-id="<%= entree.id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>">
         <div class="journal-nom-groupe">
           <span class="journal-nom"><%= entree.emoji %> <%= entree.nom %></span>
           <span class="journal-categorie"><%= entree.categorie %></span>
         </div>
         <div class="journal-valeurs">
+          <!-- Champ modifiable : changer la quantité en grammes met à jour les calories en direct (voir calories.js) -->
           <input type="number" class="journal-grammes-input" value="<%= parseFloat(entree.quantite_g) %>" min="1" />
           <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
         </div>
+        <!-- Formulaire de suppression, intercepté par le JavaScript pour l'envoyer sans recharger la page -->
         <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
           <input type="hidden" name="idEntree" value="<%= entree.id %>" />
           <button type="submit" class="btn-supprimer-dash">Supprimer</button>
@@ -93,6 +108,7 @@
       <% }) %>
     </div>
 
+    <!-- Message affiché uniquement quand le journal du jour est vide -->
     <p class="no-results hidden" id="noResultsJournal">Rien d'ajouté aujourd'hui.</p>
 
     <script src="/js/calories.js" defer></script>

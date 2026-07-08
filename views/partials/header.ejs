@@ -1,14 +1,18 @@
+<!-- Ce fichier est inclus en haut de chaque page (via un appel "include" dans les autres vues) -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Le titre de l'onglet change selon la page grâce à la variable "title" passée par index.js -->
   <title>Chow — <%= title %></title>
+  <!-- Chargement des polices d'écriture personnalisées (Google Fonts) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
+<!-- Barre de navigation présente en haut de toutes les pages -->
 <header class="header">
   <div class="header__inner">
     <a href="/" class="logo">Chow</a>
