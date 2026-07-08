@@ -113,7 +113,9 @@ function recalculerTotaux() {
 
 function construireJournalItemDOM(entree) {
   const div = document.createElement("div");
+
   div.className = "journal-item carte-article";
+
   div.dataset.id = entree.id;
   div.dataset.kcal = entree.calories_calc;
   div.dataset.glucides = entree.glucides_calc;
@@ -121,14 +123,45 @@ function construireJournalItemDOM(entree) {
   div.dataset.lipides = entree.lipides_calc;
 
   div.innerHTML = `
-    <span class="journal-nom">${entree.emoji} ${entree.nom}</span>
-    <div class="journal-valeurs">
-      <input type="number" class="journal-grammes-input" value="${Number(entree.quantite_g)}" min="1" />
-      <span class="journal-kcal">${Number(entree.calories_calc).toFixed(0)} kcal</span>
+    <div class="journal-nom-groupe">
+      <span class="journal-nom">
+        ${entree.emoji} ${entree.nom}
+      </span>
+
+      <span class="journal-categorie">
+        ${entree.categorie || ""}
+      </span>
     </div>
-    <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
-      <input type="hidden" name="idEntree" value="${entree.id}" />
-      <button type="submit" class="btn-icone-rond btn-supprimer-icone">Supprimer</button>
+
+    <div class="journal-valeurs">
+      <input
+        type="number"
+        class="journal-grammes-input"
+        value="${parseFloat(entree.quantite_g)}"
+        min="1"
+      />
+
+      <span class="journal-kcal">
+        ${Number(entree.calories_calc).toFixed(0)} kcal
+      </span>
+    </div>
+
+    <form
+      action="/calories/supprimer"
+      method="post"
+      class="form-supprimer-journal">
+
+      <input
+        type="hidden"
+        name="idEntree"
+        value="${entree.id}"
+      />
+
+      <button
+        type="submit"
+        class="btn-supprimer-dash">
+      </button>
+
     </form>
   `;
 
@@ -205,6 +238,7 @@ function activerSuppression(item) {
 
 selectRecette.addEventListener("change", function () {
   const idRecette = this.value;
+
   if (!idRecette) return;
 
   fetch("/calories/ajouter-recette", {
@@ -212,20 +246,31 @@ selectRecette.addEventListener("change", function () {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idRecette: idRecette })
   })
-    .then(function (response) { return response.json(); })
+    .then(function (response) {
+      return response.json();
+    })
     .then(function (data) {
       if (data.erreur) {
         alert(data.erreur);
         return;
       }
+
+      // Le serveur a vidé le journal, on vide aussi l'affichage.
+      listeJournal.innerHTML = "";
+
       data.items.forEach(function (entree) {
         const nouvelleEntree = construireJournalItemDOM(entree);
         listeJournal.appendChild(nouvelleEntree);
         activerItem(nouvelleEntree);
         nouvelleEntree.classList.add("entree");
       });
+
       recalculerTotaux();
       selectRecette.value = "";
+    })
+    .catch(function (err) {
+      console.error(err);
+      alert("Une erreur est survenue.");
     });
 });
 

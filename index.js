@@ -440,9 +440,17 @@ app.post("/calories/vider", async (req, res) => {
 app.post("/calories/ajouter-recette", async (req, res) => {
     try {
         const idRecette = req.body.idRecette;
+
         if (!idRecette) {
-            return res.status(400).json({ erreur: "Aucune recette sélectionnée." });
+            return res.status(400).json({
+                erreur: "Aucune recette sélectionnée."
+            });
         }
+
+        // Wipe today's journal
+        await db.query(
+            "DELETE FROM journal_repas WHERE date_entree = CURRENT_DATE"
+        );
 
         const ingredients = await db.query(
             "SELECT food_id, quantite_g FROM recette_ingredients WHERE recette_id = $1",
@@ -450,7 +458,9 @@ app.post("/calories/ajouter-recette", async (req, res) => {
         );
 
         if (ingredients.rows.length === 0) {
-            return res.status(400).json({ erreur: "Cette recette n'a aucun ingrédient." });
+            return res.status(400).json({
+                erreur: "Cette recette n'a aucun ingrédient."
+            });
         }
 
         const nouvellesEntrees = [];
@@ -460,26 +470,37 @@ app.post("/calories/ajouter-recette", async (req, res) => {
                 "INSERT INTO journal_repas (food_id, quantite_g) VALUES ($1, $2) RETURNING id",
                 [ingredient.food_id, ingredient.quantite_g]
             );
+
             nouvellesEntrees.push(insertResult.rows[0].id);
         }
 
-        const itemsResult = await db.query(
-            `SELECT journal_repas.*, foods.nom, foods.emoji, foods.categorie,
-            ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
-            ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
-            ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
-            ROUND(foods.lipides * journal_repas.quantite_g / 100, 1) AS lipides_calc
-     FROM journal_repas
-     JOIN foods ON journal_repas.food_id = foods.id
-     WHERE journal_repas.id = ANY($1)
-     ORDER BY journal_repas.heure_entree ASC`,
-            [nouvellesEntrees]
-        );
+        const itemsResult = await db.query(`
+            SELECT
+                journal_repas.*,
+                foods.nom,
+                foods.emoji,
+                foods.categorie,
+                ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
+                ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
+                ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
+                ROUND(foods.lipides * journal_repas.quantite_g / 100, 1) AS lipides_calc
+            FROM journal_repas
+            JOIN foods
+                ON journal_repas.food_id = foods.id
+            WHERE journal_repas.id = ANY($1)
+            ORDER BY journal_repas.heure_entree ASC
+        `, [nouvellesEntrees]);
 
-        res.json({ succes: true, items: itemsResult.rows });
+        res.json({
+            succes: true,
+            items: itemsResult.rows
+        });
+
     } catch (err) {
-        console.log("ERREUR:", err.message);
-        res.status(500).json({ erreur: err.message });
+        console.log(err);
+        res.status(500).json({
+            erreur: err.message
+        });
     }
 });
 
