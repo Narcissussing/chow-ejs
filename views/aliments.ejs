@@ -62,12 +62,8 @@
         data-calories="<%= aliment.calories %>"
         data-proteines="<%= aliment.proteines %>"
       >
-        <!-- On affiche la vraie photo si elle existe, sinon l'emoji comme solution de secours -->
-        <% if (aliment.image) { %>
-        <img src="/<%= aliment.image %>" alt="<%= aliment.nom %>" class="food-card__img" />
-        <% } else { %>
+        <!-- La grille reste en emoji (plus lisible en aperçu) ; la vraie photo n'apparaît que sur la page détail -->
         <div class="food-card__img-placeholder"><%= aliment.emoji %></div>
-        <% } %>
         <div class="food-card__body">
           <p class="food-card__name"><%= aliment.nom %></p>
           <p class="food-card__category"><%= aliment.categorie %></p>
