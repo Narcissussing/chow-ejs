@@ -104,6 +104,25 @@ body {
   color: var(--accent);
 }
 
+.nav__link.actif {
+  /* Page actuelle : couleur accent (comme au survol) + petit trait en dessous, pour la
+     reconnaître d'un coup d'œil même sans passer la souris dessus */
+  color: var(--accent);
+  font-weight: 700;
+  position: relative;
+}
+
+.nav__link.actif::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
 /* ---------- HOME (page d'accueil) ---------- */
 
 .home-links {
@@ -194,9 +213,10 @@ body {
 
 .hero__text h1 {
   font-family: var(--font-display);
-  /* clamp(min, valeur idéale, max) : la taille de police s'adapte à la largeur de l'écran (5vw),
-     mais ne descend jamais sous 2.4rem ni ne dépasse 4rem */
-  font-size: clamp(2.4rem, 5vw, 4rem);
+  /* Même taille fixe que .page-header h1 (Stock/Courses/Calories) : avant, ce titre grandissait
+     avec l'écran (clamp jusqu'à 4rem) alors que les 3 autres pages restaient à 2.6rem, donc
+     Aliments avait toujours un titre nettement plus gros que les autres */
+  font-size: 2.6rem;
   font-weight: 900;
   line-height: 1.1;
   color: var(--text);
@@ -258,21 +278,40 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  flex-wrap: wrap; /* les boutons de filtre passent à la ligne si l'écran est trop étroit */
   gap: 10px;
 }
 
 .filter-buttons {
+  /* Une seule ligne qui défile horizontalement plutôt que de passer les boutons à la ligne
+     du dessous : sur un écran étroit, on scrolle (ou on ajoute des flèches plus tard si besoin)
+     au lieu d'avoir une barre de filtres qui prend deux lignes de haut */
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 10px;
+  /* Cache la barre de défilement visuellement (le défilement au doigt/à la molette reste possible) */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.filter-buttons::-webkit-scrollbar {
+  display: none;
 }
 
 .filter-btn {
+  flex-shrink: 0; /* garde sa taille normale plutôt que de s'écraser dans la ligne qui défile */
+  /* display:flex + une hauteur fixe (au lieu de laisser juste le padding déterminer la
+     hauteur) : sans ça, un bouton avec emoji (ex: "🧊 Frigo" sur Stock) rendait ~5px plus
+     haut qu'un bouton texte seul (ex: "Boissons" sur Aliments) à padding/font-size identiques,
+     parce que la métrique de hauteur de ligne d'un glyphe emoji dépasse celle du texte normal */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
   background: transparent;
   border: 1.5px solid var(--border);
   border-radius: 999px; /* valeur très grande = bouton en forme de pilule/capsule */
-  padding: 7px 18px;
+  padding: 0 18px;
   font-family: var(--font-body);
   font-size: 0.85rem;
   font-weight: 500;
@@ -296,6 +335,49 @@ body {
   color: white;
 }
 
+.search-ajout-row {
+  /* Recherche + bouton "+" (page Stock) sur la même ligne. En desktop le "+" est écrit en
+     premier dans le HTML donc apparaît à gauche ; en mobile, une règle "order" plus bas
+     (dans le media query) le fait passer après la recherche, donc à droite. */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.btn-ajout-icone {
+  /* Rond plein, comme .btn-icone-rond mais en plus grand et en couleur accent : c'est
+     l'action principale de la page, il doit se voir davantage qu'un simple bouton secondaire */
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: white;
+  font-size: 0; /* cache le texte du bouton (gardé pour l'accessibilité), seule l'icône ::before est visible */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+}
+
+.btn-ajout-icone::before {
+  content: "+";
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.btn-ajout-icone:hover {
+  opacity: 0.85;
+}
+
+.btn-ajout-icone:active {
+  transform: scale(0.9);
+}
+
 .search-sort-wrapper {
   display: flex;
   align-items: center;
@@ -311,6 +393,11 @@ body {
 
 #searchInput {
   width: 100%;
+  /* Même hauteur exacte que .btn-ajout-icone (42px) à côté, sur la page Stock : box-sizing
+     border-box fait que padding + bordure sont comptés dans ces 42px plutôt que rajoutés
+     par-dessus, sinon les deux ne s'alignaient pas pile (le bouton dépassait légèrement) */
+  height: 42px;
+  box-sizing: border-box;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 999px;
@@ -604,32 +691,68 @@ body {
   padding: 30px 40px 80px;
 }
 
-#triCourses {
-  /* Les boutons eux-mêmes reprennent le style partagé .filter-btn (comme sur Aliments/Stock) */
-  width: 100%;
+.courses-controls-row {
+  /* Trier — Au magasin — "+", chacun à sa place, avec de l'espace réparti entre eux plutôt
+     qu'une grille à colonnes fixes */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
-#toggleMagasin {
-  margin-left: auto; /* pousse ce bouton tout à droite de sa ligne */
+/* ---- Bascule "Au magasin" façon interrupteur iOS, plus simple qu'un bouton pilule ---- */
+
+.toggle-ios {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
-#triAlpha.tri-actif,
-#triCategorie.tri-actif {
-  /* Style appliqué par JavaScript (courses.js) au bouton de tri actuellement actif */
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
+.toggle-ios__track {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.2s ease;
 }
 
-#toggleMagasin:hover {
-  border-color: var(--accent-2);
-  color: var(--accent-2);
+.toggle-ios__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
 }
 
-#toggleMagasin.actif {
-  background: var(--accent-2);
-  border-color: var(--accent-2);
-  color: white;
+.toggle-ios.actif {
+  color: var(--text);
+}
+
+.toggle-ios.actif .toggle-ios__track {
+  background: #34c759; /* même vert que la coche "Acheté" plus bas dans la liste */
+}
+
+.toggle-ios.actif .toggle-ios__thumb {
+  transform: translateX(16px);
+}
+
+.btn-preset-hebdo {
+  margin-bottom: 20px; /* sans ça, il collait directement sur le premier article de la liste */
 }
 
 #listeCourses {
@@ -885,7 +1008,17 @@ body.mode-magasin .course-item__shop-slot {
   font-family: var(--font-display);
   font-size: 2.6rem;
   font-weight: 900;
+  line-height: 1.1;
   color: var(--text);
+}
+
+.page-header__description {
+  /* Même traitement que le texte d'intro de la page Aliments (.hero__text p) */
+  margin-top: 8px;
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  max-width: 500px;
+  font-weight: 300;
 }
 
 /* ---------- PAGE STOCK ---------- */
@@ -897,10 +1030,11 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 /* ---- Panneau d'ajout (repliable) ---- */
-
-#btnToggleAjout {
-  margin-bottom: 16px;
-}
+/* #btnToggleAjout n'a plus besoin de marge propre : il vit maintenant dans .search-ajout-row,
+   dont le margin-bottom gère déjà l'espacement avant le panneau juste en dessous. Un ancien
+   margin-bottom résiduel ici décalait le bouton vers le haut au lieu de le centrer avec la
+   barre de recherche à côté (sa "boîte" incluant la marge devenait plus haute que l'input,
+   donc plus jamais centrée pareil par align-items: center). */
 
 /*
   Technique "grid-rows accordéon" pour une vraie ouverture/fermeture animée (hauteur 0 -> hauteur réelle),
@@ -1487,6 +1621,19 @@ body.mode-magasin .course-item__shop-slot {
 /* Cette section ne s'applique que sur les écrans de 768px de large ou moins (tablettes/mobiles) */
 
 @media (max-width: 768px) {
+  /* Bug iOS : Safari (et les navigateurs iOS basés dessus) zoome automatiquement toute la page
+     quand on touche un champ de saisie affiché à moins de 16px, et ne redézoome pas tout seul
+     après (il faut pincer l'écran soi-même). Nos champs font presque tous 0.85rem/0.9rem, donc
+     13-14px : plutôt que de changer un par un chaque font-size (il y en a des dizaines dans ce
+     fichier), on force ici 16px sur tous les champs de saisie d'un coup, uniquement sur mobile.
+     Le "!important" est volontaire : c'est la façon la plus simple de gagner sur toutes ces
+     règles existantes sans devoir toutes les retrouver et les modifier une par une. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
   .header {
     padding: 14px 20px;
   }
@@ -1514,8 +1661,16 @@ body.mode-magasin .course-item__shop-slot {
   }
 
   .filters {
-    padding: 14px 20px;
+    padding: 10px 16px;
     top: 57px;
+  }
+
+  .filter-btn {
+    /* Pilules un peu plus compactes sur mobile : la barre de filtres prenait trop de place
+       en hauteur à côté du reste de la page */
+    height: 30px;
+    padding: 0 14px;
+    font-size: 0.8rem;
   }
 
   .grid-section {
@@ -1525,6 +1680,43 @@ body.mode-magasin .course-item__shop-slot {
   .food-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* cartes plus petites sur mobile */
     gap: 16px;
+  }
+
+  /* Le "+" passe après la recherche dans l'ordre visuel (donc à droite) en mobile,
+     alors qu'il est écrit avant elle dans le HTML (donc à gauche en desktop, sans
+     règle "order" à cet endroit) */
+  .btn-ajout-icone {
+    order: 1;
+  }
+
+  /* Tri / bascule grille-liste (page Stock) : les trois éléments (select de tri, "Grille",
+     "Liste") tiennent sur une seule ligne en mobile plutôt que de s'empiler. Le select n'a
+     plus de label ni de largeur minimum imposée : il ne prend que la place que son texte
+     ("Nom", "Récent"...) réclame vraiment, ce qui laisse la place aux deux boutons. */
+  .search-sort-wrapper {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .search-sort-wrapper .sort-wrapper label {
+    display: none;
+  }
+
+  .search-sort-wrapper .sort-wrapper .custom-select {
+    /* Sélecteur plus spécifique que la règle globale ".sort-wrapper .custom-select"
+       (min-width: 190px, plus bas dans le fichier) pour pouvoir vraiment la réduire ici */
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .vue-toggle {
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .vue-toggle .filter-btn {
+    /* Bouton compact plutôt qu'étiré : juste assez de padding pour rester lisible au tactile */
+    padding: 0 12px;
   }
 
   #listeStock {
@@ -1608,7 +1800,10 @@ body.mode-magasin .course-item__shop-slot {
     padding: 30px 20px 14px;
   }
 
-  .page-header h1 {
+  .page-header h1,
+  .journal-section h1 {
+    /* .journal-section (Calories) manquait cette règle : son titre restait à 2.6rem sur
+       mobile alors que Stock/Courses/Aliments retombaient déjà à 2rem, seule page à ne pas suivre */
     font-size: 2rem;
   }
 
@@ -1657,13 +1852,22 @@ body.mode-magasin .course-item__shop-slot {
     width: 100%;
   }
 
-  #triCourses {
-    flex-direction: column;
-    align-items: stretch;
+  .courses-controls-row {
+    gap: 6px;
   }
 
-  #toggleMagasin {
-    margin-left: 0;
+  .courses-controls-row .sort-wrapper label {
+    /* Le mot "Trier par :" ne tient plus à côté du select sur un petit écran : on le cache,
+       le select seul reste assez clair */
+    display: none;
+  }
+
+  .courses-controls-row .sort-wrapper .custom-select {
+    min-width: 0; /* laisse le select rétrécir plutôt que déborder */
+  }
+
+  .toggle-ios__label {
+    display: none; /* ne garde que l'interrupteur sur petit écran, sans le mot "Au magasin" */
   }
 }
 
@@ -1811,8 +2015,19 @@ body.mode-magasin .course-item__shop-slot {
   font-family: var(--font-display);
   font-size: 2.6rem;
   font-weight: 900;
+  line-height: 1.1;
   color: var(--text);
+}
+
+.journal-section .page-header__description {
   margin-bottom: 30px;
+}
+
+.page-header h1 span,
+.journal-section h1 span {
+  /* Même accent que Aliments ("Mieux manger commence ici.") : Stock, Courses et Calories
+     reprennent maintenant le même principe titre + bout de phrase en couleur */
+  color: var(--accent);
 }
 
 .journal-totaux {
@@ -1987,6 +2202,11 @@ body.mode-magasin .course-item__shop-slot {
      à une carte parente. C'est ce qui l'empêche de se retrouver piégée/cachée sous une carte
      voisine : son "top"/"left" exacts sont calculés en JavaScript juste avant son ouverture. */
   position: fixed;
+  /* La largeur suit le texte des options (JS ne fixe qu'une largeur minimum, voir open()) :
+     un bouton compact n'oblige plus les options à s'écraser sur une seule ligne trop étroite.
+     max-width protège quand même les petits écrans, pour ne jamais dépasser la fenêtre. */
+  width: max-content;
+  max-width: calc(100vw - 24px);
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 10px;
@@ -2101,6 +2321,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 #btnAjouter,
+#btnAjouterCourse,
 #formCreerRecette #btnCreerRecette {
   background: var(--accent);
   border: none;
@@ -2122,6 +2343,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 #btnAjouter:not(:disabled):hover,
+#btnAjouterCourse:hover,
 #formCreerRecette #btnCreerRecette:not(:disabled):hover {
   opacity: 0.85;
 }
