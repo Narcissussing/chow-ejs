@@ -76,6 +76,9 @@ function valeurQuantitePourTri(item) {
 // au lieu d'un simple show/hide instantané.
 btnToggleAjout.addEventListener("click", function () {
   const estOuvert = panneauAjoutStock.classList.toggle("ouvert");
+  // Le "+" reste rouge (plein) tant que le panneau est ouvert, pour indiquer qu'on est
+  // en train d'ajouter, puis redevient un simple contour dès qu'on le referme
+  btnToggleAjout.classList.toggle("actif", estOuvert);
   if (!estOuvert) {
     // On ferme : on retire "pret" tout de suite pour que l'animation de fermeture
     // parte bien d'un panneau "coupé" (overflow:hidden), voir style.css
@@ -411,6 +414,7 @@ formAjouterStock.addEventListener("submit", function (event) {
       // On referme le panneau d'ajout automatiquement après un ajout réussi
       panneauAjoutStock.classList.remove("ouvert");
       panneauAjoutStock.classList.remove("pret");
+      btnToggleAjout.classList.remove("actif");
     });
 });
 

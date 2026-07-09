@@ -35,8 +35,17 @@ function escapeHtml(value) {
 
 btnToggleAjoutCourse.addEventListener("click", function () {
     const estOuvert = panneauAjoutCourse.classList.toggle("ouvert");
+    // Le "+" reste rouge (plein) tant que le panneau est ouvert, pour indiquer qu'on est
+    // en train d'ajouter, puis redevient un simple contour dès qu'on le referme
+    btnToggleAjoutCourse.classList.toggle("actif", estOuvert);
     if (!estOuvert) {
         panneauAjoutCourse.classList.remove("pret");
+        // On efface la recherche en fermant : rouvrir le panneau plus tard ne doit pas retrouver
+        // un vieux texte tapé (et le bouton "Ajouter" qu'il avait éventuellement fait apparaître)
+        rechercheAlimentCourses.value = "";
+        idAlimentCacheCourses.value = "";
+        listeAlimentsCourses.hidden = true;
+        btnAjouterCourse.classList.add("hidden");
     } else {
         // Le curseur se place directement dans le champ, pour pouvoir taper tout de suite
         rechercheAlimentCourses.focus();
@@ -68,12 +77,48 @@ function classeNiveauCL(valeur) {
 // Trie tous les articles de la liste selon la clé demandée ("nom" ou "categorie"),
 // puis les réinsère dans le bon ordre dans la page
 function trierPar(cle) {
+    // On repart des articles seuls : les éventuels en-têtes de catégorie posés par un tri
+    // précédent ne sont pas des articles et n'ont pas à être re-triés avec eux
     const items = Array.from(listeCourses.querySelectorAll(".course-item"));
     items.sort(function (a, b) {
         return a.dataset[cle].localeCompare(b.dataset[cle]);
     });
-    items.forEach(function (item) {
-        listeCourses.appendChild(item);
+
+    retirerEntetesCategories();
+
+    if (cle === "categorie") {
+        // Un en-tête discret ("FRUITS", "LÉGUMES"...) devant chaque nouveau groupe de catégorie,
+        // à la façon des listes de courses par rayon (ex : Rappels sur iOS) : ça donne un repère
+        // visuel pendant qu'on fait vraiment ses courses, sans être une vraie section cliquable
+        let derniereCategorie = null;
+        items.forEach(function (item) {
+            if (item.dataset.categorie !== derniereCategorie) {
+                derniereCategorie = item.dataset.categorie;
+                listeCourses.appendChild(construireEnteteCategorie(derniereCategorie));
+            }
+            listeCourses.appendChild(item);
+        });
+    } else {
+        items.forEach(function (item) {
+            listeCourses.appendChild(item);
+        });
+    }
+}
+
+// Construit un en-tête de catégorie ("FRUITS", "AUTRES"...), inséré juste avant le premier
+// article de chaque groupe quand le tri actif est "categorie"
+function construireEnteteCategorie(categorie) {
+    const entete = document.createElement("p");
+    entete.className = "course-categorie-entete";
+    entete.textContent = categorie === "zzz" ? "Autres" : categorie;
+    return entete;
+}
+
+// Retire tous les en-têtes de catégorie actuellement affichés (appelé avant chaque nouveau tri,
+// qu'il reste sur "categorie" ou qu'on repasse à "nom")
+function retirerEntetesCategories() {
+    listeCourses.querySelectorAll(".course-categorie-entete").forEach(function (entete) {
+        entete.remove();
     });
 }
 
@@ -466,6 +511,8 @@ rechercheAlimentCourses.addEventListener("input", function () {
 
     if (recherche === "") {
         listeAlimentsCourses.hidden = true;
+        // Rien de tapé : ni suggestion ni ajout en texte libre n'ont de sens
+        btnAjouterCourse.classList.add("hidden");
         return;
     }
 
@@ -473,9 +520,16 @@ rechercheAlimentCourses.addEventListener("input", function () {
 
     // On affiche tous les aliments correspondants. Aucune limite de nombre :
     // si la liste est longue, elle défile (voir max-height dans style.css)
+    let aUneCorrespondance = false;
     itemsAutocomplete.forEach(function (item) {
-        item.hidden = !item.textContent.toLowerCase().includes(recherche);
+        const correspond = item.textContent.toLowerCase().includes(recherche);
+        item.hidden = !correspond;
+        if (correspond) aUneCorrespondance = true;
     });
+
+    // Le bouton "Ajouter" (texte libre) n'apparaît que si aucun aliment connu ne correspond :
+    // s'il y a des suggestions, on veut qu'on clique dessus plutôt que de dupliquer l'article
+    btnAjouterCourse.classList.toggle("hidden", aUneCorrespondance);
 });
 
 // Cliquer sur une suggestion ajoute directement l'article à la liste de courses
@@ -483,6 +537,7 @@ itemsAutocomplete.forEach(function (item) {
     item.addEventListener("click", function () {
         ajouterArticle(item.dataset.id, null);
         listeAlimentsCourses.hidden = true;
+        btnAjouterCourse.classList.add("hidden");
     });
 });
 
@@ -539,9 +594,11 @@ function ajouterArticle(idAliment, texteLibre) {
 
             rechercheAlimentCourses.value = "";
             idAlimentCacheCourses.value = "";
+            btnAjouterCourse.classList.add("hidden");
 
             // On referme le panneau d'ajout automatiquement après un ajout réussi, comme sur Stock
             panneauAjoutCourse.classList.remove("ouvert");
             panneauAjoutCourse.classList.remove("pret");
+            btnToggleAjoutCourse.classList.remove("actif");
         });
 }

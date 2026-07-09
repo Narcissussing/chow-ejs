@@ -184,7 +184,7 @@ body {
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px 58px 16px 20px; /* padding à droite plus large pour laisser la place au bouton supprimer */
+  padding: 12px 50px 12px 16px; /* padding à droite plus large pour laisser la place au bouton supprimer */
   transition: border-color 0.2s ease;
 }
 
@@ -349,32 +349,59 @@ body {
 }
 
 .btn-ajout-icone {
-  /* Rond plein, comme .btn-icone-rond mais en plus grand et en couleur accent : c'est
-     l'action principale de la page, il doit se voir davantage qu'un simple bouton secondaire */
-  width: 42px;
-  height: 42px;
+  /* Contour fin plutôt qu'un rond plein en couleur accent : moins criard sur une barre qui
+     reste collée à l'écran en permanence (voir .courses-controls-row / .search-ajout-row),
+     tout en restant bien visible grâce à la couleur du "+" */
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--accent);
-  border: none;
-  color: white;
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
   font-size: 0; /* cache le texte du bouton (gardé pour l'accessibilité), seule l'icône ::before est visible */
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease, opacity 0.2s ease;
+  position: relative;
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
 .btn-ajout-icone::before {
+  /* Centré par position absolue + translate plutôt que par le flex du bouton : centrer un
+     glyphe "+" avec justify/align-items le cale sur sa boîte de ligne, pas sur son encre
+     réelle, ce qui le décalait visiblement d'un ou deux pixels selon la police */
   content: "+";
-  font-size: 1.6rem;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.1rem;
   font-weight: 700;
   line-height: 1;
 }
 
-.btn-ajout-icone:hover {
-  opacity: 0.85;
+/* (hover: hover) exclut les écrans tactiles : au doigt il n'y a pas de vrai "survol", donc
+   pas de mouseout pour annuler le style — sans cette condition, le bouton restait rouge après
+   un tap tant qu'on ne touchait pas autre chose ailleurs sur l'écran */
+@media (hover: hover) and (pointer: fine) {
+  .btn-ajout-icone:hover {
+    background: var(--accent);
+    color: white;
+  }
+}
+
+.btn-ajout-icone:active {
+  /* Le retour visuel au tap vient d'ici : actif seulement pendant l'appui, jamais "collé" après */
+  transform: scale(0.92);
+  background: var(--accent);
+  color: white;
+}
+
+.btn-ajout-icone.actif {
+  /* Contrairement à :hover/:active (temporaires), "actif" est une vraie classe posée/retirée
+     en JS tant que le panneau d'ajout est ouvert (voir stock.js/courses.js) : le bouton reste
+     plein rouge pour montrer qu'on est en train d'ajouter, jusqu'à ce qu'on referme le panneau */
+  background: var(--accent);
+  color: white;
 }
 
 .btn-ajout-icone:active {
@@ -396,10 +423,10 @@ body {
 
 #searchInput {
   width: 100%;
-  /* Même hauteur exacte que .btn-ajout-icone (42px) à côté, sur la page Stock : box-sizing
-     border-box fait que padding + bordure sont comptés dans ces 42px plutôt que rajoutés
+  /* Même hauteur exacte que .btn-ajout-icone (30px) à côté, sur la page Stock : box-sizing
+     border-box fait que padding + bordure sont comptés dans ces 30px plutôt que rajoutés
      par-dessus, sinon les deux ne s'alignaient pas pile (le bouton dépassait légèrement) */
-  height: 42px;
+  height: 30px;
   box-sizing: border-box;
   background: var(--surface);
   border: 1.5px solid var(--border);
@@ -538,9 +565,11 @@ body {
 }
 
 .food-card__name {
-  font-family: var(--font-display);
+  /* Police de texte courant (pas la serif des titres) et poids plus léger : le nom d'un
+     aliment n'a pas besoin de crier aussi fort qu'un titre de page */
+  font-family: var(--font-body);
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--text);
   margin-bottom: 4px;
 }
@@ -709,9 +738,24 @@ body {
   position: sticky;
   top: var(--header-h, 65px);
   z-index: 90;
-  background: var(--bg);
-  padding: 14px 0;
+  /* Même traitement que .filters (Aliments/Stock) : fond "surface" + bordures + ombre légère,
+     pour qu'elle se lise comme une vraie barre d'outils qui flotte au-dessus de la liste
+     pendant le scroll, plutôt que de se fondre à plat dans le fond de la page */
+  background: var(--surface);
+  border-top: 1.5px solid var(--border);
+  border-bottom: 1.5px solid var(--border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+  padding: 14px 40px;
   margin-bottom: 0;
+  /* "Full-bleed" : cette barre vit dans .courses-section (max-width 1200px + padding), mais
+     son fond doit couvrir toute la largeur de l'écran, sinon les pastilles de stock des cartes
+     en dessous (position absolute, en haut à gauche/droite) débordent visuellement au-dessus
+     du fond aux deux bords pendant le scroll. On l'étire donc en 100vw puis on recentre son
+     contenu avec le même padding que .courses-section, pour que "Nom"/"Au magasin"/"+"
+     restent alignés avec le reste de la page malgré la largeur pleine écran. */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  box-sizing: border-box;
 }
 
 /* ---- Bascule "Au magasin" façon interrupteur iOS, plus simple qu'un bouton pilule ---- */
@@ -771,8 +815,25 @@ body {
 #listeCourses {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 30px;
+}
+
+.course-categorie-entete {
+  /* Repère discret entre deux groupes de catégorie (voir courses.js, trierPar) : petite
+     majuscule espacée et atténuée façon "section" de Réglages iOS, pas un vrai titre qui
+     ferait concurrence aux noms d'articles juste en dessous */
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 4px 4px -2px;
+}
+
+.course-categorie-entete:first-child {
+  margin-top: 0;
 }
 
 .course-item {
@@ -783,16 +844,17 @@ body {
   align-items: center;
   column-gap: 14px;
   row-gap: 8px;
-  padding: 16px 58px 16px 20px;
+  padding: 12px 50px 12px 16px;
 }
 
 .course-nom {
   /* On place explicitement cet élément dans la grille : colonne 1, ligne 1 */
   grid-column: 1;
   grid-row: 1;
-  font-family: var(--font-display);
+  /* Police de texte courant, poids plus léger que la serif en gras des titres (voir .food-card__name) */
+  font-family: var(--font-body);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--text);
   cursor: pointer;
 }
@@ -1224,9 +1286,10 @@ body.mode-magasin .course-item__shop-slot {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-display);
+  /* Police de texte courant, poids plus léger que la serif en gras des titres (voir .food-card__name) */
+  font-family: var(--font-body);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--text);
 }
 
@@ -1867,6 +1930,7 @@ body.mode-magasin .course-item__shop-slot {
 
   .courses-controls-row {
     gap: 6px;
+    padding: 12px 20px; /* même padding horizontal que .courses-section en mobile (20px, vs 40px en desktop) */
   }
 
   .courses-controls-row .sort-wrapper label {

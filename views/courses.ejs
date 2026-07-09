@@ -52,7 +52,10 @@
           <!-- Bouton texte classique (comme #btnAjouter sur Stock), pas un rond "+" : sinon il
                était identique au bouton qui ouvre ce panneau juste au-dessus, ce qui prêtait à
                confusion (les deux étaient un simple rond rouge sans texte visible) -->
-          <button type="button" id="btnAjouterCourse">Ajouter</button>
+          <!-- Caché par défaut : n'apparaît que si le texte tapé ne correspond à aucun aliment
+               connu (voir courses.js), pour éviter de proposer un ajout "en texte libre" alors
+               qu'il suffit de cliquer la suggestion déjà affichée juste au-dessus -->
+          <button type="button" id="btnAjouterCourse" class="hidden">Ajouter</button>
         </form>
       </div>
       </div>
