@@ -270,7 +270,10 @@ body {
   border-bottom: 1.5px solid var(--border);
   padding: 18px 40px;
   position: sticky;
-  top: 65px; /* reste collé juste en dessous du header, qui lui-même est sticky */
+  /* --header-h est mesurée en JS (voir partials/header.ejs) : une valeur fixe en dur se
+     désynchronisait de la vraie hauteur du header selon l'écran, ce qui faisait passer cette
+     barre à moitié sous le header au lieu de rester collée juste en dessous */
+  top: var(--header-h, 65px);
   z-index: 90;
 }
 
@@ -699,6 +702,16 @@ body {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+
+  /* Reste visible en scrollant la liste : on peut vouloir ajouter un article ou basculer
+     "Au magasin" à tout moment, sans avoir à remonter en haut de la page. Même principe que
+     .filters (Aliments/Stock), collé juste sous le header grâce à --header-h (voir header.ejs). */
+  position: sticky;
+  top: var(--header-h, 65px);
+  z-index: 90;
+  background: var(--bg);
+  padding: 14px 0;
+  margin-bottom: 0;
 }
 
 /* ---- Bascule "Au magasin" façon interrupteur iOS, plus simple qu'un bouton pilule ---- */
@@ -1662,7 +1675,7 @@ body.mode-magasin .course-item__shop-slot {
 
   .filters {
     padding: 10px 16px;
-    top: 57px;
+    top: var(--header-h, 57px);
   }
 
   .filter-btn {

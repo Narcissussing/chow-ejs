@@ -27,3 +27,21 @@
     </nav>
   </div>
 </header>
+<script>
+  // La barre de filtres (Aliments/Stock) et la barre de contrôles (Courses) se collent juste
+  // sous ce header au scroll (voir .filters et .courses-controls-row en CSS). Leur "top" ne
+  // peut pas être une valeur fixe en dur : la hauteur réelle du header change selon l'écran
+  // (padding mobile, retour à la ligne du logo...) et une valeur figée finissait décalée sur
+  // certains téléphones, faisant passer la barre à moitié sous le header au lieu de rester
+  // collée juste en dessous. On mesure donc la vraie hauteur et on la publie en variable CSS.
+  (function () {
+    function publierHauteurHeader() {
+      var header = document.querySelector(".header");
+      if (header) {
+        document.documentElement.style.setProperty("--header-h", header.offsetHeight + "px");
+      }
+    }
+    publierHauteurHeader();
+    window.addEventListener("resize", publierHauteurHeader);
+  })();
+</script>
