@@ -2,16 +2,18 @@
 
 <main>
   <div class="page-header">
-    <h1>Stock</h1>
+    <h1>Ton frigo <span>ne ment pas.</span></h1>
+    <p class="page-header__description">La vérité sur ce qu'il te reste vraiment — spoiler : moins que tu crois.</p>
     <% if (typeof error !== 'undefined') { %>
     <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
     <p class="erreur"><%= error %></p>
     <% } %>
   </div>
 
-  <!-- Boutons de filtre par emplacement : cliquer dessus ne recharge pas la page,
-       c'est du JavaScript (public/js/stock.js) qui cache/affiche les articles.
-       Même barre pleine largeur que sur Aliments, pour que les deux pages se ressemblent. -->
+  <!-- Boutons de filtre : emplacement (Tous/Frigo/Congélateur/Réserve) et type de suivi
+       (Niveau/Pièces) sont deux filtres indépendants, mais rangés dans le même groupe de
+       boutons pour qu'ils s'enchaînent naturellement à la suite. Cliquer dessus ne recharge
+       pas la page, c'est du JavaScript (public/js/stock.js) qui cache/affiche les articles. -->
   <div class="filters">
     <div class="filters__inner">
       <div class="filter-buttons">
@@ -19,37 +21,29 @@
         <button type="button" class="filter-btn" data-emplacement="fg">🧊 Frigo</button>
         <button type="button" class="filter-btn" data-emplacement="fz">❄️ Congélateur</button>
         <button type="button" class="filter-btn" data-emplacement="st">📦 Réserve</button>
+        <!-- Pas de bouton "Tous" pour celui-ci : cliquer sur le bouton déjà actif le désactive
+             et revient à tout afficher (voir stock.js) -->
+        <button type="button" class="filter-btn" data-type="cl">🫙 Niveau</button>
+        <button type="button" class="filter-btn" data-type="autre">🔢 Pièces</button>
       </div>
     </div>
   </div>
 
   <div class="stock-section">
-    <!-- Barre de recherche + menu de tri, également gérés par stock.js -->
-    <div class="search-sort-wrapper">
+    <!-- Recherche + bouton d'ajout (icône "+" seule, pas de long texte) sur la même ligne.
+         En desktop le "+" est à gauche de la recherche, en mobile il passe à droite
+         (voir la règle "order" dans le CSS, appliquée seulement sous 768px). -->
+    <div class="search-ajout-row">
+      <button type="button" id="btnToggleAjout" class="btn-ajout-icone" title="Ajouter un aliment">Ajouter un aliment</button>
       <div class="search-wrapper">
         <input type="text" id="searchInput" placeholder="Rechercher dans le stock..." autocomplete="off" />
       </div>
-      <div class="sort-wrapper">
-        <label for="sortSelect">Trier par :</label>
-        <select id="sortSelect">
-          <option value="alpha">Nom</option>
-          <option value="ancien">Ancien</option>
-          <option value="recent">Récent</option>
-        </select>
-      </div>
-
-      <!-- Bascule grille/liste : change juste une classe sur #listeStock (voir stock.js/style.css),
-           la préférence est retenue d'une visite à l'autre grâce à localStorage -->
-      <div class="vue-toggle">
-        <button type="button" id="btnVueGrille" class="filter-btn active" data-vue="grille" title="Vue grille">▦ Grille</button>
-        <button type="button" id="btnVueListe" class="filter-btn" data-vue="liste" title="Vue liste">☰ Liste</button>
-      </div>
     </div>
 
-    <!-- Bouton qui ouvre/ferme le panneau d'ajout d'un aliment au stock -->
-    <button type="button" id="btnToggleAjout" class="filter-btn">+ Ajouter un aliment</button>
-
-    <!-- Panneau d'ajout : fermé par défaut, ouvert/fermé en cliquant sur le bouton ci-dessus.
+    <!-- Panneau d'ajout : fermé par défaut, ouvert/fermé en cliquant sur le "+" juste au-dessus.
+         Placé juste sous la ligne recherche/+ (et pas plus bas, après le tri) pour qu'il se
+         déploie visiblement à l'endroit où on vient de cliquer, plutôt que de réapparaître
+         plus loin sur la page sans lien apparent avec le bouton qui l'a ouvert.
          La classe "ouvert" (ajoutée/retirée par stock.js) anime la hauteur du panneau (voir style.css) -->
     <div id="panneauAjoutStock" class="panneau-ajout">
       <div class="panneau-ajout__piege">
@@ -87,6 +81,27 @@
       </div>
     </div>
 
+    <!-- Menu de tri + bascule grille/liste, également gérés par stock.js -->
+    <div class="search-sort-wrapper">
+      <div class="sort-wrapper">
+        <label for="sortSelect">Trier par :</label>
+        <select id="sortSelect">
+          <option value="alpha">Nom</option>
+          <option value="ancien">Ancien</option>
+          <option value="recent">Récent</option>
+          <option value="quantite-asc">Quantité ↗</option>
+          <option value="quantite-desc">Quantité ↘</option>
+        </select>
+      </div>
+
+      <!-- Bascule grille/liste : change juste une classe sur #listeStock (voir stock.js/style.css),
+           la préférence est retenue d'une visite à l'autre grâce à localStorage -->
+      <div class="vue-toggle">
+        <button type="button" id="btnVueGrille" class="filter-btn active" data-vue="grille" title="Vue grille">▦ Grille</button>
+        <button type="button" id="btnVueListe" class="filter-btn" data-vue="liste" title="Vue liste">☰ Liste</button>
+      </div>
+    </div>
+
     <!-- Liste des articles actuellement en stock, générée côté serveur -->
     <div id="listeStock">
       <% stock.forEach(function(aliment) { %>
@@ -99,6 +114,7 @@
         data-emplacement="<%= aliment.emplacement %>"
         data-tracking-type="<%= aliment.tracking_type %>"
         data-jours="<%= aliment.jours_depuis %>"
+        data-quantite="<%= aliment.quantite %>"
       >
         <!-- On affiche la vraie photo si elle existe, sinon l'emoji comme solution de secours -->
         <% if (aliment.image) { %>

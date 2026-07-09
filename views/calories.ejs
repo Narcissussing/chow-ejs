@@ -13,7 +13,8 @@
 
 <main>
   <div class="journal-section">
-    <h1>Calories</h1>
+    <h1>Compter sans <span>culpabiliser.</span></h1>
+    <p class="page-header__description">Chaque bouchée a le droit d'être notée — sauf la troisième part de gâteau, on garde un œil dessus.</p>
 
     <!-- Les 4 totaux du jour, calculés ci-dessus. Les id (totalKcal, etc.) permettent
          au JavaScript (calories.js) de les mettre à jour en direct sans recharger la page -->
@@ -51,7 +52,7 @@
 
       <!-- Menu déroulant pour appliquer directement une recette (remplace le journal du jour par ses ingrédients) -->
       <select id="selectRecette">
-        <option value="">Ajouter une recette</option>
+        <option value="">Recette</option>
         <% recettes.forEach(function(recette) { %>
         <option value="<%= recette.id %>"><%= recette.nom %></option>
         <% }) %>

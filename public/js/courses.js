@@ -3,8 +3,7 @@
 // ============================================
 
 const listeCourses = document.getElementById("listeCourses"); // conteneur de tous les articles de la liste de courses
-const triAlpha = document.getElementById("triAlpha"); // bouton "trier par nom"
-const triCategorie = document.getElementById("triCategorie"); // bouton "trier par catégorie"
+const sortSelectCourses = document.getElementById("sortSelectCourses"); // menu de tri (Nom/Catégorie), même select que sur Aliments/Stock
 const toggleMagasin = document.getElementById("toggleMagasin"); // bouton pour activer/désactiver le "mode magasin"
 const btnPresetHebdo = document.getElementById("btnPresetHebdo"); // bouton "Courses de la semaine" (ajout groupé)
 
@@ -12,6 +11,9 @@ const rechercheAlimentCourses = document.getElementById("rechercheAlimentCourses
 const listeAlimentsCourses = document.getElementById("listeAlimentsCourses"); // liste de suggestions d'aliments
 const idAlimentCacheCourses = document.getElementById("idAlimentCacheCourses"); // champ caché stockant l'id de l'aliment sélectionné
 const formAjouterCourse = document.getElementById("formAjouterCourse"); // formulaire d'ajout d'un article
+const btnAjouterCourse = document.getElementById("btnAjouterCourse"); // bouton "+" (même ajout que la touche Entrée)
+const btnToggleAjoutCourse = document.getElementById("btnToggleAjoutCourse"); // bouton "+" en haut de page qui ouvre/ferme le panneau
+const panneauAjoutCourse = document.getElementById("panneauAjoutCourse"); // le panneau (formulaire) d'ajout lui-même
 
 // Petite fonction de sécurité : transforme les caractères spéciaux en leur équivalent HTML,
 // pour éviter d'injecter du code HTML/JS dangereux dans la page (faille XSS)
@@ -23,6 +25,32 @@ function escapeHtml(value) {
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 }
+
+// ============================================
+// PANNEAU D'AJOUT (repliable)
+// ============================================
+// Même comportement que le panneau d'ajout de Stock : le "+" ouvre/ferme un panneau juste en
+// dessous de lui (au lieu du formulaire fixe tout en bas de page qu'il y avait avant), avec la
+// même animation d'accordéon (voir .panneau-ajout dans style.css).
+
+btnToggleAjoutCourse.addEventListener("click", function () {
+    const estOuvert = panneauAjoutCourse.classList.toggle("ouvert");
+    if (!estOuvert) {
+        panneauAjoutCourse.classList.remove("pret");
+    } else {
+        // Le curseur se place directement dans le champ, pour pouvoir taper tout de suite
+        rechercheAlimentCourses.focus();
+    }
+});
+
+// Une fois l'animation d'ouverture terminée, on ajoute "pret" : le panneau repasse en
+// overflow:visible, pour que la liste de suggestions (qui dépasse volontairement sous le
+// panneau) redevienne visible
+panneauAjoutCourse.addEventListener("transitionend", function (event) {
+    if (event.propertyName === "grid-template-rows" && panneauAjoutCourse.classList.contains("ouvert")) {
+        panneauAjoutCourse.classList.add("pret");
+    }
+});
 
 // Renvoie le nom de la classe CSS correspondant au niveau de remplissage d'un aliment suivi en "cl"
 // (même mapping que public/js/stock.js), utilisé pour le petit point de couleur "déjà en stock"
@@ -49,24 +77,18 @@ function trierPar(cle) {
     });
 }
 
-// Renvoie la clé de tri actuellement active, en regardant quel bouton de tri porte la classe "tri-actif"
+// Renvoie la clé de tri actuellement active, en lisant directement la valeur du select
 function cleTriActive() {
-    return triCategorie.classList.contains("tri-actif") ? "categorie" : "nom";
+    return sortSelectCourses.value;
 }
 
-// Clic sur "trier par nom"
-triAlpha.addEventListener("click", function () {
-    trierPar("nom");
-    triAlpha.classList.add("tri-actif");
-    triCategorie.classList.remove("tri-actif");
+// Changer la valeur du menu de tri retrie toute la liste, même principe que sur Aliments/Stock
+sortSelectCourses.addEventListener("change", function () {
+    trierPar(this.value);
 });
 
-// Clic sur "trier par catégorie"
-triCategorie.addEventListener("click", function () {
-    trierPar("categorie");
-    triCategorie.classList.add("tri-actif");
-    triAlpha.classList.remove("tri-actif");
-});
+// Tri initial au chargement de la page, selon la valeur par défaut du select ("Nom")
+trierPar(sortSelectCourses.value);
 
 // Insère un nouvel article au bon endroit dans la liste, en respectant le tri actuellement actif
 // (plutôt que de toujours l'ajouter à la fin, ce qui casserait l'ordre trié)
@@ -476,14 +498,24 @@ document.addEventListener("click", function (e) {
 rechercheAlimentCourses.addEventListener("keydown", function (event) {
     if (event.key !== "Enter") return;
     event.preventDefault();
+    tenterAjoutArticle();
+});
 
+// Cliquer sur le bouton "+" fait exactement la même chose qu'appuyer sur Entrée
+btnAjouterCourse.addEventListener("click", function () {
+    tenterAjoutArticle();
+});
+
+// Regroupe la logique partagée entre "Entrée" et le clic sur "+" : on ajoute soit l'aliment
+// choisi dans la liste de suggestions, soit le texte tapé tel quel (article "libre")
+function tenterAjoutArticle() {
     const idAliment = idAlimentCacheCourses.value || null;
     const texte = rechercheAlimentCourses.value.trim();
 
     if (!idAliment && texte === "") return;
 
     ajouterArticle(idAliment, idAliment ? null : texte);
-});
+}
 
 // Envoie l'ajout d'un article de courses au serveur (soit via son id, soit en texte libre),
 // puis insère le nouvel article à l'écran au bon endroit selon le tri actif
@@ -507,5 +539,9 @@ function ajouterArticle(idAliment, texteLibre) {
 
             rechercheAlimentCourses.value = "";
             idAlimentCacheCourses.value = "";
+
+            // On referme le panneau d'ajout automatiquement après un ajout réussi, comme sur Stock
+            panneauAjoutCourse.classList.remove("ouvert");
+            panneauAjoutCourse.classList.remove("pret");
         });
 }

@@ -42,6 +42,14 @@ app.use(express.json());
 // On indique à Express qu'on utilise le moteur de templates "EJS" pour générer les pages HTML
 app.set("view engine", "ejs");
 
+// Rend l'URL de la page actuelle disponible dans TOUTES les vues (res.locals), sans avoir à
+// l'ajouter manuellement à chaque res.render() : sert à savoir quel lien du menu surligner
+// (voir partials/header.ejs et .nav__link.actif dans style.css)
+app.use(function (req, res, next) {
+    res.locals.currentPath = req.path;
+    next();
+});
+
 // Petit dictionnaire qui donne le nom d'unité à afficher selon le type de suivi d'un aliment
 // (par exemple : "unite" -> "unités", "pack" -> "packs", "cl" -> "cl")
 const uniteParType = { unite: 'unités', pack: 'packs', cl: 'cl' };

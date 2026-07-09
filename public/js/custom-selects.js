@@ -70,12 +70,23 @@ function enhanceSelect(select) {
     const positionBouton = button.getBoundingClientRect();
     list.style.top = positionBouton.bottom + 6 + "px";
     list.style.left = positionBouton.left + "px";
-    list.style.width = positionBouton.width + "px";
+    // "min-width" (pas "width") : la liste ne doit jamais être plus étroite que le bouton,
+    // mais si le bouton est compact et que le texte d'une option est plus long, elle doit
+    // pouvoir s'élargir toute seule plutôt que de couper ce texte (voir aussi le CSS,
+    // width: max-content, qui fait grandir la liste selon son contenu)
+    list.style.minWidth = positionBouton.width + "px";
 
     document.body.appendChild(list);
     wrapper.classList.add("custom-select--open");
     button.setAttribute("aria-expanded", "true");
     list.hidden = false;
+
+    // Si la liste dépasse à droite de l'écran (bouton compact + options au texte long),
+    // on la recale vers la gauche pour qu'elle reste entièrement visible
+    const debordementDroite = list.getBoundingClientRect().right - (window.innerWidth - 12);
+    if (debordementDroite > 0) {
+      list.style.left = positionBouton.left - debordementDroite + "px";
+    }
   }
 
   // (Re)construit la liste des options affichées, à partir des vraies <option> du <select>

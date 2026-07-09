@@ -2,7 +2,8 @@
 
 <main>
   <div class="page-header">
-    <h1>Courses</h1>
+    <h1>La liste qui <span>n'oublie jamais.</span></h1>
+    <p class="page-header__description">Toi si, elle non. Ajoute, coche, fonce au magasin.</p>
 
     <% if (typeof error !== 'undefined') { %>
     <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
@@ -10,22 +11,56 @@
     <% } %>
   </div>
 
-  <!-- Boutons de tri (nom/catégorie) et bouton "mode magasin", tous gérés par courses.js.
-       Même barre pleine largeur que sur Aliments/Stock, pour que les trois pages se ressemblent. -->
-  <div class="filters">
-    <div class="filters__inner">
-      <div id="triCourses" class="filter-buttons">
-        <button type="button" id="triAlpha" class="filter-btn tri-actif">Trier par nom</button>
-        <button type="button" id="triCategorie" class="filter-btn">Trier par catégorie</button>
-        <button type="button" id="toggleMagasin" class="filter-btn">🛒 Au magasin</button>
+  <div class="courses-section">
+    <!-- Trier — Au magasin — "+", espacés sur la ligne (justify-content: space-between) -->
+    <div class="courses-controls-row">
+      <div class="sort-wrapper">
+        <label for="sortSelectCourses">Trier par :</label>
+        <select id="sortSelectCourses">
+          <option value="nom">Nom</option>
+          <option value="categorie">Catégorie</option>
+        </select>
+      </div>
+      <!-- Interrupteur façon iOS plutôt qu'un bouton pilule classique -->
+      <button type="button" id="toggleMagasin" class="toggle-ios">
+        <span class="toggle-ios__track"><span class="toggle-ios__thumb"></span></span>
+        <span class="toggle-ios__label">Au magasin</span>
+      </button>
+      <button type="button" id="btnToggleAjoutCourse" class="btn-ajout-icone" title="Ajouter un article">Ajouter un article</button>
+    </div>
+
+    <!-- Panneau d'ajout : fermé par défaut, ouvert/fermé en cliquant sur le "+" juste au-dessus.
+         Même technique d'accordéon que le panneau d'ajout de Stock (voir style.css). -->
+    <div id="panneauAjoutCourse" class="panneau-ajout">
+      <div class="panneau-ajout__piege">
+      <div class="panneau-ajout__interieur">
+        <!-- Formulaire pour ajouter un nouvel article à la liste de courses, avec autocomplétion -->
+        <form action="/courses/ajouter" method="post" id="formAjouterCourse">
+          <!-- Champ caché : rempli par le JavaScript avec l'id de l'aliment choisi dans la liste de suggestions -->
+          <input type="hidden" name="idAliment" id="idAlimentCacheCourses" />
+
+          <div id="autocompleteCourses">
+            <input type="text" id="rechercheAlimentCourses" name="rechercheAliment" placeholder="Recherche un article..." autocomplete="off" />
+            <ul id="listeAlimentsCourses">
+              <% aliments.forEach(function(aliment) { %>
+              <li data-id="<%= aliment.id %>">
+                <%= aliment.emoji %> <%= aliment.nom %>
+              </li>
+              <% }) %>
+            </ul>
+          </div>
+          <!-- Bouton texte classique (comme #btnAjouter sur Stock), pas un rond "+" : sinon il
+               était identique au bouton qui ouvre ce panneau juste au-dessus, ce qui prêtait à
+               confusion (les deux étaient un simple rond rouge sans texte visible) -->
+          <button type="button" id="btnAjouterCourse">Ajouter</button>
+        </form>
+      </div>
       </div>
     </div>
-  </div>
 
-  <div class="courses-section">
     <!-- Ajoute d'un coup les courses habituelles de la semaine, sans effacer ce qui est déjà dans la liste
          (contrairement au bouton recette de la page Calories, qui lui remplace tout) -->
-    <button type="button" id="btnPresetHebdo" class="filter-btn">🧺 Courses de la semaine</button>
+    <button type="button" id="btnPresetHebdo" class="filter-btn btn-preset-hebdo">🧺 Courses de la semaine</button>
 
     <!-- Liste des articles à acheter, générée côté serveur -->
     <div id="listeCourses">
@@ -102,23 +137,6 @@
       </div>
       <% }) %>
     </div>
-
-    <!-- Formulaire pour ajouter un nouvel article à la liste de courses, avec autocomplétion -->
-    <form action="/courses/ajouter" method="post" id="formAjouterCourse">
-      <!-- Champ caché : rempli par le JavaScript avec l'id de l'aliment choisi dans la liste de suggestions -->
-      <input type="hidden" name="idAliment" id="idAlimentCacheCourses" />
-
-      <div id="autocompleteCourses">
-        <input type="text" id="rechercheAlimentCourses" name="rechercheAliment" placeholder="Ajouter un article..." autocomplete="off" />
-        <ul id="listeAlimentsCourses">
-          <% aliments.forEach(function(aliment) { %>
-          <li data-id="<%= aliment.id %>">
-            <%= aliment.emoji %> <%= aliment.nom %>
-          </li>
-          <% }) %>
-        </ul>
-      </div>
-    </form>
 
     <script src="/js/courses.js" defer></script>
   </div>

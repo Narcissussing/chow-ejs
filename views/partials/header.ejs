@@ -16,11 +16,14 @@
 <header class="header">
   <div class="header__inner">
     <a href="/" class="logo">Chow</a>
+    <!-- currentPath vient d'un middleware dans index.js (disponible sur toutes les pages) :
+         on compare avec chaque lien pour savoir lequel est la page actuelle, et lui donner
+         la classe "actif" (stylée en CSS, voir .nav__link.actif) -->
     <nav class="nav">
-      <a href="/aliments" class="nav__link">Aliments</a>
-      <a href="/stock" class="nav__link">Stock</a>
-      <a href="/courses" class="nav__link">Courses</a>
-      <a href="/calories" class="nav__link">Calories</a>
+      <a href="/aliments" class="nav__link <%= currentPath.startsWith('/aliments') ? 'actif' : '' %>">Aliments</a>
+      <a href="/stock" class="nav__link <%= currentPath.startsWith('/stock') ? 'actif' : '' %>">Stock</a>
+      <a href="/courses" class="nav__link <%= currentPath.startsWith('/courses') ? 'actif' : '' %>">Courses</a>
+      <a href="/calories" class="nav__link <%= currentPath.startsWith('/calories') ? 'actif' : '' %>">Calories</a>
     </nav>
   </div>
 </header>

@@ -13,9 +13,8 @@ const btnAjouter = document.getElementById("btnAjouter"); // bouton "Ajouter"
 const formAjouterStock = document.getElementById("formAjouterStock"); // formulaire complet d'ajout au stock
 const listeStock = document.getElementById("listeStock"); // conteneur qui affiche tous les articles du stock
 
-const filterButtonsStock = document.querySelectorAll(".filter-btn[data-emplacement]"); // boutons de filtre (Tous/Frigo/Congélateur/Réserve)
 const searchInput = document.getElementById("searchInput"); // champ de recherche dans le stock déjà présent
-const sortSelect = document.getElementById("sortSelect"); // menu déroulant de tri (Nom/Ancien/Récent)
+const sortSelect = document.getElementById("sortSelect"); // menu déroulant de tri (Nom/Ancien/Récent/Quantité)
 const noResultsStock = document.getElementById("noResultsStock"); // message affiché quand aucun résultat ne correspond
 
 const btnToggleAjout = document.getElementById("btnToggleAjout"); // bouton pour ouvrir/fermer le panneau d'ajout
@@ -24,8 +23,11 @@ const panneauAjoutStock = document.getElementById("panneauAjoutStock"); // le pa
 const btnVueGrille = document.getElementById("btnVueGrille"); // bouton "vue grille" (cartes)
 const btnVueListe = document.getElementById("btnVueListe"); // bouton "vue liste" (articles empilés)
 
-// Variable qui garde en mémoire quel filtre d'emplacement est actuellement actif ("tous" par défaut)
+// Variables qui gardent en mémoire quel filtre est actuellement actif ("tous" par défaut).
+// Emplacement et type de suivi partagent un seul groupe de boutons à choix unique (voir plus
+// bas) : un seul des deux peut être différent de "tous" à la fois.
 let emplacementActif = "tous";
+let typeActif = "tous";
 
 // Petite fonction de sécurité : transforme les caractères spéciaux (<, >, ", etc.)
 // en leur équivalent HTML pour éviter d'injecter du code HTML/JS dans la page (faille XSS)
@@ -47,6 +49,24 @@ const OPTIONS_CL = [
   { valeur: "vide", texte: "Vide" }
 ];
 
+// Pour trier les articles "cl" par quantité, on donne un rang numérique à chaque niveau
+// (0 = le moins rempli, 3 = le plus rempli) puisque "plein"/"vide" ne sont pas des nombres
+const RANG_NIVEAU_CL = {
+  vide: 0,
+  "presque vide": 1,
+  "à moitié": 2,
+  plein: 3
+};
+
+// Renvoie une valeur numérique comparable pour trier un article par quantité, qu'il soit
+// suivi en nombre (unités/packs) ou en niveau (cl)
+function valeurQuantitePourTri(item) {
+  if (item.dataset.trackingType === "cl") {
+    return RANG_NIVEAU_CL[item.dataset.quantite] ?? 0;
+  }
+  return Number(item.dataset.quantite) || 0;
+}
+
 // ============================================
 // PANNEAU D'AJOUT (repliable)
 // ============================================
@@ -60,6 +80,10 @@ btnToggleAjout.addEventListener("click", function () {
     // On ferme : on retire "pret" tout de suite pour que l'animation de fermeture
     // parte bien d'un panneau "coupé" (overflow:hidden), voir style.css
     panneauAjoutStock.classList.remove("pret");
+  } else {
+    // On ouvre : le curseur se place directement dans le champ de recherche du panneau,
+    // pour pouvoir taper tout de suite sans avoir à cliquer dedans en plus
+    rechercheAliment.focus();
   }
 });
 
@@ -162,15 +186,27 @@ document.addEventListener("click", function (e) {
 // FILTRE EMPLACEMENT + RECHERCHE
 // ============================================
 
-// Quand on clique sur un des boutons de filtre (Tous / Frigo / Congélateur / Réserve)...
-filterButtonsStock.forEach(function (bouton) {
+// Tous / Frigo / Congélateur / Réserve / Niveau / Pièces forment un seul groupe à choix
+// unique : cliquer sur n'importe lequel désactive tous les autres, même s'ils ne répondent
+// pas à la même question (emplacement vs type de suivi). Un bouton d'emplacement remet donc
+// le filtre de type à "tous" (et inversement), plutôt que de les combiner.
+const tousLesBoutonsFiltres = document.querySelectorAll(".filters .filter-btn");
+
+tousLesBoutonsFiltres.forEach(function (bouton) {
   bouton.addEventListener("click", function () {
-    // On retire la classe "active" de tous les boutons, puis on l'ajoute uniquement à celui cliqué
-    filterButtonsStock.forEach(function (b) {
+    tousLesBoutonsFiltres.forEach(function (b) {
       b.classList.remove("active");
     });
     this.classList.add("active");
-    emplacementActif = this.dataset.emplacement;
+
+    if (this.dataset.emplacement) {
+      emplacementActif = this.dataset.emplacement;
+      typeActif = "tous";
+    } else {
+      typeActif = this.dataset.type;
+      emplacementActif = "tous";
+    }
+
     appliquerFiltresStock();
   });
 });
@@ -182,7 +218,8 @@ searchInput.addEventListener("input", function () {
 
 // Cette fonction affiche/cache chaque article du stock selon :
 // 1) le filtre d'emplacement actif (tous, frigo, congélateur, réserve)
-// 2) le texte tapé dans la barre de recherche
+// 2) le filtre de type actif (tous types, bouteilles = "cl", pièces = tout le reste)
+// 3) le texte tapé dans la barre de recherche
 function appliquerFiltresStock() {
   const recherche = searchInput.value.toLowerCase().trim();
   const stockItems = listeStock.querySelectorAll(".stock-item");
@@ -191,9 +228,12 @@ function appliquerFiltresStock() {
   stockItems.forEach(function (item) {
     const correspondEmplacement =
       emplacementActif === "tous" || item.dataset.emplacement === emplacementActif;
+    const correspondType =
+      typeActif === "tous" ||
+      (typeActif === "cl" ? item.dataset.trackingType === "cl" : item.dataset.trackingType !== "cl");
     const correspondRecherche = item.dataset.nom.includes(recherche);
 
-    if (correspondEmplacement && correspondRecherche) {
+    if (correspondEmplacement && correspondType && correspondRecherche) {
       item.classList.remove("hidden");
       visibles++;
     } else {
@@ -223,6 +263,19 @@ function trierStock(critere) {
       // Tri alphabétique par nom
       return a.dataset.nom.localeCompare(b.dataset.nom);
     }
+
+    if (critere === "quantite-asc" || critere === "quantite-desc") {
+      // Tri par quantité : les articles "cl" sont convertis en rang 0-3 (voir RANG_NIVEAU_CL)
+      // pour pouvoir être comparés aux articles suivis en nombre (unités/packs)
+      const quantiteA = valeurQuantitePourTri(a);
+      const quantiteB = valeurQuantitePourTri(b);
+      if (quantiteA !== quantiteB) {
+        return critere === "quantite-asc" ? quantiteA - quantiteB : quantiteB - quantiteA;
+      }
+      // À quantité égale, on départage par ordre alphabétique plutôt que de les laisser dans un ordre au hasard
+      return a.dataset.nom.localeCompare(b.dataset.nom);
+    }
+
     // Tri par ancienneté (nombre de jours depuis la dernière mise à jour)
     const joursA = Number(a.dataset.jours);
     const joursB = Number(b.dataset.jours);
@@ -257,6 +310,7 @@ function construireStockItemDOM(item) {
   div.dataset.emplacement = item.emplacement;
   div.dataset.trackingType = item.tracking_type;
   div.dataset.jours = 0; // un article tout juste ajouté a été mis à jour "aujourd'hui" (0 jour)
+  div.dataset.quantite = item.quantite; // nécessaire pour que le tri par quantité fonctionne tout de suite, sans recharger la page
 
   // Selon le type de suivi, on affiche soit une barre de niveau (cl), soit un simple nombre
   const infosHtml =
@@ -270,13 +324,23 @@ function construireStockItemDOM(item) {
     ? `<img src="/${escapeHtml(item.image)}" alt="${nom}" class="stock-item__img" />`
     : `<div class="stock-item__emoji">${emoji}</div>`;
 
+  // Même étiquette d'emplacement que côté serveur (voir views/stock.ejs)
+  const emplacementTexte =
+    item.emplacement === "fg" ? "Frigo" : item.emplacement === "fz" ? "Congélateur" : "Réserve";
+
   // Même structure que les cartes générées côté serveur (voir views/stock.ejs)
   div.innerHTML = `
     ${imageHtml}
     <div class="stock-item__body">
-      <div class="stock-nom-groupe">
-        <span class="stock-nom">${nom}</span>
-        <span class="stock-jours">aujourd'hui</span>
+      <div class="stock-item__infos">
+        <div class="stock-item__ligne stock-item__ligne--nom">
+          <span class="stock-nom">${nom}</span>
+        </div>
+        <div class="stock-item__ligne stock-item__ligne--meta">
+          <span class="stock-emplacement">${emplacementTexte}</span>
+          <span class="stock-separateur">|</span>
+          <span class="stock-jours">aujourd'hui</span>
+        </div>
       </div>
       <div class="stock-editable-zone" data-valeur-actuelle="${quantite}">
         ${infosHtml}
@@ -329,6 +393,9 @@ formAjouterStock.addEventListener("submit", function (event) {
       activerItemSuppression(nouvelItem);
       // Petite classe CSS pour une animation d'apparition
       nouvelItem.classList.add("entree");
+      // On retrie toute la liste (avec le nouvel article dedans) selon le tri actuellement choisi,
+      // au lieu de laisser le nouvel article toujours coincé tout en bas
+      trierStock(sortSelect.value);
 
       // On réinitialise le formulaire pour permettre un nouvel ajout
       rechercheAliment.value = "";
@@ -462,6 +529,7 @@ function fermerEditionEtSauvegarder(item, zone, trackingType) {
 
       // Succès : on met à jour l'affichage avec la nouvelle valeur confirmée par le serveur
       zone.dataset.valeurActuelle = data.quantite;
+      item.dataset.quantite = data.quantite; // pour que le tri par quantité reste juste sans recharger la page
       zone.innerHTML = construireAffichageStatique(data.quantite, trackingType);
       item.classList.remove("en-edition");
 
