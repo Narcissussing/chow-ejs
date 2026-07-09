@@ -21,6 +21,9 @@ const noResultsStock = document.getElementById("noResultsStock"); // message aff
 const btnToggleAjout = document.getElementById("btnToggleAjout"); // bouton pour ouvrir/fermer le panneau d'ajout
 const panneauAjoutStock = document.getElementById("panneauAjoutStock"); // le panneau (formulaire) d'ajout lui-même
 
+const btnVueGrille = document.getElementById("btnVueGrille"); // bouton "vue grille" (cartes)
+const btnVueListe = document.getElementById("btnVueListe"); // bouton "vue liste" (articles empilés)
+
 // Variable qui garde en mémoire quel filtre d'emplacement est actuellement actif ("tous" par défaut)
 let emplacementActif = "tous";
 
@@ -402,6 +405,9 @@ function ouvrirEdition(item, zone, trackingType) {
     // Cas "cl" : on affiche un menu déroulant avec les niveaux possibles
     const select = document.createElement("select");
     select.className = "stock-cl-edit anim-fondu";
+    // Transformé en menu déroulant personnalisé par custom-selects.js (sa liste ouverte est
+    // maintenant posée sur <body>, positionnée par rapport à l'écran : elle ne peut plus se
+    // retrouver cachée sous une carte voisine, voir custom-selects.js et .custom-select__list)
     OPTIONS_CL.forEach(function (option) {
       const opt = document.createElement("option");
       opt.value = option.valeur;
@@ -538,3 +544,29 @@ document.querySelectorAll(".stock-item").forEach(function (item) {
 
 // Trie la liste selon la valeur par défaut du select au chargement
 trierStock(sortSelect.value);
+
+// ============================================
+// BASCULE VUE GRILLE / VUE LISTE
+// ============================================
+// Les deux vues réutilisent exactement le même HTML (généré côté serveur) : seule la classe
+// "vue-liste" sur #listeStock change, et c'est le CSS qui réarrange chaque carte en ligne.
+
+function appliquerVueStock(vue) {
+  listeStock.classList.toggle("vue-liste", vue === "liste");
+  btnVueGrille.classList.toggle("active", vue !== "liste");
+  btnVueListe.classList.toggle("active", vue === "liste");
+}
+
+// On se souvient de la vue choisie précédemment, comme pour le mode magasin de la page Courses
+const vueStockSauvegardee = localStorage.getItem("vueStock") === "liste" ? "liste" : "grille";
+appliquerVueStock(vueStockSauvegardee);
+
+btnVueGrille.addEventListener("click", function () {
+  appliquerVueStock("grille");
+  localStorage.setItem("vueStock", "grille");
+});
+
+btnVueListe.addEventListener("click", function () {
+  appliquerVueStock("liste");
+  localStorage.setItem("vueStock", "liste");
+});

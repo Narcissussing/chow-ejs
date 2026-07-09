@@ -30,6 +30,7 @@ pnpm-debug.log*
 package-lock.json.bak
 
 # Optional (if you don't want to track it)
+.claude/
 # package-lock.json
 
 # ============================================================

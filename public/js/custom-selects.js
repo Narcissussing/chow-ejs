@@ -34,9 +34,12 @@ function enhanceSelect(select) {
 
   button.appendChild(label);
   wrapper.appendChild(button);
-  wrapper.appendChild(list);
   // On place notre menu personnalisé juste après le <select> d'origine dans la page
   select.insertAdjacentElement("afterend", wrapper);
+  // La liste, elle, n'est PAS mise dans wrapper : elle est ajoutée directement sur <body>
+  // uniquement pendant qu'elle est ouverte (voir open()/close()). Ainsi elle n'est jamais
+  // "prisonnière" de la carte qui la contient, et ne peut plus se retrouver cachée sous
+  // une autre carte à côté ou en dessous : elle flotte au-dessus de toute la page.
 
   // Met à jour l'apparence du menu personnalisé pour qu'elle corresponde à l'état actuel du <select> réel
   // (utile si le select est caché, désactivé, ou si sa valeur a changé depuis l'extérieur)
@@ -52,6 +55,7 @@ function enhanceSelect(select) {
     wrapper.classList.remove("custom-select--open");
     button.setAttribute("aria-expanded", "false");
     list.hidden = true;
+    list.remove(); // on la retire complètement de la page tant qu'elle n'est pas utilisée
   }
 
   // Ouvre la liste déroulante (et ferme d'abord tous les autres menus personnalisés déjà ouverts)
@@ -59,6 +63,16 @@ function enhanceSelect(select) {
     if (select.disabled) return;
     closeAllCustomSelects(wrapper);
     renderOptions();
+
+    // On calcule où se trouve le bouton à l'écran, pour placer la liste juste en dessous.
+    // Comme la liste est posée sur <body> (position: fixed dans le CSS), ces coordonnées
+    // sont relatives à la fenêtre, pas à la carte : d'où l'utilisation de getBoundingClientRect().
+    const positionBouton = button.getBoundingClientRect();
+    list.style.top = positionBouton.bottom + 6 + "px";
+    list.style.left = positionBouton.left + "px";
+    list.style.width = positionBouton.width + "px";
+
+    document.body.appendChild(list);
     wrapper.classList.add("custom-select--open");
     button.setAttribute("aria-expanded", "true");
     list.hidden = false;
@@ -112,9 +126,14 @@ function enhanceSelect(select) {
     }
   });
 
-  // Empêche qu'un clic à l'intérieur du menu ne remonte jusqu'au document
-  // (sinon le gestionnaire global plus bas le fermerait immédiatement)
+  // Empêche qu'un clic à l'intérieur du bouton ou de la liste ne remonte jusqu'au document
+  // (sinon le gestionnaire global plus bas le fermerait immédiatement). La liste a besoin de
+  // son propre écouteur puisqu'elle n'est plus rangée à l'intérieur de wrapper (voir plus haut).
   wrapper.addEventListener("click", function (event) {
+    event.stopPropagation();
+  });
+
+  list.addEventListener("click", function (event) {
     event.stopPropagation();
   });
 
@@ -152,9 +171,14 @@ function closeAllCustomSelects(exceptWrapper) {
     if (wrapper === exceptWrapper) return;
     wrapper.classList.remove("custom-select--open");
     const button = wrapper.querySelector(".custom-select__button");
-    const list = wrapper.querySelector(".custom-select__list");
     if (button) button.setAttribute("aria-expanded", "false");
-    if (list) list.hidden = true;
+  });
+
+  // Les listes ouvertes ne sont plus rangées dans leur wrapper (elles sont posées sur <body>
+  // pendant qu'elles sont ouvertes, voir open()) : on les cherche donc directement sur toute la page
+  document.querySelectorAll(".custom-select__list").forEach(function (list) {
+    list.hidden = true;
+    list.remove();
   });
 }
 
@@ -167,6 +191,17 @@ function enhanceSelects(root) {
 document.addEventListener("click", function () {
   closeAllCustomSelects();
 });
+
+// La liste ouverte est positionnée une seule fois (au clic sur le bouton) par rapport à l'écran.
+// Si la page défile pendant qu'elle est ouverte, elle ne suivrait plus le bouton : on la referme
+// simplement dans ce cas, plutôt que de recalculer sa position à chaque pixel défilé.
+window.addEventListener(
+  "scroll",
+  function () {
+    closeAllCustomSelects();
+  },
+  true // phase de "capture" : détecte aussi le défilement à l'intérieur d'une zone scrollable, pas juste toute la page
+);
 
 // Appuyer sur la touche "Échap" ferme aussi tous les menus personnalisés ouverts
 document.addEventListener("keydown", function (event) {

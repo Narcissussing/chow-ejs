@@ -343,6 +343,13 @@ body {
   white-space: nowrap; /* empêche le texte du label de se couper sur deux lignes */
 }
 
+.vue-toggle {
+  /* Boutons "Grille"/"Liste" (page Stock) : réutilise .filter-btn, pas de style propre à dupliquer */
+  display: flex;
+  gap: 8px;
+  margin-left: auto; /* pousse la bascule tout à droite de la ligne recherche/tri */
+}
+
 #sortSelect,
 #selectRecette {
   background: var(--surface);
@@ -1010,11 +1017,49 @@ body.mode-magasin .course-item__shop-slot {
   border-top-right-radius: var(--radius);
 }
 
+/* ---- Vue liste (articles empilés, inspirée d'apps comme Bring!/Out of Milk) ----
+   Même carte, même HTML : seule la classe "vue-liste" sur #listeStock change, le CSS
+   réarrange juste l'image à gauche et le corps à droite au lieu d'empiler en colonne. */
+
+#listeStock.vue-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vue-liste .stock-item {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.vue-liste .stock-item__img,
+.vue-liste .stock-item__emoji {
+  width: 90px;
+  aspect-ratio: auto; /* la hauteur suit celle de la ligne (align-items: stretch) plutôt qu'un ratio fixe */
+  flex-shrink: 0;
+  /* Seuls les coins gauches suivent l'arrondi de la carte (l'image est maintenant à gauche, pas en haut) */
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: 0;
+  border-bottom-left-radius: var(--radius);
+}
+
+.vue-liste .stock-item__emoji {
+  font-size: 2rem;
+}
+
+.vue-liste .stock-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
 .stock-item__body {
   /* Deux colonnes : le bloc nom/emplacement à gauche (prend tout l'espace restant),
      la zone quantité à droite (largeur selon son contenu, centrée sur toute la hauteur) */
   display: grid;
   grid-template-columns: 1fr auto;
+  /* La zone quantité garde son propre padding interne (.stock-editable-zone), mais sans cette
+     marge supplémentaire ici elle touchait directement le bord droit de la carte */
+  padding-right: 14px;
 }
 
 .stock-item__infos {
@@ -1512,6 +1557,10 @@ body.mode-magasin .course-item__shop-slot {
     padding: 0 6px;
   }
 
+  .stock-item__body {
+    padding-right: 8px; /* était 14px sur desktop : moins de place à revendre sur une carte à 2 colonnes */
+  }
+
   .stock-barre-cl {
     /* 50px sur desktop laisse trop peu de place au nom/emplacement sur une carte à 2 colonnes */
     width: 34px;
@@ -1933,16 +1982,17 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .custom-select__list {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
+  /* position: fixed (au lieu de absolute) : la liste est posée sur <body> pendant qu'elle est
+     ouverte (voir custom-selects.js), donc positionnée par rapport à l'écran et pas par rapport
+     à une carte parente. C'est ce qui l'empêche de se retrouver piégée/cachée sous une carte
+     voisine : son "top"/"left" exacts sont calculés en JavaScript juste avant son ouverture. */
+  position: fixed;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 10px;
   list-style: none;
   overflow: hidden;
-  z-index: 80;
+  z-index: 1000; /* bien au-dessus de tout le reste de la page (header compris) */
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 

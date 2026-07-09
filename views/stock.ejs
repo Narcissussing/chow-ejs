@@ -37,6 +37,13 @@
           <option value="recent">Récent</option>
         </select>
       </div>
+
+      <!-- Bascule grille/liste : change juste une classe sur #listeStock (voir stock.js/style.css),
+           la préférence est retenue d'une visite à l'autre grâce à localStorage -->
+      <div class="vue-toggle">
+        <button type="button" id="btnVueGrille" class="filter-btn active" data-vue="grille" title="Vue grille">▦ Grille</button>
+        <button type="button" id="btnVueListe" class="filter-btn" data-vue="liste" title="Vue liste">☰ Liste</button>
+      </div>
     </div>
 
     <!-- Bouton qui ouvre/ferme le panneau d'ajout d'un aliment au stock -->

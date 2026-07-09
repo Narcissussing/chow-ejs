@@ -266,8 +266,9 @@ app.post("/stock/modifier", async (req, res) => {
             return res.status(400).json({ erreur: "Champs requis." });
         }
 
-        // On met à jour la quantité et la date de mise à jour (pour recalculer "il y a X jours")
-        await db.query("UPDATE stock SET quantite = $1, date_maj = NOW() WHERE id = $2", [nouvelleQuantite, idStock]);
+        // On met à jour uniquement la quantité : date_maj ne doit changer que lors de la création
+        // de la ligne de stock ou d'un ajout depuis les courses, pas à chaque simple correction de quantité
+        await db.query("UPDATE stock SET quantite = $1 WHERE id = $2", [nouvelleQuantite, idStock]);
         res.json({ succes: true, quantite: nouvelleQuantite });
     } catch (err) {
         console.log("ERREUR:", err.message);
