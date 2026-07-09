@@ -101,28 +101,32 @@
         <% } %>
 
         <div class="stock-item__body">
-          <div class="stock-nom-groupe">
-            <span class="stock-nom"><%= aliment.nom %></span>
-            <!-- Petite étiquette d'emplacement, même style que la catégorie sur une carte Aliments -->
-            <div class="stock-meta">
+          <div class="stock-item__infos">
+            <div class="stock-item__ligne stock-item__ligne--nom">
+              <span class="stock-nom"><%= aliment.nom %></span>
+            </div>
+            <!-- Emplacement + fraîcheur, séparés par un "|", sur une deuxième ligne sous un filet horizontal -->
+            <div class="stock-item__ligne stock-item__ligne--meta">
               <span class="stock-emplacement">
                 <% if (aliment.emplacement === 'fg') { %>Frigo
                 <% } else if (aliment.emplacement === 'fz') { %>Congélateur
                 <% } else { %>Réserve
                 <% } %>
               </span>
+              <span class="stock-separateur">|</span>
               <!-- Affichage du nombre de jours depuis la dernière mise à jour, avec un texte adapté selon le cas -->
               <% if (aliment.jours_depuis === 0) { %>
-              <span class="stock-jours">· aujourd'hui</span>
+              <span class="stock-jours">aujourd'hui</span>
               <% } else if (aliment.jours_depuis === 1) { %>
-              <span class="stock-jours">· il y a 1 jour</span>
+              <span class="stock-jours">il y a 1 jour</span>
               <% } else { %>
-              <span class="stock-jours">· il y a <%= aliment.jours_depuis %> jours</span>
+              <span class="stock-jours">il y a <%= aliment.jours_depuis %> jours</span>
               <% } %>
             </div>
           </div>
 
-          <!-- Zone cliquable pour modifier la quantité : le contenu affiché dépend du type de suivi de l'aliment -->
+          <!-- Zone cliquable pour modifier la quantité : le contenu affiché dépend du type de suivi de l'aliment.
+               Sépararée du bloc nom/emplacement par un filet vertical, et centrée sur toute la hauteur des deux lignes. -->
           <div class="stock-editable-zone" data-valeur-actuelle="<%= aliment.quantite %>">
             <% if (aliment.tracking_type === 'cl') { %>
             <!--

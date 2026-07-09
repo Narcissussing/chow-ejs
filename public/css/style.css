@@ -1011,43 +1011,63 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .stock-item__body {
-  padding: 14px 16px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  /* Deux colonnes : le bloc nom/emplacement à gauche (prend tout l'espace restant),
+     la zone quantité à droite (largeur selon son contenu, centrée sur toute la hauteur) */
+  display: grid;
+  grid-template-columns: 1fr auto;
 }
 
-.stock-nom-groupe {
+.stock-item__infos {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  min-width: 0; /* permet au nom de tronquer avec "..." plutôt que d'élargir la carte */
+}
+
+.stock-item__ligne--nom {
+  padding: 12px 14px 8px;
 }
 
 .stock-nom {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text);
 }
 
-.stock-meta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
+.stock-item__ligne--meta {
+  /* display:block (au lieu de flex) : emplacement/séparateur/fraîcheur redeviennent un seul flux
+     de texte en ligne, qui peut alors tronquer proprement avec "..." sur les cartes étroites au
+     lieu de déborder sur la carte voisine */
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 8px 14px 12px;
 }
 
 .stock-emplacement {
-  /* Même style que .food-card__category, pour que les deux types de cartes
-     affichent une petite étiquette identique juste sous le nom */
-  font-size: 0.78rem;
+  /* Plus petit que .food-card__category (0.78rem) : ce texte doit tenir sur une seule ligne
+     avec la fraîcheur ("Congélateur | il y a 3 jours") même sur une carte étroite, sans "..." */
+  margin-right: 5px;
+  font-size: 0.66rem;
   font-weight: 500;
   color: var(--accent);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.4px;
+}
+
+.stock-separateur {
+  margin-right: 5px;
+  color: var(--border);
+  font-size: 0.66rem;
 }
 
 .stock-quantite {
+  /* Taille inchangée : seuls l'emplacement et la fraîcheur rétrécissent pour laisser la place */
   font-size: 1.5rem;
   font-weight: 800;
   color: var(--accent-2);
@@ -1055,16 +1075,18 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .stock-jours {
-  font-size: 0.78rem;
+  font-size: 0.66rem;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .stock-editable-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px; /* réduit (était 16px) pour laisser plus de largeur au bloc nom/emplacement */
   cursor: pointer;
-  border-radius: 8px;
   transition: background 0.15s ease;
-  text-align: left; /* aligné à gauche dans la carte (au lieu d'à droite dans l'ancienne mise en page en ligne) */
 }
 
 .stock-editable-zone:hover {
@@ -1458,6 +1480,45 @@ body.mode-magasin .course-item__shop-slot {
   .food-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* cartes plus petites sur mobile */
     gap: 16px;
+  }
+
+  #listeStock {
+    /* Même traitement que .food-grid : cartes plus petites, jamais fait avant ce redesign */
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+  }
+
+  .stock-item__ligne--nom,
+  .stock-item__ligne--meta {
+    padding-left: 8px;
+    padding-right: 4px;
+  }
+
+  .stock-emplacement,
+  .stock-separateur,
+  .stock-jours {
+    /* Encore plus petit que le desktop (0.66rem) : sur une carte à 2 colonnes, la colonne
+       nom/emplacement est étroite et "Congélateur | il y a 3 jours" doit quand même tenir
+       sur une seule ligne sans "..." */
+    font-size: 0.52rem;
+  }
+
+  .stock-emplacement,
+  .stock-separateur {
+    margin-right: 2px;
+  }
+
+  .stock-editable-zone {
+    padding: 0 6px;
+  }
+
+  .stock-barre-cl {
+    /* 50px sur desktop laisse trop peu de place au nom/emplacement sur une carte à 2 colonnes */
+    width: 34px;
+  }
+
+  .stock-quantite {
+    font-size: 1.2rem; /* la règle à 420px ci-dessous la réduit encore, à 1.1rem */
   }
 
   .detail-section {
