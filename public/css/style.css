@@ -1988,10 +1988,6 @@ body.mode-magasin .course-item__shop-slot {
   margin-bottom: 16px;
 }
 
-#btnToggleRecette {
-  margin-bottom: 16px;
-}
-
 .journal-grammes-input {
   width: 95px;
   background: var(--bg);
@@ -2007,79 +2003,6 @@ body.mode-magasin .course-item__shop-slot {
 .journal-grammes-input:focus {
   outline: none;
   border-color: var(--accent);
-}
-
-#panneauCreerRecette #nomRecette {
-  width: 100%;
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 9px 18px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--text);
-  margin-bottom: 14px;
-}
-
-.ligne-ingredient {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-
-.ligne-ingredient-nom {
-  flex: 1;
-  min-width: 140px;
-  font-size: 0.9rem;
-  color: var(--text);
-}
-
-#autocompleteIngredient {
-  position: relative;
-  margin-bottom: 14px;
-}
-
-/* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
-   plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec Stock, Courses, Calories) */
-
-.ingredient-quantite {
-  width: 100px;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  color: var(--text);
-}
-
-.btn-supprimer-ingredient {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  color: var(--text-muted);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
-}
-
-.btn-supprimer-ingredient:active {
-  transform: scale(0.88);
-}
-
-.btn-supprimer-ingredient:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-/* Le style de #formCreerRecette #btnCreerRecette (couleurs, hover, disabled) est défini une seule
-   fois, plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec #btnAjouter) */
-#formCreerRecette #btnCreerRecette {
-  margin-top: 10px; /* seule différence avec #btnAjouter : un peu d'espace au-dessus, sous la liste d'ingrédients */
 }
 
 .journal-section {
@@ -2143,9 +2066,11 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .journal-nom {
-  font-family: var(--font-display);
+  /* Même traitement que .food-card__name / .course-nom / .stock-nom : police de texte courant
+     et poids léger plutôt que la serif en gras des titres */
+  font-family: var(--font-body);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--text);
 }
 
@@ -2209,6 +2134,393 @@ body.mode-magasin .course-item__shop-slot {
 
 .btn-supprimer-dash:active {
   transform: scale(0.85);
+}
+
+/* ---------- ONGLETS JOURNAL / RECETTES (page Calories) ---------- */
+/* Une seule page, deux onglets pilotés en JavaScript (voir calories.js) : pas de rechargement,
+   donc jamais de "retour en arrière" perdu en passant d'une recette à son application au journal. */
+
+/* Pas des boutons d'action comme les pilules de filtre : Journal et Recettes sont chacun une
+   vraie section de la page, donc traités comme des titres qu'on choisit plutôt que des boutons
+   qu'on presse — même famille de police que les titres, gras, soulignés façon .nav__link.actif. */
+.calories-tabs {
+  display: flex;
+  gap: 28px;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1.5px solid var(--border);
+}
+
+.calories-tab-btn {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 900;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.calories-tab-btn:hover {
+  color: var(--accent);
+}
+
+.calories-tab-btn.actif {
+  color: var(--text);
+}
+
+.calories-tab-btn.actif::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -14px;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.calories-tab-panel {
+  display: none;
+}
+
+.calories-tab-panel.actif {
+  display: block;
+}
+
+/* Bouton rond "X" (remplace l'ancien "Tout effacer" en texte) : même langage que
+   .btn-supprimer-dash mais en contour, puisque ce n'est pas l'action principale de la ligne */
+.btn-x-rond {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.btn-x-rond::before {
+  content: "✕";
+  font-size: 0.8rem;
+}
+
+.btn-x-rond:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-x-rond:active {
+  transform: scale(0.9);
+}
+
+/* Caché par défaut (voir calories.js, miseAJourBoutonEnregistrerRecette) : n'apparaît que si
+   le journal du jour a 5 aliments ou plus formant une combinaison pas déjà enregistrée */
+.btn-enregistrer-recette {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent-2);
+  background: rgba(232, 168, 56, 0.12);
+  color: #9c6a12;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: opacity 0.15s ease, transform 0.12s ease;
+}
+
+.btn-enregistrer-recette:hover {
+  opacity: 0.85;
+}
+
+.btn-enregistrer-recette:active {
+  transform: scale(0.97);
+}
+
+/* ---------- RECETTES : deux grilles séparées (Boissons / Plats) ---------- */
+
+.recette-groupe {
+  margin-bottom: 32px;
+}
+
+.recette-groupe:last-child {
+  margin-bottom: 0;
+}
+
+.recette-groupe-titre {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--text);
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid var(--border);
+}
+
+/* .cat-pill reste utilisé par le sélecteur de catégorie du panneau détail (boisson/plat) */
+.cat-pill {
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cat-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cat-pill.actif {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.recette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.recette-card {
+  position: relative;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.recette-card:hover {
+  border-color: var(--accent-2);
+  transform: translateY(-2px);
+}
+
+.recette-emoji {
+  display: block;
+  font-size: 1.7rem;
+  margin-bottom: 8px;
+}
+
+.recette-nom {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 400;
+  color: var(--text);
+  margin: 0 0 6px;
+  line-height: 1.3;
+}
+
+.recette-sub {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* Même bouton/position que .form-supprimer-journal + .btn-supprimer-dash (Journal) : rond
+   rouge avec un "−", posé sur le coin de la carte plutôt qu'un "✕" intégré dans le cadre */
+.btn-supprimer-recette {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.recette-new-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 108px;
+  border: 1.5px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.recette-new-card:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.recette-new-plus {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* ---------- PANNEAU DÉTAIL DE RECETTE (overlay plein écran, pas un onglet) ---------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 200;
+}
+
+.sheet-backdrop.ouvert {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 86vh;
+  margin: 0 auto;
+  max-width: 560px;
+  background: var(--surface);
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+  box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.2);
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
+  z-index: 201;
+  overflow-y: auto;
+  padding: 10px 24px 28px;
+}
+
+.sheet.ouvert {
+  transform: translateY(0);
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  margin: 6px auto 16px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.detail-nom-edit {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.35rem;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px dashed var(--border);
+  padding: 0 0 4px;
+}
+
+.detail-nom-edit:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+
+.detail-header-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sheet-close-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+  background: var(--bg);
+}
+
+.detail-tag-row {
+  margin-bottom: 16px;
+}
+
+.detail-tag-select {
+  display: flex;
+  gap: 8px;
+}
+
+#listeIngredientsRecette {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.ligne-ingredient-recette {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ingredient-nom-recette {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.ingredient-quantite-recette {
+  width: 80px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--text);
+  text-align: center;
+}
+
+.ingredient-quantite-recette:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Même bouton que .btn-supprimer-dash (Journal/Stock/Courses/cartes Recette) : un seul langage
+   visuel pour "retirer cet élément", partout dans l'app plutôt qu'un contour discret ici et un
+   rond rouge ailleurs */
+.ingredient-x-recette {
+  flex-shrink: 0;
+}
+
+#formRecette #btnEnregistrerSheet {
+  width: 100%;
+  margin-top: 12px;
 }
 
 /* ---------- CONTRÔLES PARTAGÉS ---------- */
@@ -2329,6 +2641,28 @@ body.mode-magasin .course-item__shop-slot {
   min-width: 190px;
 }
 
+/* #selectRecette n'affiche qu'une icône (🔁, pas de texte, voir calories.ejs) : un rond compact
+   comme les autres boutons d'action de la ligne plutôt que la largeur prévue pour un nom de recette */
+#selectRecette + .custom-select {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 38px;
+}
+
+#selectRecette + .custom-select .custom-select__button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  text-align: center;
+  background-image: none; /* pas de petite flèche : ça n'a pas de sens à côté d'une seule icône */
+}
+
+#selectRecette + .custom-select .custom-select__label {
+  overflow: visible;
+}
+
 .stock-editable-zone .custom-select {
   min-width: 140px;
 }
@@ -2399,7 +2733,7 @@ body.mode-magasin .course-item__shop-slot {
 
 #btnAjouter,
 #btnAjouterCourse,
-#formCreerRecette #btnCreerRecette {
+#btnEnregistrerSheet {
   background: var(--accent);
   border: none;
   border-radius: 999px;
@@ -2413,7 +2747,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 #btnAjouter:disabled,
-#formCreerRecette #btnCreerRecette:disabled {
+#btnEnregistrerSheet:disabled {
   background: var(--border);
   color: var(--text-muted);
   cursor: not-allowed;
@@ -2421,13 +2755,21 @@ body.mode-magasin .course-item__shop-slot {
 
 #btnAjouter:not(:disabled):hover,
 #btnAjouterCourse:hover,
-#formCreerRecette #btnCreerRecette:not(:disabled):hover {
+#btnEnregistrerSheet:not(:disabled):hover {
   opacity: 0.85;
 }
 
 @media (max-width: 768px) {
   .journal-section {
     padding: 30px 20px 60px;
+  }
+
+  .calories-tabs {
+    gap: 20px;
+  }
+
+  .calories-tab-btn {
+    font-size: 1.1rem;
   }
 
   .journal-totaux {

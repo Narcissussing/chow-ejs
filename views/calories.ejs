@@ -9,6 +9,13 @@
   const totalLipides = journal.reduce((sum, j) => sum + Number(j.lipides_calc), 0);
   // On trie les aliments par ordre alphabétique pour la liste de suggestions d'ingrédients (recette)
   const alimentsTries = [...aliments].sort((a, b) => a.nom.localeCompare(b.nom));
+  // Les deux catégories de recette sont un ensemble fermé (voir le sélecteur du panneau détail,
+  // qui n'offre que ces deux boutons) : on les fixe ici plutôt que de les déduire des recettes
+  // existantes, sinon une catégorie sans aucune recette n'aurait jamais sa propre section.
+  const CATEGORIES_RECETTE = [
+    { valeur: "boisson", icone: "🍨", label: "Boissons" },
+    { valeur: "plat", icone: "🍽️", label: "Plats" }
+  ];
 %>
 
 <main>
@@ -37,88 +44,160 @@
       </div>
     </div>
 
-    <div class="journal-actions-row">
-      <!-- Champ de recherche + liste de suggestions pour ajouter instantanément un aliment au journal -->
-      <div id="autocompleteCalories">
-        <input type="text" id="rechercheAlimentCalories" placeholder="Rechercher un aliment..." autocomplete="off" />
-        <ul id="listeAlimentsCalories">
-          <% aliments.forEach(function(aliment) { %>
-          <li data-id="<%= aliment.id %>">
-            <%= aliment.emoji %> <%= aliment.nom %>
-          </li>
+    <!-- Journal et Recettes sont deux onglets de la même page (pas des routes séparées) :
+         changer d'onglet ne recharge rien, voir calories.js -->
+    <div class="calories-tabs">
+      <button type="button" class="calories-tab-btn actif" data-tab="journal">Journal</button>
+      <button type="button" class="calories-tab-btn" data-tab="recettes">Recettes</button>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- ONGLET JOURNAL -->
+    <!-- ============================================ -->
+    <div class="calories-tab-panel actif" data-panel="journal">
+
+      <div class="journal-actions-row">
+        <!-- Champ de recherche + liste de suggestions pour ajouter instantanément un aliment au journal -->
+        <div id="autocompleteCalories">
+          <input type="text" id="rechercheAlimentCalories" placeholder="Rechercher un aliment..." autocomplete="off" />
+          <ul id="listeAlimentsCalories">
+            <% aliments.forEach(function(aliment) { %>
+            <li data-id="<%= aliment.id %>">
+              <%= aliment.emoji %> <%= aliment.nom %>
+            </li>
+            <% }) %>
+          </ul>
+        </div>
+
+        <!-- Menu déroulant pour appliquer directement une recette (remplace le journal du jour par ses ingrédients).
+             Icône plutôt que texte : "Recette" se lisait comme un doublon de l'onglet "Recettes"
+             juste au-dessus. aria-label garde l'action compréhensible pour les lecteurs d'écran
+             malgré l'absence de texte visible (voir custom-selects.js). -->
+        <select id="selectRecette" aria-label="Remplacer le journal du jour avec une recette">
+          <option value="">🔁</option>
+          <% recettes.forEach(function(recette) { %>
+          <option value="<%= recette.id %>"><%= recette.nom %></option>
           <% }) %>
-        </ul>
+        </select>
+
+        <!-- Bouton rond "X" (plutôt qu'un texte "Tout effacer") : même langage que les autres
+             icônes de suppression de l'app -->
+        <button type="button" id="btnToutEffacer" class="btn-x-rond" title="Tout effacer">Tout effacer</button>
       </div>
 
-      <!-- Menu déroulant pour appliquer directement une recette (remplace le journal du jour par ses ingrédients) -->
-      <select id="selectRecette">
-        <option value="">Recette</option>
-        <% recettes.forEach(function(recette) { %>
-        <option value="<%= recette.id %>"><%= recette.nom %></option>
-        <% }) %>
-      </select>
+      <!-- Caché par défaut : n'apparaît que si le journal du jour a 5 aliments ou plus ET que
+           cette combinaison exacte ne correspond à aucune recette déjà enregistrée (voir calories.js) -->
+      <button type="button" id="btnEnregistrerRecette" class="btn-enregistrer-recette hidden">★ Enregistrer comme recette</button>
 
-      <button type="button" id="btnToutEffacer" class="filter-btn">Tout effacer</button>
-    </div>
-
-    <!-- Bouton qui ouvre/ferme le panneau de création d'une nouvelle recette -->
-    <button type="button" id="btnToggleRecette" class="filter-btn">+ Créer une recette</button>
-
-    <!-- Panneau fermé par défaut, ouvert/fermé en cliquant sur le bouton ci-dessus.
-         La classe "ouvert" (ajoutée/retirée par calories.js) anime la hauteur du panneau (voir style.css) -->
-    <div id="panneauCreerRecette" class="panneau-ajout">
-      <div class="panneau-ajout__piege">
-      <div class="panneau-ajout__interieur">
-        <form id="formCreerRecette">
-          <input type="text" id="nomRecette" placeholder="Nom de la recette" required />
-
-          <div id="autocompleteIngredient">
-            <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
-            <ul id="listeIngredientsRecherche">
-              <% alimentsTries.forEach(function(aliment) { %>
-              <li data-id="<%= aliment.id %>"><%= aliment.emoji %> <%= aliment.nom %></li>
-              <% }) %>
-            </ul>
+      <!-- Liste des aliments déjà mangés aujourd'hui, générée côté serveur -->
+      <div id="listeJournal">
+        <% journal.forEach(function(entree) { %>
+        <!-- Les valeurs nutritionnelles sont stockées dans des attributs data-*, réutilisées par calories.js
+             pour recalculer les totaux sans avoir à redemander ces infos au serveur -->
+        <div class="journal-item carte-article" data-id="<%= entree.id %>" data-food-id="<%= entree.food_id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>">
+          <div class="journal-nom-groupe">
+            <span class="journal-nom"><%= entree.emoji %> <%= entree.nom %></span>
+            <span class="journal-categorie"><%= entree.categorie %></span>
           </div>
-
-          <!-- Les lignes d'ingrédients ajoutées à la recette sont créées dynamiquement en JavaScript ici -->
-          <div id="listeIngredients"></div>
-
-          <button type="submit" id="btnCreerRecette">Créer la recette</button>
-        </form>
+          <div class="journal-valeurs">
+            <!-- Champ modifiable : changer la quantité en grammes met à jour les calories en direct (voir calories.js) -->
+            <input type="number" class="journal-grammes-input" value="<%= parseFloat(entree.quantite_g) %>" min="1" />
+            <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
+          </div>
+          <!-- Formulaire de suppression, intercepté par le JavaScript pour l'envoyer sans recharger la page -->
+          <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
+            <input type="hidden" name="idEntree" value="<%= entree.id %>" />
+            <button type="submit" class="btn-supprimer-dash">Supprimer</button>
+          </form>
+        </div>
+        <% }) %>
       </div>
-      </div>
+
+      <!-- Message affiché uniquement quand le journal du jour est vide -->
+      <p class="no-results hidden" id="noResultsJournal">Rien d'ajouté aujourd'hui.</p>
     </div>
 
-    <!-- Liste des aliments déjà mangés aujourd'hui, générée côté serveur -->
-    <div id="listeJournal">
-      <% journal.forEach(function(entree) { %>
-      <!-- Les valeurs nutritionnelles sont stockées dans des attributs data-*, réutilisées par calories.js
-           pour recalculer les totaux sans avoir à redemander ces infos au serveur -->
-      <div class="journal-item carte-article" data-id="<%= entree.id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>">
-        <div class="journal-nom-groupe">
-          <span class="journal-nom"><%= entree.emoji %> <%= entree.nom %></span>
-          <span class="journal-categorie"><%= entree.categorie %></span>
+    <!-- ============================================ -->
+    <!-- ONGLET RECETTES -->
+    <!-- ============================================ -->
+    <div class="calories-tab-panel" data-panel="recettes">
+
+      <!-- Deux blocs bien séparés (pas un simple filtre) : les boissons et les plats ne se
+           mélangent jamais visuellement, même dans la vue par défaut -->
+      <% CATEGORIES_RECETTE.forEach(function(cat) { %>
+      <section class="recette-groupe">
+        <h3 class="recette-groupe-titre"><%= cat.icone %> <%= cat.label %></h3>
+        <div class="recette-grid" data-grid-cat="<%= cat.valeur %>">
+          <% recettes.filter(function(r) { return r.categorie === cat.valeur; }).forEach(function(recette) { %>
+          <div class="recette-card" data-id="<%= recette.id %>" data-cat="<%= recette.categorie %>">
+            <!-- Pas de bouton "éditer" séparé : toucher la carte ouvre déjà le panneau de
+                 modification. Seule la suppression a besoin de sa propre icône, dans le même
+                 style que .btn-supprimer-dash (Journal/Stock/Courses) : rond rouge avec un "−",
+                 posé sur le coin de la carte. -->
+            <button type="button" class="btn-supprimer-dash btn-supprimer-recette" title="Supprimer"></button>
+            <span class="recette-emoji"><%= cat.icone %></span>
+            <p class="recette-nom"><%= recette.nom %></p>
+            <div class="recette-sub"><span><%= recette.nb_ingredients %> ingr.</span><span><%= recette.kcal_total %> kcal</span></div>
+          </div>
+          <% }) %>
+          <div class="recette-card recette-new-card btn-nouvelle-recette" data-nouvelle-cat="<%= cat.valeur %>">
+            <span class="recette-new-plus">+</span>
+            <span>Nouvelle recette</span>
+          </div>
         </div>
-        <div class="journal-valeurs">
-          <!-- Champ modifiable : changer la quantité en grammes met à jour les calories en direct (voir calories.js) -->
-          <input type="number" class="journal-grammes-input" value="<%= parseFloat(entree.quantite_g) %>" min="1" />
-          <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
-        </div>
-        <!-- Formulaire de suppression, intercepté par le JavaScript pour l'envoyer sans recharger la page -->
-        <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
-          <input type="hidden" name="idEntree" value="<%= entree.id %>" />
-          <button type="submit" class="btn-supprimer-dash">Supprimer</button>
-        </form>
-      </div>
+      </section>
       <% }) %>
     </div>
 
-    <!-- Message affiché uniquement quand le journal du jour est vide -->
-    <p class="no-results hidden" id="noResultsJournal">Rien d'ajouté aujourd'hui.</p>
-
-    <script src="/js/calories.js" defer></script>
   </div>
 </main>
+
+<!-- ============================================ -->
+<!-- PANNEAU DÉTAIL D'UNE RECETTE (overlay, pas un onglet) -->
+<!-- ============================================ -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <form id="formRecette">
+    <input type="hidden" id="recetteId" value="" />
+
+    <div class="detail-header">
+      <input type="text" id="recetteNom" class="detail-nom-edit" placeholder="Nom de la recette" required />
+      <div class="detail-header-actions">
+        <!-- Supprimer une recette se fait uniquement depuis le "✕" de sa carte (grille Recettes) :
+             pas de deuxième bouton de suppression ici, pour ne jamais avoir deux "✕" à distinguer -->
+        <button type="button" id="sheetCloseBtn" class="sheet-close-btn" title="Fermer">✕</button>
+      </div>
+    </div>
+
+    <div class="detail-tag-row">
+      <div class="detail-tag-select" id="recetteCategoriePicker">
+        <button type="button" class="cat-pill actif" data-valeur="boisson">🍨 Boisson</button>
+        <button type="button" class="cat-pill" data-valeur="plat">🍽️ Plat</button>
+      </div>
+    </div>
+
+    <div id="listeIngredientsRecette"></div>
+
+    <div id="autocompleteIngredient">
+      <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
+      <ul id="listeIngredientsRecherche">
+        <% alimentsTries.forEach(function(aliment) { %>
+        <li data-id="<%= aliment.id %>" data-emoji="<%= aliment.emoji %>"><%= aliment.emoji %> <%= aliment.nom %></li>
+        <% }) %>
+      </ul>
+    </div>
+
+    <button type="submit" id="btnEnregistrerSheet">Enregistrer</button>
+  </form>
+</div>
+
+<script>
+  // Copie des recettes (avec leurs food_ids) disponible côté client, pour savoir si la
+  // combinaison actuellement notée dans le journal correspond déjà à une recette existante
+  // (voir miseAJourBoutonEnregistrerRecette dans calories.js), sans redemander au serveur.
+  window.RECETTES = <%- JSON.stringify(recettes) %>;
+</script>
+<script src="/js/calories.js" defer></script>
 
 <%- include('partials/footer') %>

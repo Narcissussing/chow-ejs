@@ -3,7 +3,11 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- maximum-scale=1 empêche Safari iOS de zoomer automatiquement sur un champ de saisie dont
+       le texte fait moins de 16px (tous nos champs, ex: 0.85rem) : sans ça, l'app "sautait"
+       à chaque tap dans un champ. user-scalable=1 laisse quand même le pincer-zoomer manuel
+       fonctionner (accessibilité), seul le zoom automatique au focus est bloqué. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=1" />
   <!-- Le titre de l'onglet change selon la page grâce à la variable "title" passée par index.js -->
   <title>Chow — <%= title %></title>
   <!-- Chargement des polices d'écriture personnalisées (Google Fonts) -->

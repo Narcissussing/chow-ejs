@@ -13,15 +13,10 @@ const totalProteinesEl = document.getElementById("totalProteines"); // affichage
 const totalLipidesEl = document.getElementById("totalLipides"); // affichage du total de lipides
 
 const selectRecette = document.getElementById("selectRecette"); // menu déroulant pour choisir une recette
-const btnToutEffacer = document.getElementById("btnToutEffacer"); // bouton "Tout effacer"
+const btnToutEffacer = document.getElementById("btnToutEffacer"); // bouton rond "X" pour tout effacer
+const btnEnregistrerRecette = document.getElementById("btnEnregistrerRecette"); // bouton "Enregistrer comme recette" (conditionnel)
 
-const btnToggleRecette = document.getElementById("btnToggleRecette"); // bouton pour ouvrir/fermer le panneau de création de recette
-const panneauCreerRecette = document.getElementById("panneauCreerRecette"); // panneau (formulaire) de création de recette
-const formCreerRecette = document.getElementById("formCreerRecette"); // le formulaire lui-même
-const listeIngredients = document.getElementById("listeIngredients"); // liste des ingrédients ajoutés à la nouvelle recette
-const rechercheIngredient = document.getElementById("rechercheIngredient"); // champ de recherche d'ingrédient pour la recette
-const listeIngredientsRecherche = document.getElementById("listeIngredientsRecherche"); // suggestions d'ingrédients
-const nomRecette = document.getElementById("nomRecette"); // champ texte pour le nom de la nouvelle recette
+const ICONE_CATEGORIE = { boisson: "🍨", plat: "🍽️" };
 
 // Petite fonction de sécurité : transforme les caractères spéciaux en leur équivalent HTML,
 // pour éviter d'injecter du code HTML/JS dangereux dans la page (faille XSS)
@@ -32,6 +27,23 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+// ============================================
+// ONGLETS (Journal / Recettes) — un seul JavaScript, aucune navigation
+// ============================================
+
+document.querySelectorAll(".calories-tab-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    document.querySelectorAll(".calories-tab-btn").forEach(function (b) { b.classList.remove("actif"); });
+    document.querySelectorAll(".calories-tab-panel").forEach(function (p) { p.classList.remove("actif"); });
+    btn.classList.add("actif");
+    document.querySelector('.calories-tab-panel[data-panel="' + btn.dataset.tab + '"]').classList.add("actif");
+  });
+});
+
+function ouvrirOngletJournal() {
+  document.querySelector('.calories-tab-btn[data-tab="journal"]').click();
 }
 
 // ============================================
@@ -124,10 +136,63 @@ function recalculerTotaux() {
 
   // On affiche le message "vide" seulement si aucune entrée n'est présente
   noResultsJournal.classList.toggle("hidden", listeJournal.querySelectorAll(".journal-item").length > 0);
+
+  miseAJourBoutonEnregistrerRecette();
 }
 
 // ============================================
-// CONSTRUCTION D'UNE ENTRÉE
+// "ENREGISTRER COMME RECETTE" — visible seulement si le journal a 5 aliments ou plus
+// ET que cette combinaison exacte ne correspond à aucune recette déjà enregistrée
+// ============================================
+
+// Renvoie l'ensemble (sans doublon) des food_id actuellement dans le journal du jour
+function foodIdsDuJournal() {
+  const ids = Array.from(listeJournal.querySelectorAll(".journal-item")).map(function (item) {
+    return item.dataset.foodId;
+  });
+  return [...new Set(ids)];
+}
+
+// Deux combinaisons sont "les mêmes" si elles contiennent exactement les mêmes aliments,
+// peu importe l'ordre ou les grammages
+function memeCombinaison(idsA, idsB) {
+  if (idsA.length !== idsB.length) return false;
+  const triA = [...idsA].sort();
+  const triB = [...idsB].sort();
+  return triA.every(function (id, i) { return id === triB[i]; });
+}
+
+function miseAJourBoutonEnregistrerRecette() {
+  const idsJournal = foodIdsDuJournal();
+
+  if (idsJournal.length < 5) {
+    btnEnregistrerRecette.classList.add("hidden");
+    return;
+  }
+
+  const dejaEnregistree = window.RECETTES.some(function (recette) {
+    return memeCombinaison(idsJournal, recette.food_ids);
+  });
+
+  btnEnregistrerRecette.classList.toggle("hidden", dejaEnregistree);
+}
+
+btnEnregistrerRecette.addEventListener("click", function () {
+  // Ouvre le panneau de recette vide, mais pré-rempli avec les aliments du journal du jour :
+  // c'est le même formulaire que "Nouvelle recette", juste avec un point de départ différent
+  const ingredients = Array.from(listeJournal.querySelectorAll(".journal-item")).map(function (item) {
+    return {
+      food_id: item.dataset.foodId,
+      nom: item.querySelector(".journal-nom").textContent.trim(),
+      quantite_g: item.querySelector(".journal-grammes-input").value
+    };
+  });
+
+  ouvrirSheet({ ingredients: ingredients });
+});
+
+// ============================================
+// CONSTRUCTION D'UNE ENTRÉE DE JOURNAL
 // ============================================
 
 // Construit dynamiquement le bloc HTML d'une entrée du journal, à partir des données reçues du serveur
@@ -145,6 +210,7 @@ function construireJournalItemDOM(entree) {
 
   // On stocke les valeurs nutritionnelles dans les attributs data-*, pour pouvoir recalculer les totaux facilement
   div.dataset.id = entree.id;
+  div.dataset.foodId = entree.food_id;
   div.dataset.kcal = entree.calories_calc;
   div.dataset.glucides = entree.glucides_calc;
   div.dataset.proteines = entree.proteines_calc;
@@ -265,7 +331,7 @@ function activerSuppression(item) {
 }
 
 // ============================================
-// RECETTES — ajout instantané via dropdown
+// RECETTES — application via dropdown (remplace le journal du jour)
 // ============================================
 
 // Quand on choisit une recette dans le menu déroulant, on remplace tout le journal du jour par ses ingrédients
@@ -336,154 +402,6 @@ btnToutEffacer.addEventListener("click", function () {
 });
 
 // ============================================
-// PANNEAU CRÉER UNE RECETTE
-// ============================================
-
-// Ouvre/ferme le panneau permettant de créer une nouvelle recette.
-// La classe "ouvert" pilote une vraie animation de hauteur (voir .panneau-ajout dans style.css),
-// au lieu d'un simple show/hide instantané.
-btnToggleRecette.addEventListener("click", function () {
-  const estOuvert = panneauCreerRecette.classList.toggle("ouvert");
-  if (!estOuvert) {
-    // On ferme : on retire "pret" tout de suite pour que l'animation de fermeture
-    // parte bien d'un panneau "coupé" (overflow:hidden), voir style.css
-    panneauCreerRecette.classList.remove("pret");
-  }
-});
-
-// Une fois l'animation d'ouverture terminée, on ajoute "pret" : le panneau repasse en overflow:visible,
-// pour que la liste de suggestions d'ingrédients (qui dépasse volontairement sous le panneau) redevienne visible
-panneauCreerRecette.addEventListener("transitionend", function (event) {
-  if (event.propertyName === "grid-template-rows" && panneauCreerRecette.classList.contains("ouvert")) {
-    panneauCreerRecette.classList.add("pret");
-  }
-});
-
-// Crée une ligne représentant un ingrédient dans le formulaire de création de recette
-// (nom de l'aliment + champ pour la quantité en grammes + bouton pour le retirer)
-function creerLigneIngredient(foodId, foodNom) {
-  const ligne = document.createElement("div");
-  ligne.className = "ligne-ingredient";
-  ligne.dataset.foodId = foodId;
-
-  const nomSpan = document.createElement("span");
-  nomSpan.className = "ligne-ingredient-nom";
-  nomSpan.textContent = foodNom;
-
-  const champQuantite = document.createElement("input");
-  champQuantite.type = "number";
-  champQuantite.className = "ingredient-quantite";
-  champQuantite.placeholder = "Grammes";
-  champQuantite.min = "1";
-
-  const btnSupprimer = document.createElement("button");
-  btnSupprimer.type = "button";
-  btnSupprimer.textContent = "✕";
-  btnSupprimer.className = "btn-supprimer-ingredient";
-  btnSupprimer.addEventListener("click", function () {
-    ligne.remove();
-  });
-
-  ligne.appendChild(nomSpan);
-  ligne.appendChild(champQuantite);
-  ligne.appendChild(btnSupprimer);
-
-  return ligne;
-}
-
-// Au départ, la liste de suggestions d'ingrédients est cachée
-listeIngredientsRecherche.hidden = true;
-const itemsIngredientsRecherche = listeIngredientsRecherche.querySelectorAll("li");
-
-// Quand on tape dans le champ de recherche d'ingrédient (pour la recette)...
-rechercheIngredient.addEventListener("input", function () {
-  const recherche = this.value.toLowerCase();
-
-  if (recherche === "") {
-    listeIngredientsRecherche.hidden = true;
-    return;
-  }
-
-  listeIngredientsRecherche.hidden = false;
-
-  // On affiche tous les ingrédients qui contiennent le texte tapé. Aucune limite de nombre :
-  // si la liste est longue, elle défile (voir max-height dans style.css)
-  itemsIngredientsRecherche.forEach(function (item) {
-    item.hidden = !item.textContent.toLowerCase().includes(recherche);
-  });
-});
-
-// Cliquer sur une suggestion ajoute une nouvelle ligne d'ingrédient au formulaire de recette
-itemsIngredientsRecherche.forEach(function (item) {
-  item.addEventListener("click", function () {
-    const foodId = this.dataset.id;
-    const foodNom = this.textContent.trim();
-
-    const ligne = creerLigneIngredient(foodId, foodNom);
-    listeIngredients.appendChild(ligne);
-    ligne.querySelector(".ingredient-quantite").focus(); // le curseur va directement dans le champ quantité
-
-    rechercheIngredient.value = "";
-    listeIngredientsRecherche.hidden = true;
-  });
-});
-
-// Cliquer en dehors referme la liste de suggestions d'ingrédients
-document.addEventListener("click", function (e) {
-  if (!document.getElementById("autocompleteIngredient").contains(e.target)) {
-    listeIngredientsRecherche.hidden = true;
-  }
-});
-
-// Quand on valide le formulaire de création de recette...
-formCreerRecette.addEventListener("submit", function (event) {
-  event.preventDefault();
-
-  const nom = nomRecette.value.trim();
-  const lignes = listeIngredients.querySelectorAll(".ligne-ingredient");
-  const ingredients = [];
-
-  // On construit la liste des ingrédients valides (avec un id d'aliment ET une quantité renseignée)
-  lignes.forEach(function (ligne) {
-    const foodId = ligne.dataset.foodId;
-    const quantite = ligne.querySelector(".ingredient-quantite").value;
-    if (foodId && quantite) {
-      ingredients.push({ food_id: foodId, quantite_g: quantite });
-    }
-  });
-
-  if (!nom || ingredients.length === 0) {
-    alert("Ajoute un nom et au moins un ingrédient valide.");
-    return;
-  }
-
-  fetch("/recettes/creer", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nom: nom, ingredients: ingredients })
-  })
-    .then(function (response) { return response.json(); })
-    .then(function (data) {
-      if (data.erreur) {
-        alert(data.erreur);
-        return;
-      }
-
-      // On ajoute directement la nouvelle recette dans le menu déroulant, sans recharger la page
-      const option = document.createElement("option");
-      option.value = data.recette.id;
-      option.textContent = data.recette.nom;
-      selectRecette.appendChild(option);
-
-      // On réinitialise le formulaire de création de recette
-      nomRecette.value = "";
-      listeIngredients.innerHTML = "";
-      panneauCreerRecette.classList.remove("ouvert");
-      panneauCreerRecette.classList.remove("pret");
-    });
-});
-
-// ============================================
 // ACTIVATION DES ENTRÉES EXISTANTES AU CHARGEMENT
 // ============================================
 
@@ -494,3 +412,316 @@ listeJournal.querySelectorAll(".journal-item").forEach(function (item) {
 
 // Et on calcule les totaux dès le chargement de la page
 recalculerTotaux();
+
+// ============================================
+// ONGLET RECETTES — deux grilles séparées (Boissons / Plats), création/édition/suppression
+// ============================================
+
+// Une grille par catégorie plutôt qu'une seule grille filtrable : boissons et plats ne se
+// mélangent jamais, même dans la vue par défaut (voir calories.ejs)
+function grilleDeCategorie(categorie) {
+  return document.querySelector('.recette-grid[data-grid-cat="' + categorie + '"]');
+}
+
+// Construit une carte de recette pour la grille (utilisé après création/édition, sans recharger la page)
+function construireRecetteCardDOM(recette) {
+  const div = document.createElement("div");
+  div.className = "recette-card";
+  div.dataset.id = recette.id;
+  div.dataset.cat = recette.categorie;
+
+  const icone = ICONE_CATEGORIE[recette.categorie] || "🍽️";
+
+  div.innerHTML = `
+    <button type="button" class="btn-supprimer-dash btn-supprimer-recette" title="Supprimer"></button>
+    <span class="recette-emoji">${icone}</span>
+    <p class="recette-nom">${escapeHtml(recette.nom)}</p>
+    <div class="recette-sub"><span>${recette.nb_ingredients} ingr.</span><span>${recette.kcal_total} kcal</span></div>
+  `;
+
+  activerCarteRecette(div);
+  return div;
+}
+
+// Toucher la carte ouvre son détail (édition) ; le "−" a sa propre action (suppression),
+// donc stopPropagation empêche le clic dessus de déclencher aussi l'ouverture du détail
+function activerCarteRecette(card) {
+  card.addEventListener("click", function (e) {
+    if (e.target.closest(".btn-supprimer-recette")) return;
+    ouvrirSheetEdition(card.dataset.id);
+  });
+
+  card.querySelector(".btn-supprimer-recette").addEventListener("click", function (e) {
+    e.stopPropagation();
+    supprimerRecette(card.dataset.id);
+  });
+}
+
+document.querySelectorAll(".recette-card:not(.recette-new-card)").forEach(activerCarteRecette);
+
+// Une carte "+ Nouvelle recette" par grille : ouvre le panneau avec la catégorie de cette
+// section déjà choisie, plutôt que de laisser deviner dans quelle grille la carte va atterrir
+document.querySelectorAll(".btn-nouvelle-recette").forEach(function (bouton) {
+  bouton.addEventListener("click", function () {
+    ouvrirSheet({ categorie: bouton.dataset.nouvelleCat });
+  });
+});
+
+// Supprime une recette après confirmation, retire sa carte et son option du menu déroulant
+function supprimerRecette(idRecette) {
+  if (!confirm("Supprimer cette recette ?")) return;
+
+  fetch("/recettes/" + idRecette + "/supprimer", { method: "POST" })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (data.erreur) {
+        alert(data.erreur);
+        return;
+      }
+
+      const card = document.querySelector('.recette-card[data-id="' + idRecette + '"]');
+      if (card) card.remove();
+
+      const option = selectRecette.querySelector('option[value="' + idRecette + '"]');
+      if (option) option.remove();
+      selectRecette.dispatchEvent(new Event("custom-select:update"));
+
+      window.RECETTES = window.RECETTES.filter(function (r) { return String(r.id) !== String(idRecette); });
+      miseAJourBoutonEnregistrerRecette();
+
+      fermerSheet();
+    });
+}
+
+// ============================================
+// PANNEAU DÉTAIL (overlay) — création, édition, ou pré-remplissage depuis le journal
+// ============================================
+
+const sheet = document.getElementById("sheet");
+const sheetBackdrop = document.getElementById("sheetBackdrop");
+const sheetCloseBtn = document.getElementById("sheetCloseBtn");
+const formRecette = document.getElementById("formRecette");
+const recetteIdInput = document.getElementById("recetteId");
+const recetteNomInput = document.getElementById("recetteNom");
+const recetteCategoriePicker = document.getElementById("recetteCategoriePicker");
+const listeIngredientsRecette = document.getElementById("listeIngredientsRecette");
+
+recetteCategoriePicker.querySelectorAll(".cat-pill").forEach(function (pill) {
+  pill.addEventListener("click", function () {
+    recetteCategoriePicker.querySelectorAll(".cat-pill").forEach(function (p) { p.classList.remove("actif"); });
+    pill.classList.add("actif");
+  });
+});
+
+function categorieChoisie() {
+  const actif = recetteCategoriePicker.querySelector(".cat-pill.actif");
+  return actif ? actif.dataset.valeur : "plat";
+}
+
+function choisirCategorie(categorie) {
+  recetteCategoriePicker.querySelectorAll(".cat-pill").forEach(function (p) {
+    p.classList.toggle("actif", p.dataset.valeur === categorie);
+  });
+}
+
+// Ajoute une ligne d'ingrédient éditable dans le panneau (nom, grammage, bouton de suppression)
+function ajouterLigneIngredient(foodId, nom, quantiteG) {
+  // Si l'ingrédient est déjà dans la liste, on ne le duplique pas : on remet juste le focus sur sa quantité
+  const existante = listeIngredientsRecette.querySelector('.ligne-ingredient-recette[data-food-id="' + foodId + '"]');
+  if (existante) {
+    existante.querySelector(".ingredient-quantite-recette").focus();
+    return;
+  }
+
+  const ligne = document.createElement("div");
+  ligne.className = "ligne-ingredient-recette";
+  ligne.dataset.foodId = foodId;
+
+  ligne.innerHTML = `
+    <span class="ingredient-nom-recette">${escapeHtml(nom)}</span>
+    <input type="number" class="ingredient-quantite-recette" min="1" placeholder="g" value="${quantiteG || ""}" />
+    <button type="button" class="btn-supprimer-dash ingredient-x-recette" title="Retirer"></button>
+  `;
+
+  ligne.querySelector(".ingredient-x-recette").addEventListener("click", function () {
+    ligne.remove();
+  });
+
+  listeIngredientsRecette.appendChild(ligne);
+}
+
+// Réinitialise le panneau : formulaire vide, prêt pour une nouvelle recette (ou pré-rempli, voir ouvrirSheet)
+function reinitialiserSheet() {
+  recetteIdInput.value = "";
+  recetteNomInput.value = "";
+  choisirCategorie("plat");
+  listeIngredientsRecette.innerHTML = "";
+}
+
+// Ouvre le panneau en mode "création" (vide, ou pré-rempli avec des ingrédients de départ —
+// utilisé par "Nouvelle recette" [aucun ingrédient, catégorie de la grille cliquée] et par
+// "Enregistrer comme recette" [ingrédients du journal])
+function ouvrirSheet(options) {
+  reinitialiserSheet();
+  if (options.categorie) choisirCategorie(options.categorie);
+  (options.ingredients || []).forEach(function (ing) {
+    ajouterLigneIngredient(ing.food_id, ing.nom, ing.quantite_g);
+  });
+  afficherSheet();
+  recetteNomInput.focus();
+}
+
+// Ouvre le panneau en mode "édition" : va chercher la recette complète au serveur, puis pré-remplit tout
+function ouvrirSheetEdition(idRecette) {
+  fetch("/recettes/" + idRecette)
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (data.erreur) {
+        alert(data.erreur);
+        return;
+      }
+
+      reinitialiserSheet();
+      recetteIdInput.value = data.recette.id;
+      recetteNomInput.value = data.recette.nom;
+      choisirCategorie(data.recette.categorie);
+      data.ingredients.forEach(function (ing) {
+        ajouterLigneIngredient(ing.food_id, `${ing.emoji} ${ing.nom}`, parseFloat(ing.quantite_g));
+      });
+      afficherSheet();
+    });
+}
+
+function afficherSheet() {
+  sheet.classList.add("ouvert");
+  sheetBackdrop.classList.add("ouvert");
+}
+
+function fermerSheet() {
+  sheet.classList.remove("ouvert");
+  sheetBackdrop.classList.remove("ouvert");
+}
+
+sheetCloseBtn.addEventListener("click", fermerSheet);
+sheetBackdrop.addEventListener("click", fermerSheet);
+
+// ---------- Recherche d'ingrédient à ajouter (dans le panneau) ----------
+
+const rechercheIngredient = document.getElementById("rechercheIngredient");
+const listeIngredientsRecherche = document.getElementById("listeIngredientsRecherche");
+listeIngredientsRecherche.hidden = true;
+const itemsIngredientsRecherche = listeIngredientsRecherche.querySelectorAll("li");
+
+rechercheIngredient.addEventListener("input", function () {
+  const recherche = this.value.toLowerCase();
+
+  if (recherche === "") {
+    listeIngredientsRecherche.hidden = true;
+    return;
+  }
+
+  listeIngredientsRecherche.hidden = false;
+
+  itemsIngredientsRecherche.forEach(function (item) {
+    item.hidden = !item.textContent.toLowerCase().includes(recherche);
+  });
+});
+
+itemsIngredientsRecherche.forEach(function (item) {
+  item.addEventListener("click", function () {
+    ajouterLigneIngredient(this.dataset.id, this.textContent.trim(), "");
+    rechercheIngredient.value = "";
+    listeIngredientsRecherche.hidden = true;
+    listeIngredientsRecette.querySelector(":scope > .ligne-ingredient-recette:last-child .ingredient-quantite-recette").focus();
+  });
+});
+
+document.addEventListener("click", function (e) {
+  if (!document.getElementById("autocompleteIngredient").contains(e.target)) {
+    listeIngredientsRecherche.hidden = true;
+  }
+});
+
+// ---------- Enregistrement (création ou édition) ----------
+
+formRecette.addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  const idRecette = recetteIdInput.value;
+  const nom = recetteNomInput.value.trim();
+  const categorie = categorieChoisie();
+  const ingredients = [];
+
+  listeIngredientsRecette.querySelectorAll(".ligne-ingredient-recette").forEach(function (ligne) {
+    const quantite = ligne.querySelector(".ingredient-quantite-recette").value;
+    if (ligne.dataset.foodId && quantite) {
+      ingredients.push({ food_id: ligne.dataset.foodId, quantite_g: quantite });
+    }
+  });
+
+  if (!nom || ingredients.length === 0) {
+    alert("Ajoute un nom et au moins un ingrédient valide.");
+    return;
+  }
+
+  const url = idRecette ? "/recettes/" + idRecette + "/modifier" : "/recettes/creer";
+
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nom: nom, categorie: categorie, ingredients: ingredients })
+  })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (data.erreur) {
+        alert(data.erreur);
+        return;
+      }
+
+      // On reconstruit une version "grille" de la recette (compteur d'ingrédients...) à partir
+      // de ce qu'on vient d'envoyer, pour mettre à jour la carte sans recharger la page. Le kcal
+      // exact par aliment n'est pas connu côté client (seul le serveur a la table foods sous la
+      // main) : on garde l'ancien total en attendant, un rechargement de page l'affine ensuite.
+      const recetteMaj = {
+        id: idRecette || data.recette.id,
+        nom: nom,
+        categorie: categorie,
+        nb_ingredients: ingredients.length,
+        // Le total kcal affiché sur la carte est recalculé au prochain chargement de page ;
+        // en attendant on garde l'ancien total s'il existe, sinon "…"
+        kcal_total: (window.RECETTES.find(function (r) { return String(r.id) === String(idRecette); }) || {}).kcal_total ?? "…",
+        food_ids: ingredients.map(function (ing) { return ing.food_id; })
+      };
+
+      // Carte insérée juste avant le "+ Nouvelle recette" de SA grille (celle qui correspond à
+      // sa catégorie) : si on vient de changer la catégorie d'une recette en l'éditant, l'ancienne
+      // carte (dans l'autre grille) est retirée et une neuve apparaît dans la bonne grille, plutôt
+      // que de la remplacer sur place là où elle ne devrait plus être.
+      const grille = grilleDeCategorie(categorie);
+
+      if (idRecette) {
+        const ancienneCard = document.querySelector('.recette-card[data-id="' + idRecette + '"]');
+        if (ancienneCard) ancienneCard.remove();
+
+        const option = selectRecette.querySelector('option[value="' + idRecette + '"]');
+        if (option) option.textContent = nom;
+
+        window.RECETTES = window.RECETTES.map(function (r) {
+          return String(r.id) === String(idRecette) ? recetteMaj : r;
+        });
+      } else {
+        const option = document.createElement("option");
+        option.value = recetteMaj.id;
+        option.textContent = nom;
+        selectRecette.appendChild(option);
+
+        window.RECETTES.push(recetteMaj);
+      }
+
+      grille.insertBefore(construireRecetteCardDOM(recetteMaj), grille.querySelector(".btn-nouvelle-recette"));
+
+      selectRecette.dispatchEvent(new Event("custom-select:update"));
+      miseAJourBoutonEnregistrerRecette();
+      fermerSheet();
+    });
+});

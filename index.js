@@ -31,6 +31,12 @@ const db = new pg.Client(
 // On se connecte réellement à la base de données avant de continuer
 await db.connect();
 
+// Il n'y a pas d'outil de migration dans ce projet : ce petit ajustement de schéma s'applique
+// donc tout seul à chaque démarrage du serveur (IF NOT EXISTS le rend sûr à rejouer). Les
+// recettes existantes reçoivent "plat" par défaut, seule la nouvelle colonne les distingue
+// maintenant des recettes de type "boisson" (voir /recettes/creer et /recettes/:id/modifier).
+await db.query("ALTER TABLE recettes ADD COLUMN IF NOT EXISTS categorie TEXT NOT NULL DEFAULT 'plat'");
+
 // On dit à Express de comprendre les données envoyées par les formulaires HTML classiques
 app.use(express.urlencoded({ extended: true }));
 // On dit à Express de servir les fichiers du dossier "public" tels quels (CSS, JS, images...)
@@ -113,8 +119,27 @@ async function chercherCourses() {
 }
 
 // Récupère la liste des recettes (juste id + nom), triée par ordre alphabétique
+// Renvoie chaque recette avec sa catégorie, son nombre d'ingrédients, son total de calories,
+// et la liste des food_id qui la composent (utilisée côté client pour savoir si la combinaison
+// actuellement notée dans le journal du jour correspond déjà à une recette existante)
 async function chercherRecettes() {
-    const result = await db.query("SELECT id, nom FROM recettes ORDER BY nom ASC");
+    const result = await db.query(`
+        SELECT
+            recettes.id,
+            recettes.nom,
+            recettes.categorie,
+            COUNT(recette_ingredients.food_id) AS nb_ingredients,
+            COALESCE(SUM(ROUND(foods.calories * recette_ingredients.quantite_g / 100)), 0) AS kcal_total,
+            COALESCE(
+                ARRAY_AGG(recette_ingredients.food_id) FILTER (WHERE recette_ingredients.food_id IS NOT NULL),
+                '{}'
+            ) AS food_ids
+        FROM recettes
+        LEFT JOIN recette_ingredients ON recette_ingredients.recette_id = recettes.id
+        LEFT JOIN foods ON foods.id = recette_ingredients.food_id
+        GROUP BY recettes.id
+        ORDER BY recettes.nom ASC
+    `);
     return result.rows;
 }
 
@@ -721,6 +746,7 @@ app.post("/calories/ajouter-recette", async (req, res) => {
 app.post("/recettes/creer", async (req, res) => {
     try {
         const nom = req.body.nom;
+        const categorie = req.body.categorie || "plat";
         const ingredients = req.body.ingredients;
 
         if (!nom || !ingredients || ingredients.length === 0) {
@@ -729,8 +755,8 @@ app.post("/recettes/creer", async (req, res) => {
 
         // On crée d'abord la recette elle-même
         const recetteResult = await db.query(
-            "INSERT INTO recettes (nom) VALUES ($1) RETURNING id",
-            [nom]
+            "INSERT INTO recettes (nom, categorie) VALUES ($1, $2) RETURNING id",
+            [nom, categorie]
         );
         const idRecette = recetteResult.rows[0].id;
 
@@ -742,7 +768,154 @@ app.post("/recettes/creer", async (req, res) => {
             );
         }
 
-        res.json({ succes: true, recette: { id: idRecette, nom: nom } });
+        res.json({ succes: true, recette: { id: idRecette, nom: nom, categorie: categorie } });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
+// -- GET /recettes/:id : détail complet d'une recette (pour ouvrir le panneau d'édition) --
+
+app.get("/recettes/:id", async (req, res) => {
+    try {
+        const idRecette = req.params.id;
+
+        const recetteResult = await db.query(
+            "SELECT id, nom, categorie FROM recettes WHERE id = $1",
+            [idRecette]
+        );
+        if (recetteResult.rows.length === 0) {
+            return res.status(404).json({ erreur: "Recette introuvable." });
+        }
+
+        const ingredientsResult = await db.query(
+            `SELECT foods.id AS food_id, foods.nom, foods.emoji, recette_ingredients.quantite_g
+             FROM recette_ingredients
+             JOIN foods ON foods.id = recette_ingredients.food_id
+             WHERE recette_ingredients.recette_id = $1
+             ORDER BY foods.nom ASC`,
+            [idRecette]
+        );
+
+        res.json({
+            succes: true,
+            recette: recetteResult.rows[0],
+            ingredients: ingredientsResult.rows
+        });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
+// -- POST /recettes/:id/modifier : renomme/retype une recette et remplace ses ingrédients --
+
+app.post("/recettes/:id/modifier", async (req, res) => {
+    let transactionStarted = false;
+
+    try {
+        const idRecette = req.params.id;
+        const nom = req.body.nom;
+        const categorie = req.body.categorie || "plat";
+        const ingredients = req.body.ingredients;
+
+        if (!nom || !ingredients || ingredients.length === 0) {
+            return res.status(400).json({ erreur: "Nom et au moins un ingrédient requis." });
+        }
+
+        await db.query("BEGIN");
+        transactionStarted = true;
+
+        await db.query(
+            "UPDATE recettes SET nom = $1, categorie = $2 WHERE id = $3",
+            [nom, categorie, idRecette]
+        );
+
+        // Plutôt que de comparer ancienne/nouvelle liste ingrédient par ingrédient, on repart
+        // de zéro : plus simple à maintenir, et la liste d'ingrédients d'une recette reste courte
+        await db.query("DELETE FROM recette_ingredients WHERE recette_id = $1", [idRecette]);
+
+        for (const ingredient of ingredients) {
+            await db.query(
+                "INSERT INTO recette_ingredients (recette_id, food_id, quantite_g) VALUES ($1, $2, $3)",
+                [idRecette, ingredient.food_id, ingredient.quantite_g]
+            );
+        }
+
+        await db.query("COMMIT");
+        transactionStarted = false;
+
+        res.json({ succes: true });
+    } catch (err) {
+        if (transactionStarted) {
+            await db.query("ROLLBACK");
+        }
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
+// -- POST /recettes/:id/supprimer : supprime une recette et ses ingrédients --
+
+app.post("/recettes/:id/supprimer", async (req, res) => {
+    let transactionStarted = false;
+
+    try {
+        const idRecette = req.params.id;
+
+        await db.query("BEGIN");
+        transactionStarted = true;
+
+        await db.query("DELETE FROM recette_ingredients WHERE recette_id = $1", [idRecette]);
+        await db.query("DELETE FROM recettes WHERE id = $1", [idRecette]);
+
+        await db.query("COMMIT");
+        transactionStarted = false;
+
+        res.json({ succes: true });
+    } catch (err) {
+        if (transactionStarted) {
+            await db.query("ROLLBACK");
+        }
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
+// -- POST /recettes/depuis-journal : enregistre le journal du jour tel quel comme nouvelle recette --
+
+app.post("/recettes/depuis-journal", async (req, res) => {
+    try {
+        const nom = req.body.nom;
+        const categorie = req.body.categorie || "plat";
+
+        if (!nom) {
+            return res.status(400).json({ erreur: "Nom requis." });
+        }
+
+        const journalResult = await db.query(
+            "SELECT food_id, quantite_g FROM journal_repas WHERE date_entree = CURRENT_DATE"
+        );
+
+        if (journalResult.rows.length === 0) {
+            return res.status(400).json({ erreur: "Le journal du jour est vide." });
+        }
+
+        const recetteResult = await db.query(
+            "INSERT INTO recettes (nom, categorie) VALUES ($1, $2) RETURNING id",
+            [nom, categorie]
+        );
+        const idRecette = recetteResult.rows[0].id;
+
+        for (const entree of journalResult.rows) {
+            await db.query(
+                "INSERT INTO recette_ingredients (recette_id, food_id, quantite_g) VALUES ($1, $2, $3)",
+                [idRecette, entree.food_id, entree.quantite_g]
+            );
+        }
+
+        res.json({ succes: true, recette: { id: idRecette, nom: nom, categorie: categorie } });
     } catch (err) {
         console.log("ERREUR:", err.message);
         res.status(500).json({ erreur: err.message });

@@ -22,6 +22,13 @@ function enhanceSelect(select) {
   button.setAttribute("aria-haspopup", "listbox"); // pour l'accessibilité (lecteurs d'écran)
   button.setAttribute("aria-expanded", "false");
 
+  // Certains selects n'affichent qu'une icône (ex: #selectRecette sur Calories) : sans texte
+  // visible, on reporte l'aria-label du <select> d'origine sur le bouton, sinon un lecteur
+  // d'écran n'aurait aucune idée de ce que ce bouton fait
+  if (select.hasAttribute("aria-label")) {
+    button.setAttribute("aria-label", select.getAttribute("aria-label"));
+  }
+
   // Le texte affiché dans le bouton (le nom de l'option sélectionnée)
   const label = document.createElement("span");
   label.className = "custom-select__label";
