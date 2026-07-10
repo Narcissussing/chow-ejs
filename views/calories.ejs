@@ -85,9 +85,9 @@
         <button type="button" id="btnToutEffacer" class="btn-x-rond" title="Tout effacer">Tout effacer</button>
       </div>
 
-      <!-- Caché par défaut : n'apparaît que si le journal du jour a 5 aliments ou plus ET que
+      <!-- Caché par défaut : n'apparaît que si le journal du jour a 3 aliments ou plus ET que
            cette combinaison exacte ne correspond à aucune recette déjà enregistrée (voir calories.js) -->
-      <button type="button" id="btnEnregistrerRecette" class="btn-enregistrer-recette hidden">★ Enregistrer comme recette</button>
+      <button type="button" id="btnEnregistrerRecette" class="btn-enregistrer-recette hidden"></button>
 
       <!-- Liste des aliments déjà mangés aujourd'hui, générée côté serveur -->
       <div id="listeJournal">
@@ -176,19 +176,21 @@
     </div>
 
     <!-- Boisson/Plat à gauche, "+" à droite sur la même ligne : le "+" ouvre/ferme la recherche
-         d'ingrédient (voir #autocompleteIngredient plus bas), repliée par défaut, même principe
-         que les panneaux d'ajout de Stock/Courses. position:relative ici sert d'ancrage pour que
-         la recherche flotte juste sous le "+" (voir CSS) au lieu de pousser le reste vers le bas. -->
+         d'ingrédient, repliée par défaut, même principe que les panneaux d'ajout de Stock/Courses. -->
     <div class="detail-tag-row">
       <div class="detail-tag-select" id="recetteCategoriePicker">
         <button type="button" class="cat-pill actif" data-valeur="boisson">🍨 Boisson</button>
         <button type="button" class="cat-pill" data-valeur="plat">🍽️ Plat</button>
       </div>
       <button type="button" id="btnToggleAjoutIngredient" class="btn-ajout-icone" title="Ajouter un ingrédient">Ajouter un ingrédient</button>
+    </div>
 
-      <!-- Flotte sous le "+" (position:absolute, voir CSS) et recouvre la liste d'ingrédients
-           juste en dessous plutôt que de la repousser vers le bas -->
-      <div id="autocompleteIngredient" class="hidden">
+    <div id="listeIngredientsRecette">
+      <!-- Toujours le DERNIER enfant de la liste (voir ajouterLigneIngredient dans calories.js,
+           qui insère chaque nouvelle ligne juste AVANT ce champ plutôt qu'après) : la recherche
+           s'ouvre donc littéralement sous le dernier ingrédient ajouté, à l'intérieur de la
+           même zone qui défile, plutôt qu'en dehors dans une zone fixe séparée. -->
+      <div id="autocompleteIngredient" class="replie">
         <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
         <ul id="listeIngredientsRecherche">
           <% alimentsTries.forEach(function(aliment) { %>
@@ -198,7 +200,9 @@
       </div>
     </div>
 
-    <div id="listeIngredientsRecette"></div>
+    <!-- Affiché tant que la liste est vide (voir majEtatIngredients dans calories.js), pour ne
+         pas laisser un grand vide silencieux avant d'avoir ajouté le premier ingrédient -->
+    <p class="ingredients-vide" id="ingredientsVide">Aucun ingrédient pour l'instant — touche "+" pour en ajouter.</p>
 
     <button type="submit" id="btnEnregistrerSheet">Enregistrer</button>
 

@@ -350,6 +350,27 @@ body {
   align-items: center;
   gap: 12px;
   margin-bottom: 14px;
+  /* Doit rester au-dessus de .ajout-backdrop (voir plus bas) pour ne jamais être assombrie elle-même */
+  position: relative;
+  z-index: 65;
+}
+
+/* Assombrit tout ce qui est derrière (filtres, liste) pendant l'ajout, pour concentrer
+   l'attention sur la recherche — même principe que .sheet-backdrop (Calories). Le header
+   (z-index 100) reste au-dessus et donc non assombri, comme sur la fiche recette. */
+.ajout-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 55;
+}
+
+.ajout-backdrop.ouvert {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .btn-ajout-icone {
@@ -887,11 +908,21 @@ body {
   margin-bottom: 20px; /* sans ça, il collait directement sur le premier article de la liste */
 }
 
-#listeCourses {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 30px;
+/* Flux normal (pas flex) : #panneauAjoutCourse vit maintenant dans cette liste (voir courses.js)
+   et c'est une grille à une seule ligne (voir .panneau-ajout) dont la hauteur est animée via
+   grid-template-rows 0fr -> 1fr. Dans un conteneur flex, ce panneau devenait lui-même un item
+   flexible et se retrouvait étiré/mal dimensionné (grand bloc vide) au lieu de ne prendre que
+   la hauteur de son contenu. Le flux bloc normal n'a pas ce problème (comme #listeStock,
+   qui n'a jamais ce souci car son panneau d'ajout reste hors de la liste). */
+
+/* .panneau-ajout est exclu : sa propre marge (0 fermé / 20px ouvert, voir plus haut) gère déjà
+   son espacement, animée en même temps que son ouverture/fermeture. */
+#listeCourses > *:not(.panneau-ajout) {
+  margin-bottom: 8px;
+}
+
+#listeCourses > *:not(.panneau-ajout):last-child {
+  margin-bottom: 0;
 }
 
 .course-categorie-entete {
@@ -1004,34 +1035,45 @@ body {
 }
 
 .course-item__quantite-groupe {
-  display: none; /* caché par défaut, seulement visible en "mode magasin" (voir plus bas) */
+  /* Replié par défaut (pas "display:none", qui ne se transitionne pas) : basculer "Au magasin"
+     déplie ces lignes en douceur sur toute la liste au lieu de les faire apparaître d'un coup */
+  display: flex;
   grid-column: 1;
   grid-row: 3;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
 }
 
 .course-item__shop-slot {
-  display: none;
-  /* Aligné sur la même ligne que le nom (ligne 1), pour tous les types d'articles :
-     avant, ce bouton se retrouvait plus bas pour les aliments "cl" (pas de champ
-     quantité au-dessus) et plus bas encore pour les autres, donc jamais aligné
-     avec le nom ni cohérent d'un article à l'autre. */
+  /* Toujours la même colonne (2), pour tous les types d'articles : le bouton "Acheté" reste
+     aligné à la même position verticale d'une carte à l'autre en parcourant la liste, même
+     si certaines n'ont pas de suggestions de quantité au-dessus (mieux qu'un remplissage
+     parfait mais avec le bouton qui saute d'une ligne à l'autre selon le type). */
+  display: flex;
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 3;
   align-items: center;
   justify-content: center;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
 }
 
-/* Quand le body a la classe "mode-magasin" (ajoutée par courses.js),
-   ces deux blocs redeviennent visibles */
+/* Quand le body a la classe "mode-magasin" (ajoutée par courses.js), ces deux blocs se déplient */
 body.mode-magasin .course-item__quantite-groupe {
-  display: flex;
+  max-height: 60px;
+  opacity: 1;
 }
 
 body.mode-magasin .course-item__shop-slot {
-  display: flex;
+  max-height: 40px;
+  opacity: 1;
 }
 
 .suggestions-quantite {
@@ -1092,8 +1134,11 @@ body.mode-magasin .course-item__shop-slot {
 
 #autocompleteCourses {
   position: relative; /* sert de repère pour positionner la liste de suggestions juste en dessous (position: absolute) */
-  flex: 1;
-  min-width: 220px;
+  /* Comme #autocomplete (Stock) : compact plutôt qu'étiré sur toute la largeur du panneau,
+     mais un plafond légèrement différent (280px vs 320px) pour ne pas être un simple clone —
+     ce champ partage aussi sa ligne avec "Ajouter" (texte libre), contrairement à Stock. */
+  flex: 0 1 280px;
+  min-width: 200px;
 }
 
 /* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
@@ -1248,7 +1293,9 @@ body.mode-magasin .course-item__shop-slot {
      grilles de cartes donnent le même rythme visuel (mêmes colonnes, même espacement) */
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 28px;
-  margin-bottom: 30px;
+  /* Pas de margin-bottom propre : comme .food-grid/#listeJournal/.recette-grid, l'espace
+     avant le footer vient uniquement du "gap" régulier + du padding du footer, pas d'une
+     marge de fin supplémentaire qui créerait un vide plus grand que les autres. */
 }
 
 .stock-item {
@@ -1538,6 +1585,22 @@ body.mode-magasin .course-item__shop-slot {
   min-width: 220px;
 }
 
+/* Sur Stock, cette recherche vit directement dans .search-ajout-row et remplace la recherche du
+   stock (jamais les deux affichées ensemble, voir stock.ejs/stock.js) : elle doit donc prendre
+   exactement la même place que .search-wrapper (flex:1), pas la largeur fixe utilisée ailleurs. */
+.search-ajout-row #autocomplete {
+  flex: 1;
+  min-width: 220px;
+}
+
+/* Même hauteur exacte que #searchInput (30px) qu'elle remplace : sinon la ligne change de
+   hauteur au moment du remplacement, ce qui fait "sauter" le bouton "+" et le reste de la page. */
+.search-ajout-row #autocomplete input {
+  height: 30px;
+  box-sizing: border-box;
+  padding: 8px 18px;
+}
+
 /* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
    plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec Courses, Calories, etc.) */
 
@@ -1611,10 +1674,22 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .btn-acheter-icone::before {
-  /* ::before insère du contenu juste avant le contenu réel du bouton : ici, la coche */
-  content: "✓";
-  font-size: 1rem; /* on redonne une taille à l'icône, puisque le bouton lui-même a font-size: 0 */
-  font-weight: 700;
+  /* Icône dédiée (public/images/svg/achete.svg, un panier avec une coche) plutôt qu'un simple
+     "✓" texte : même technique de mask-image que les autres icônes de l'app, colorée via
+     currentColor (donc verte ici, comme le reste du bouton) */
+  content: "";
+  display: block;
+  width: 15px;
+  height: 15px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/achete.svg");
+  mask-image: url("/images/svg/achete.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 /* ---------- FOOTER ---------- */
@@ -1758,13 +1833,17 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .course-item.entree,
-.stock-item.entree {
+.stock-item.entree,
+.ligne-ingredient-recette.entree {
   /* Classe ajoutée par le JavaScript juste après la création d'un nouvel article */
   animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .course-item.disparait-supprimer,
-.stock-item.disparait {
+.stock-item.disparait,
+.journal-item.disparait,
+.recette-card.disparait,
+.ligne-ingredient-recette.disparait {
   animation: slideOutLeft 0.3s ease forwards;
   border-color: var(--accent) !important;
   overflow: hidden;
@@ -2065,6 +2144,13 @@ body.mode-magasin .course-item__shop-slot {
 .hidden {
   /* Classe générique utilisée un peu partout (en JS) pour cacher/afficher un élément */
   display: none;
+}
+
+.scroll-bloque {
+  /* Posée sur <body> tant que le panneau détail recette est ouvert (voir afficherSheet/
+     fermerSheet dans calories.js) : empêche un geste de scroll de faire défiler la page du
+     dessous au lieu du panneau lui-même */
+  overflow: hidden;
 }
 
 .no-results {
@@ -2383,8 +2469,12 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 /* Caché par défaut (voir calories.js, miseAJourBoutonEnregistrerRecette) : n'apparaît que si
-   le journal du jour a 5 aliments ou plus formant une combinaison pas déjà enregistrée */
+   le journal du jour a 3 aliments ou plus formant une combinaison pas déjà enregistrée */
 .btn-enregistrer-recette {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   height: 32px;
   padding: 0 16px;
   border-radius: 999px;
@@ -2397,6 +2487,32 @@ body.mode-magasin .course-item__shop-slot {
   cursor: pointer;
   margin-bottom: 14px;
   transition: opacity 0.15s ease, transform 0.12s ease;
+}
+
+/* .hidden (display:none) est définie plus haut dans ce fichier, et perdait contre ce
+   "display:flex" à spécificité égale (l'ordre du fichier tranche les égalités) : le bouton
+   restait visible même avec la classe "hidden" posée dessus. Spécificité plus forte ici
+   (.btn-enregistrer-recette.hidden, 2 classes) pour que masqué gagne toujours, peu importe
+   l'ordre des règles dans le fichier. */
+.btn-enregistrer-recette.hidden {
+  display: none;
+}
+
+.btn-enregistrer-recette::before {
+  content: "";
+  display: block;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/enregistrer.svg");
+  mask-image: url("/images/svg/enregistrer.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 .btn-enregistrer-recette:hover {
@@ -2550,7 +2666,11 @@ body.mode-magasin .course-item__shop-slot {
   left: 0;
   right: 0;
   bottom: 0;
-  max-height: 86vh;
+  /* Hauteur FIXE (pas max-height) : le haut du panneau doit toujours démarrer juste sous le
+     header/nav, même pour "Nouvelle recette" avec peu de contenu — un max-height se contente
+     lui de ne pas dépasser une limite, mais laisse la hauteur réelle suivre le contenu, donc
+     un formulaire court laissait un vide entre le panneau et le header au lieu de le remplir. */
+  height: calc(100vh - var(--header-h, 65px));
   margin: 0 auto;
   max-width: 560px;
   background: var(--surface);
@@ -2562,6 +2682,18 @@ body.mode-magasin .course-item__shop-slot {
   z-index: 201;
   overflow-y: auto;
   padding: 10px 24px 28px;
+  /* Colonne verticale (poignée + formulaire) : #formRecette s'étire pour remplir tout l'espace
+     restant (voir plus bas), ce qui permet à "Enregistrer"/"Supprimer" de rester tout en bas
+     du panneau au lieu de flotter juste après un contenu court, avec un grand vide en dessous */
+  display: flex;
+  flex-direction: column;
+}
+
+#formRecette {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .sheet.ouvert {
@@ -2569,6 +2701,7 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .sheet-handle {
+  flex-shrink: 0;
   width: 36px;
   height: 4px;
   border-radius: 999px;
@@ -2641,6 +2774,12 @@ body.mode-magasin .course-item__shop-slot {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
+/* Même souci de cascade que .btn-enregistrer-recette.hidden ci-dessus : sans ce filet,
+   "hidden" perdait contre le display:block de la règle de base */
+.btn-supprimer-pleine-largeur.hidden {
+  display: none;
+}
+
 .btn-supprimer-pleine-largeur:hover {
   background: var(--accent);
   color: white;
@@ -2670,9 +2809,6 @@ body.mode-magasin .course-item__shop-slot {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
-  /* Ancre #autocompleteIngredient (absolute) : la recherche flotte par rapport à CETTE ligne,
-     donc juste sous le "+", plutôt que par rapport à .sheet (tout le panneau) */
-  position: relative;
 }
 
 .detail-tag-select {
@@ -2684,21 +2820,57 @@ body.mode-magasin .course-item__shop-slot {
   display: flex;
   flex-direction: column;
   margin-bottom: 12px;
+  /* Seule cette liste défile quand une recette a beaucoup d'ingrédients : le reste du panneau
+     (titre, Boisson/Plat, "+", "Enregistrer"/"Supprimer" tout en bas) reste bien en place.
+     max-height (pas flex:1) : elle ne prend que la hauteur de son contenu tant qu'il tient dans
+     cette limite (vide ou courte liste), et ne devient scrollable qu'au-delà — flex:1 l'aurait
+     étirée même vide, créant un vide séparé de celui déjà réservé à "Enregistrer" plus bas. */
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
-/* Popover ancré sous le "+" (voir .detail-tag-row) : recouvre la liste d'ingrédients juste en
-   dessous au lieu de la repousser vers le bas, comme n'importe quel menu déroulant de l'app */
+.ingredients-vide {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 24px 0;
+  margin: 0 0 12px;
+}
+
 #autocompleteIngredient {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: min(260px, 90vw);
-  padding: 10px;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-  z-index: 15;
+  /* TOUJOURS le dernier enfant de #listeIngredientsRecette (voir calories.ejs et
+     ajouterLigneIngredient dans calories.js, qui insère chaque nouvel ingrédient juste avant
+     lui) : se comporte comme la ligne du "prochain" ingrédient, à l'intérieur de la même zone
+     qui défile, plutôt qu'un popover détaché ailleurs sur la page. */
+  position: relative;
+  margin-bottom: 14px;
+  /* ".replie" (pas ".hidden"/display:none, qui ne se transitionne pas) : le champ se déplie/
+     replie en douceur au lieu d'apparaître/disparaître d'un coup au clic sur "+". Courbe avec
+     un léger rebond (même famille que .panneau-ajout) plutôt qu'un simple "ease" plat. */
+  max-height: 60px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, margin-bottom 0.3s ease;
+}
+
+#autocompleteIngredient.replie {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
+/* Une fois l'ouverture terminée (classe "pret", ajoutée par JS via "transitionend", même
+   principe que .panneau-ajout plus haut dans ce fichier), on repasse en overflow:visible :
+   sinon #listeIngredientsRecherche (position:absolute, dépasse volontairement sous le champ)
+   restait coupée/invisible en permanence à cause de l'overflow:hidden nécessaire à l'animation
+   — impossible de voir ou cliquer la moindre suggestion, donc impossible d'ajouter un aliment. */
+#autocompleteIngredient.pret {
+  overflow: visible;
+}
+
+#autocompleteIngredient #rechercheIngredient {
+  padding: 8px 16px;
+  font-size: 0.85rem;
 }
 
 .ligne-ingredient-recette {
@@ -2761,7 +2933,11 @@ body.mode-magasin .course-item__shop-slot {
 
 #formRecette #btnEnregistrerSheet {
   width: 100%;
-  margin-top: 12px;
+  flex-shrink: 0;
+  /* Pousse "Enregistrer" (et "Supprimer la recette" juste après) tout en bas du panneau : sans
+     ça, avec peu ou pas d'ingrédients, les boutons flottaient juste après un contenu très court,
+     laissant un grand vide entre eux et le bas réel du panneau (voir #formRecette, colonne flex) */
+  margin-top: auto;
 }
 
 /* ---------- CONTRÔLES PARTAGÉS ---------- */

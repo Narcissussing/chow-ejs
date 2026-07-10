@@ -15,6 +15,18 @@ const btnAjouterCourse = document.getElementById("btnAjouterCourse"); // bouton 
 const btnToggleAjoutCourse = document.getElementById("btnToggleAjoutCourse"); // bouton "+" en haut de page qui ouvre/ferme le panneau
 const panneauAjoutCourse = document.getElementById("panneauAjoutCourse"); // le panneau (formulaire) d'ajout lui-même
 
+// Le panneau vit maintenant DANS la liste, comme dernier enfant : il s'ouvre donc juste sous
+// le dernier article, plutôt qu'en haut de page loin de ce qu'on est en train de composer
+// (même principe que le panneau "ajouter un ingrédient" des recettes, voir calories.js).
+listeCourses.appendChild(panneauAjoutCourse);
+
+// Remet le panneau en dernière position dans la liste après tout tri/insertion : trierPar et
+// inserrerSelonTri déplacent/insèrent des .course-item via appendChild/insertBefore sans savoir
+// que le panneau existe, ce qui le laisserait coincé au milieu de la liste sinon
+function repositionnerPanneauAjout() {
+    listeCourses.appendChild(panneauAjoutCourse);
+}
+
 // Petite fonction de sécurité : transforme les caractères spéciaux en leur équivalent HTML,
 // pour éviter d'injecter du code HTML/JS dangereux dans la page (faille XSS)
 function escapeHtml(value) {
@@ -47,7 +59,9 @@ btnToggleAjoutCourse.addEventListener("click", function () {
         listeAlimentsCourses.hidden = true;
         btnAjouterCourse.classList.add("hidden");
     } else {
-        // Le curseur se place directement dans le champ, pour pouvoir taper tout de suite
+        // Le panneau vit tout en bas de la liste (voir plus haut) : on y fait défiler la page
+        // pour qu'il soit visible avant d'y mettre le curseur, sinon on tape sans rien voir
+        panneauAjoutCourse.scrollIntoView({ behavior: "smooth", block: "center" });
         rechercheAlimentCourses.focus();
     }
 });
@@ -103,6 +117,10 @@ function trierPar(cle) {
             listeCourses.appendChild(item);
         });
     }
+
+    // Chaque appendChild ci-dessus recolle les articles/en-têtes en fin de liste : sans ce
+    // rappel, le panneau d'ajout (déplacé là au chargement) se retrouverait repoussé avant eux
+    repositionnerPanneauAjout();
 }
 
 // Construit un en-tête de catégorie ("FRUITS", "AUTRES"...), inséré juste avant le premier
@@ -148,8 +166,9 @@ function inserrerSelonTri(nouvelItem) {
     if (cible) {
         listeCourses.insertBefore(nouvelItem, cible);
     } else {
-        // Aucun article ne vient après : on l'ajoute à la fin
-        listeCourses.appendChild(nouvelItem);
+        // Aucun article ne vient après : on l'ajoute juste avant le panneau d'ajout (qui vit
+        // en permanence tout en bas de la liste, voir plus haut), pas après lui
+        listeCourses.insertBefore(nouvelItem, panneauAjoutCourse);
     }
 }
 
@@ -435,7 +454,8 @@ function construireItemDOM(item) {
     // Le formulaire "Acheté" est différent selon le type de l'article :
     let formAchat;
     if (item.food_id && item.tracking_type === "cl") {
-        // Aliment suivi en "cl" (ex: bouteille) : un simple bouton "Acheté" (remet le niveau à plein)
+        // Aliment suivi en "cl" (ex: bouteille) : un simple bouton "Acheté" (remet le niveau à plein).
+        // "--solo" : pas de suggestions de quantité à côté, même raccord visuel que côté serveur (voir courses.ejs)
         formAchat = `
       <form action="/courses/acheter" method="post" class="form-acheter">
         <input type="hidden" name="idCourse" value="${id}" />

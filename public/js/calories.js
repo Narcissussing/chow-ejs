@@ -122,7 +122,12 @@ function recalculerTotaux() {
   let proteines = 0;
   let lipides = 0;
 
-  listeJournal.querySelectorAll(".journal-item").forEach(function (item) {
+  // ":not(.disparait)" exclut les lignes en cours d'animation de sortie : sans ça, les totaux
+  // restaient faux pendant les ~300ms où la ligne supprimée est encore dans le DOM (juste en
+  // train de glisser hors de l'écran), le temps que l'animation se termine
+  const itemsActifs = listeJournal.querySelectorAll(".journal-item:not(.disparait)");
+
+  itemsActifs.forEach(function (item) {
     kcal += Number(item.dataset.kcal);
     glucides += Number(item.dataset.glucides);
     proteines += Number(item.dataset.proteines);
@@ -135,13 +140,13 @@ function recalculerTotaux() {
   totalLipidesEl.textContent = lipides.toFixed(1) + "g";
 
   // On affiche le message "vide" seulement si aucune entrée n'est présente
-  noResultsJournal.classList.toggle("hidden", listeJournal.querySelectorAll(".journal-item").length > 0);
+  noResultsJournal.classList.toggle("hidden", itemsActifs.length > 0);
 
   miseAJourBoutonEnregistrerRecette();
 }
 
 // ============================================
-// "ENREGISTRER COMME RECETTE" — visible seulement si le journal a 5 aliments ou plus
+// "ENREGISTRER COMME RECETTE" — visible seulement si le journal a 3 aliments ou plus
 // ET que cette combinaison exacte ne correspond à aucune recette déjà enregistrée
 // ============================================
 
@@ -165,7 +170,7 @@ function memeCombinaison(idsA, idsB) {
 function miseAJourBoutonEnregistrerRecette() {
   const idsJournal = foodIdsDuJournal();
 
-  if (idsJournal.length < 5) {
+  if (idsJournal.length < 3) {
     btnEnregistrerRecette.classList.add("hidden");
     return;
   }
@@ -373,8 +378,15 @@ function activerSuppression(item) {
           alert(data.erreur);
           return;
         }
-        item.remove();
+        // Petite animation de sortie avant de retirer réellement la ligne (même principe que
+        // Stock/Courses), plutôt qu'une disparition instantanée. Les totaux se mettent à jour
+        // tout de suite (recalculerTotaux ignore les lignes ".disparait"), la ligne elle-même
+        // ne quitte le DOM qu'une fois l'animation terminée.
+        item.classList.add("disparait");
         recalculerTotaux();
+        setTimeout(function () {
+          item.remove();
+        }, 300);
       });
   });
 }
@@ -445,8 +457,15 @@ btnToutEffacer.addEventListener("click", function () {
         alert(data.erreur);
         return;
       }
-      listeJournal.innerHTML = "";
+      // Toutes les lignes glissent hors de l'écran ensemble avant que la liste ne soit vidée
+      const items = listeJournal.querySelectorAll(".journal-item");
+      items.forEach(function (item) {
+        item.classList.add("disparait");
+      });
       recalculerTotaux();
+      setTimeout(function () {
+        listeJournal.innerHTML = "";
+      }, 300);
     });
 });
 
@@ -522,8 +541,15 @@ function supprimerRecette(idRecette) {
         return;
       }
 
+      // La carte (si affichée derrière le panneau) glisse hors de l'écran avant de disparaître
+      // réellement, plutôt qu'un remove() instantané
       const card = document.querySelector('.recette-card[data-id="' + idRecette + '"]');
-      if (card) card.remove();
+      if (card) {
+        card.classList.add("disparait");
+        setTimeout(function () {
+          card.remove();
+        }, 300);
+      }
 
       const option = selectRecette.querySelector('option[value="' + idRecette + '"]');
       if (option) option.remove();
@@ -545,6 +571,7 @@ const sheetBackdrop = document.getElementById("sheetBackdrop");
 const sheetCloseBtn = document.getElementById("sheetCloseBtn");
 const btnSupprimerRecetteSheet = document.getElementById("btnSupprimerRecetteSheet");
 const formRecette = document.getElementById("formRecette");
+const btnEnregistrerSheet = document.getElementById("btnEnregistrerSheet");
 const recetteIdInput = document.getElementById("recetteId");
 const recetteNomInput = document.getElementById("recetteNom");
 const recetteCategoriePicker = document.getElementById("recetteCategoriePicker");
@@ -552,12 +579,41 @@ const listeIngredientsRecette = document.getElementById("listeIngredientsRecette
 const btnToggleAjoutIngredient = document.getElementById("btnToggleAjoutIngredient");
 const autocompleteIngredient = document.getElementById("autocompleteIngredient");
 
-// Le "+" ouvre/ferme la recherche d'ingrédient, repliée par défaut (voir calories.ejs)
+// Le "+" ouvre/ferme la recherche d'ingrédient, repliée par défaut, juste après le dernier
+// ingrédient de la liste (voir calories.ejs) : elle se comporte comme la ligne du "prochain"
+// ingrédient. On la fait défiler jusqu'à l'écran en l'ouvrant : avec une longue liste, elle
+// serait sinon hors champ tant qu'on n'a pas fait défiler la liste jusqu'en bas soi-même.
 btnToggleAjoutIngredient.addEventListener("click", function () {
-  const ouvert = autocompleteIngredient.classList.toggle("hidden") === false;
+  // ".replie" (pas ".hidden") : contrairement à display:none, cette classe se transitionne en
+  // douceur (voir CSS), le champ se déplie/replie au lieu d'apparaître/disparaître d'un coup
+  const ouvert = autocompleteIngredient.classList.toggle("replie") === false;
   btnToggleAjoutIngredient.classList.toggle("actif", ouvert);
   if (ouvert) {
+    // Le champ de recherche prend cette place le temps qu'on l'utilise : le message "vide"
+    // n'a plus lieu d'être affiché en même temps, même si aucun ingrédient n'est encore ajouté
+    ingredientsVide.classList.add("hidden");
+    // Fait défiler LA LISTE (pas la page) jusqu'à son propre bas : #autocompleteIngredient vit
+    // maintenant dedans, comme dernier enfant (voir calories.ejs), donc c'est elle qui doit
+    // défiler pour le révéler, pas le panneau entier
+    listeIngredientsRecette.scrollTo({ top: listeIngredientsRecette.scrollHeight, behavior: "smooth" });
     document.getElementById("rechercheIngredient").focus();
+  } else {
+    // On referme : on retire "pret" tout de suite (voir plus bas) pour que la fermeture reparte
+    // bien d'un état "coupé" (overflow:hidden), sinon la liste de suggestions déborderait un
+    // instant hors d'un champ déjà en train de se replier
+    autocompleteIngredient.classList.remove("pret");
+    // On referme sans avoir ajouté d'ingrédient : le message "vide" redevient pertinent si la
+    // liste est toujours vide (majEtatIngredients ne le réaffiche que dans ce cas précis)
+    majEtatIngredients();
+  }
+});
+
+// Une fois l'ouverture terminée (transition CSS "max-height" arrivée à son terme), on ajoute
+// "pret" : voir la règle #autocompleteIngredient.pret pour pourquoi c'est nécessaire (sinon la
+// liste de suggestions reste invisible/inaccessible en permanence, impossible d'ajouter un aliment)
+autocompleteIngredient.addEventListener("transitionend", function (event) {
+  if (event.propertyName === "max-height" && !autocompleteIngredient.classList.contains("replie")) {
+    autocompleteIngredient.classList.add("pret");
   }
 });
 
@@ -577,6 +633,16 @@ function choisirCategorie(categorie) {
   recetteCategoriePicker.querySelectorAll(".cat-pill").forEach(function (p) {
     p.classList.toggle("actif", p.dataset.valeur === categorie);
   });
+}
+
+const ingredientsVide = document.getElementById("ingredientsVide");
+
+// Affiche le message "vide" tant qu'il n'y a aucun ingrédient, et n'autorise "Enregistrer"
+// qu'à partir de 2 ingrédients (une "recette" d'un seul aliment n'en est pas vraiment une)
+function majEtatIngredients() {
+  const nombre = listeIngredientsRecette.querySelectorAll(".ligne-ingredient-recette").length;
+  ingredientsVide.classList.toggle("hidden", nombre > 0);
+  btnEnregistrerSheet.disabled = nombre < 2;
 }
 
 // Même idée que grammesParUnite (Journal), mais lue depuis le dataset d'une ligne d'ingrédient
@@ -617,7 +683,11 @@ function ajouterLigneIngredient(foodId, nom, quantiteG, gCafe, gSoupe) {
   `;
 
   ligne.querySelector(".ingredient-x-recette").addEventListener("click", function () {
-    ligne.remove();
+    ligne.classList.add("disparait");
+    setTimeout(function () {
+      ligne.remove();
+      majEtatIngredients();
+    }, 300);
   });
 
   const champQuantite = ligne.querySelector(".ingredient-quantite-recette");
@@ -638,7 +708,12 @@ function ajouterLigneIngredient(foodId, nom, quantiteG, gCafe, gSoupe) {
     });
   }
 
-  listeIngredientsRecette.appendChild(ligne);
+  ligne.classList.add("entree");
+  // #autocompleteIngredient est TOUJOURS le dernier enfant de la liste (voir calories.ejs) :
+  // on insère chaque nouvelle ligne juste avant lui plutôt qu'à la toute fin, pour qu'il reste
+  // en place sous le dernier ingrédient au lieu d'être poussé après.
+  listeIngredientsRecette.insertBefore(ligne, autocompleteIngredient);
+  majEtatIngredients();
 }
 
 // Réinitialise le panneau : formulaire vide, prêt pour une nouvelle recette (ou pré-rempli, voir ouvrirSheet)
@@ -646,13 +721,19 @@ function reinitialiserSheet() {
   recetteIdInput.value = "";
   recetteNomInput.value = "";
   choisirCategorie("plat");
-  listeIngredientsRecette.innerHTML = "";
+  // On retire seulement les lignes d'ingrédients : innerHTML="" viderait aussi
+  // #autocompleteIngredient, qui vit maintenant DANS cette liste (voir calories.ejs)
+  listeIngredientsRecette.querySelectorAll(".ligne-ingredient-recette").forEach(function (ligne) {
+    ligne.remove();
+  });
   // La recherche d'ingrédient repart repliée à chaque nouvelle ouverture du panneau
-  autocompleteIngredient.classList.add("hidden");
+  autocompleteIngredient.classList.add("replie");
+  autocompleteIngredient.classList.remove("pret");
   btnToggleAjoutIngredient.classList.remove("actif");
   document.getElementById("rechercheIngredient").value = "";
   // Rien à supprimer avant le premier enregistrement : caché par défaut (voir ouvrirSheetEdition)
   btnSupprimerRecetteSheet.classList.add("hidden");
+  majEtatIngredients();
 }
 
 // Ouvre le panneau en mode "création" (vide, ou pré-rempli avec des ingrédients de départ —
@@ -694,11 +775,16 @@ function ouvrirSheetEdition(idRecette) {
 function afficherSheet() {
   sheet.classList.add("ouvert");
   sheetBackdrop.classList.add("ouvert");
+  // Bloque le défilement de la page derrière : sans ça, un geste de scroll pendant qu'on
+  // interagit avec le panneau faisait défiler la page du dessous au lieu du panneau lui-même
+  document.body.classList.add("scroll-bloque");
 }
 
 function fermerSheet() {
   sheet.classList.remove("ouvert");
   sheetBackdrop.classList.remove("ouvert");
+  document.body.classList.remove("scroll-bloque");
+  fermerRechercheIngredient();
 }
 
 sheetCloseBtn.addEventListener("click", fermerSheet);
@@ -730,18 +816,43 @@ rechercheIngredient.addEventListener("input", function () {
   });
 });
 
+// Referme complètement la recherche (pas juste la liste de suggestions) : remet le "+" dans son
+// état fermé, comme si on l'avait re-touché. Appelée après avoir choisi un ingrédient, en tapant
+// en dehors, ou en fermant tout le panneau (voir fermerSheet).
+function fermerRechercheIngredient() {
+  autocompleteIngredient.classList.add("replie");
+  autocompleteIngredient.classList.remove("pret");
+  btnToggleAjoutIngredient.classList.remove("actif");
+  rechercheIngredient.value = "";
+  listeIngredientsRecherche.hidden = true;
+  // Réaffiche le message "vide" si on ferme sans avoir ajouté d'ingrédient (voir majEtatIngredients)
+  majEtatIngredients();
+}
+
 itemsIngredientsRecherche.forEach(function (item) {
   item.addEventListener("click", function () {
     ajouterLigneIngredient(this.dataset.id, this.textContent.trim(), "", this.dataset.gCafe, this.dataset.gSoupe);
-    rechercheIngredient.value = "";
-    listeIngredientsRecherche.hidden = true;
-    listeIngredientsRecette.querySelector(":scope > .ligne-ingredient-recette:last-child .ingredient-quantite-recette").focus();
+    fermerRechercheIngredient();
+    // #autocompleteIngredient est toujours le dernier enfant : la ligne qu'on vient d'ajouter
+    // est donc juste avant lui (voir insertBefore dans ajouterLigneIngredient), pas forcément
+    // le ":last-child" au sens CSS puisque ce titre revient maintenant à la recherche elle-même
+    const derniereLigne = autocompleteIngredient.previousElementSibling;
+    if (derniereLigne) derniereLigne.querySelector(".ingredient-quantite-recette").focus();
   });
 });
 
 document.addEventListener("click", function (e) {
-  if (!document.getElementById("autocompleteIngredient").contains(e.target)) {
-    listeIngredientsRecherche.hidden = true;
+  if (!autocompleteIngredient.classList.contains("replie") && !e.target.closest("#autocompleteIngredient") && e.target !== btnToggleAjoutIngredient) {
+    fermerRechercheIngredient();
+  }
+});
+
+// Pour une NOUVELLE recette, valider le nom (Entrée) suffit à enregistrer directement, comme
+// une confirmation. En édition, Entrée ne doit rien déclencher tout seul : on a probablement
+// juste renommé la recette et on va encore modifier des ingrédients avant d'enregistrer.
+recetteNomInput.addEventListener("keydown", function (event) {
+  if (event.key === "Enter" && recetteIdInput.value) {
+    event.preventDefault();
   }
 });
 

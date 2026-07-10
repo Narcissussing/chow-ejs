@@ -30,42 +30,40 @@
   </div>
 
   <div class="stock-section">
+    <!-- Assombrit le reste de la page (filtres, liste) pendant qu'on ajoute un aliment, pour
+         concentrer l'attention sur la recherche d'ajout — même technique que le fond de la
+         fiche recette sur Calories (voir .sheet-backdrop). Cliquer dessus referme, comme taper
+         n'importe où en dehors (voir stock.js). -->
+    <div class="ajout-backdrop" id="ajoutBackdropStock"></div>
+
     <!-- Recherche + bouton d'ajout (icône "+" seule, pas de long texte) sur la même ligne.
          En desktop le "+" est à gauche de la recherche, en mobile il passe à droite
          (voir la règle "order" dans le CSS, appliquée seulement sous 768px). -->
+    <!-- Recherche stock et recherche d'ajout occupent le même emplacement, jamais les deux à la
+         fois (impossible de s'en servir en même temps) : cliquer sur "+" remplace la barre de
+         recherche du stock par celle d'ajout ; sélectionner un aliment (ou taper en dehors) fait
+         immédiatement revenir la recherche du stock (voir stock.js). -->
     <div class="search-ajout-row">
       <button type="button" id="btnToggleAjout" class="btn-ajout-icone" title="Ajouter un aliment">Ajouter un aliment</button>
-      <div class="search-wrapper">
+      <div class="search-wrapper" id="rechercheStockWrapper">
         <input type="text" id="searchInput" placeholder="Rechercher dans le stock..." autocomplete="off" />
       </div>
-    </div>
-
-    <!-- Panneau d'ajout : fermé par défaut, ouvert/fermé en cliquant sur le "+" juste au-dessus.
-         Placé juste sous la ligne recherche/+ (et pas plus bas, après le tri) pour qu'il se
-         déploie visiblement à l'endroit où on vient de cliquer, plutôt que de réapparaître
-         plus loin sur la page sans lien apparent avec le bouton qui l'a ouvert.
-         La classe "ouvert" (ajoutée/retirée par stock.js) anime la hauteur du panneau (voir style.css) -->
-    <div id="panneauAjoutStock" class="panneau-ajout">
-      <div class="panneau-ajout__piege">
-      <div class="panneau-ajout__interieur">
-        <!-- Toucher une suggestion l'ajoute directement au stock (comme Courses/Calories),
-             avec une quantité de départ par défaut (1 unité/pack, ou "Plein" pour un aliment
-             suivi en niveau) : plus besoin d'un second champ + bouton "Ajouter" séparés, la
-             quantité exacte se corrige ensuite directement sur la carte (édition en place déjà
-             possible, voir activerEditionInline dans stock.js) -->
-        <div id="autocomplete">
-          <input type="text" id="rechercheAliment" placeholder="Rechercher un aliment..." autocomplete="off" />
-          <!-- La liste complète des aliments est générée ici côté serveur (avec EJS),
-               puis filtrée dynamiquement par le JavaScript selon ce que l'utilisateur tape -->
-          <ul id="listeAliments">
-            <% aliments.forEach(function(aliment) { %>
-            <li data-id="<%= aliment.id %>" data-type="<%= aliment.tracking_type %>">
-              <%= aliment.emoji %> <%= aliment.nom %>
-            </li>
-            <% }) %>
-          </ul>
-        </div>
-      </div>
+      <!-- Toucher une suggestion l'ajoute directement au stock (comme Courses/Calories),
+           avec une quantité de départ par défaut (1 unité/pack, ou "Plein" pour un aliment
+           suivi en niveau) : plus besoin d'un second champ + bouton "Ajouter" séparés, la
+           quantité exacte se corrige ensuite directement sur la carte (édition en place déjà
+           possible, voir activerEditionInline dans stock.js) -->
+      <div id="autocomplete" hidden>
+        <input type="text" id="rechercheAliment" placeholder="Rechercher un aliment..." autocomplete="off" />
+        <!-- La liste complète des aliments est générée ici côté serveur (avec EJS),
+             puis filtrée dynamiquement par le JavaScript selon ce que l'utilisateur tape -->
+        <ul id="listeAliments">
+          <% aliments.forEach(function(aliment) { %>
+          <li data-id="<%= aliment.id %>" data-type="<%= aliment.tracking_type %>" data-nom="<%= aliment.nom.toLowerCase() %>">
+            <%= aliment.emoji %> <%= aliment.nom %>
+          </li>
+          <% }) %>
+        </ul>
       </div>
     </div>
 

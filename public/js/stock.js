@@ -12,8 +12,10 @@ const searchInput = document.getElementById("searchInput"); // champ de recherch
 const sortSelect = document.getElementById("sortSelect"); // menu déroulant de tri (Nom/Ancien/Récent/Quantité)
 const noResultsStock = document.getElementById("noResultsStock"); // message affiché quand aucun résultat ne correspond
 
-const btnToggleAjout = document.getElementById("btnToggleAjout"); // bouton pour ouvrir/fermer le panneau d'ajout
-const panneauAjoutStock = document.getElementById("panneauAjoutStock"); // le panneau (formulaire) d'ajout lui-même
+const btnToggleAjout = document.getElementById("btnToggleAjout"); // bouton pour ouvrir/fermer la recherche d'ajout
+const rechercheStockWrapper = document.getElementById("rechercheStockWrapper"); // barre de recherche du stock
+const autocompleteWrapper = document.getElementById("autocomplete"); // barre de recherche d'ajout (remplace la précédente)
+const ajoutBackdropStock = document.getElementById("ajoutBackdropStock"); // fond assombri pendant l'ajout
 
 const btnVueGrille = document.getElementById("btnVueGrille"); // bouton "vue grille" (cartes)
 const btnVueListe = document.getElementById("btnVueListe"); // bouton "vue liste" (articles empilés)
@@ -63,35 +65,48 @@ function valeurQuantitePourTri(item) {
 }
 
 // ============================================
-// PANNEAU D'AJOUT (repliable)
+// RECHERCHE D'AJOUT (remplace la recherche du stock, jamais les deux ensemble)
 // ============================================
 
-// Quand on clique sur "+ Ajouter un aliment", on ouvre/ferme le panneau du formulaire.
-// La classe "ouvert" pilote une vraie animation de hauteur (voir .panneau-ajout dans style.css),
-// au lieu d'un simple show/hide instantané.
+// Les deux barres ne peuvent pas servir en même temps : cliquer sur "+" fait disparaître la
+// recherche du stock et fait apparaître celle d'ajout à sa place (même emplacement dans la ligne).
 btnToggleAjout.addEventListener("click", function () {
-  const estOuvert = panneauAjoutStock.classList.toggle("ouvert");
-  // Le "+" reste rouge (plein) tant que le panneau est ouvert, pour indiquer qu'on est
-  // en train d'ajouter, puis redevient un simple contour dès qu'on le referme
-  btnToggleAjout.classList.toggle("actif", estOuvert);
-  if (!estOuvert) {
-    // On ferme : on retire "pret" tout de suite pour que l'animation de fermeture
-    // parte bien d'un panneau "coupé" (overflow:hidden), voir style.css
-    panneauAjoutStock.classList.remove("pret");
+  if (autocompleteWrapper.hidden) {
+    ouvrirRechercheAjoutStock();
   } else {
-    // On ouvre : le curseur se place directement dans le champ de recherche du panneau,
-    // pour pouvoir taper tout de suite sans avoir à cliquer dedans en plus
-    rechercheAliment.focus();
+    fermerRechercheAjoutStock();
   }
 });
 
-// Une fois l'animation d'ouverture terminée, on ajoute "pret" : le panneau repasse en overflow:visible,
-// pour que la liste de suggestions (qui dépasse volontairement sous le panneau) redevienne visible
-panneauAjoutStock.addEventListener("transitionend", function (event) {
-  if (event.propertyName === "grid-template-rows" && panneauAjoutStock.classList.contains("ouvert")) {
-    panneauAjoutStock.classList.add("pret");
-  }
-});
+function ouvrirRechercheAjoutStock() {
+  rechercheStockWrapper.hidden = true;
+  autocompleteWrapper.hidden = false;
+  // Petite animation d'apparition (même effet que l'ajout d'un nouvel article, voir @keyframes popIn)
+  autocompleteWrapper.classList.remove("entree");
+  void autocompleteWrapper.offsetWidth; // force le navigateur à relancer l'animation même si la classe était déjà passée
+  autocompleteWrapper.classList.add("entree");
+  btnToggleAjout.classList.add("actif");
+  // Assombrit le reste de la page pour concentrer l'attention sur la recherche d'ajout
+  ajoutBackdropStock.classList.add("ouvert");
+  // Le curseur se place directement dans le champ, pour pouvoir taper tout de suite
+  rechercheAliment.focus();
+}
+
+function fermerRechercheAjoutStock() {
+  if (autocompleteWrapper.hidden) return;
+  autocompleteWrapper.hidden = true;
+  rechercheAliment.value = "";
+  listeAliments.hidden = true;
+  rechercheStockWrapper.hidden = false;
+  rechercheStockWrapper.classList.remove("entree");
+  void rechercheStockWrapper.offsetWidth;
+  rechercheStockWrapper.classList.add("entree");
+  btnToggleAjout.classList.remove("actif");
+  ajoutBackdropStock.classList.remove("ouvert");
+}
+
+// Cliquer sur le fond assombri referme aussi (même geste que la fiche recette de Calories)
+ajoutBackdropStock.addEventListener("click", fermerRechercheAjoutStock);
 
 // ============================================
 // AUTOCOMPLETE + AJOUT INSTANTANÉ (comme Courses/Calories)
@@ -124,21 +139,62 @@ rechercheAliment.addEventListener("input", function () {
 // Toucher une suggestion ajoute directement l'aliment au stock, avec une quantité de départ
 // par défaut ("plein" pour un niveau, 1 pour une quantité) : la valeur exacte se corrige
 // ensuite directement sur la carte, pas besoin d'un second champ + bouton "Ajouter" séparés.
+// Si l'aliment choisi est déjà dans le stock (pas de doublon possible), on ne l'ajoute pas :
+// on amène directement l'utilisateur sur la carte déjà existante, avec le même effet visuel
+// (surbrillance + défilement) que pour un ajout réussi.
 items.forEach(function (item) {
   item.addEventListener("click", function () {
     const type = this.dataset.type; // le type de suivi de cet aliment ("cl", "unite", "pack"...)
+    const nom = this.dataset.nom;
+    fermerRechercheAjoutStock();
+
+    const itemExistant = trouverStockItemParNom(nom);
+    if (itemExistant) {
+      mettreEnAvantStockItem(itemExistant);
+      return;
+    }
+
     const quantiteDepart = type === "cl" ? "plein" : 1;
     ajouterAuStock(this.dataset.id, quantiteDepart);
-    rechercheAliment.value = "";
-    listeAliments.hidden = true;
   });
 });
 
-// Si l'utilisateur clique n'importe où en dehors de la zone d'autocomplétion, on referme la liste de suggestions
-document.addEventListener("click", function (e) {
-  if (!document.getElementById("autocomplete").contains(e.target)) {
-    listeAliments.hidden = true;
+// Cherche, parmi les articles déjà affichés dans le stock, celui qui correspond à ce nom
+function trouverStockItemParNom(nom) {
+  return Array.from(listeStock.querySelectorAll(".stock-item")).find(function (item) {
+    return item.dataset.nom === nom;
+  });
+}
+
+// Amène l'utilisateur directement sur une carte de stock donnée : on efface d'abord tout filtre
+// ou recherche qui pourrait la cacher, puis on y défile en douceur avec une petite surbrillance
+function mettreEnAvantStockItem(item) {
+  // On remet le filtre à "Tous" et on vide la recherche du stock, sinon la carte pourrait
+  // rester invisible (cachée par un filtre actif) malgré le défilement
+  if (emplacementActif !== "tous" || typeActif !== "tous") {
+    tousLesBoutonsFiltres.forEach(function (b) {
+      b.classList.remove("active");
+    });
+    document.querySelector('.filter-btn[data-emplacement="tous"]').classList.add("active");
+    emplacementActif = "tous";
+    typeActif = "tous";
   }
+  searchInput.value = "";
+  appliquerFiltresStock();
+
+  item.scrollIntoView({ behavior: "smooth", block: "center" });
+  item.classList.add("mise-en-avant");
+  setTimeout(function () {
+    item.classList.remove("mise-en-avant");
+  }, 1500);
+}
+
+// Cliquer n'importe où en dehors de la recherche d'ajout (et du bouton "+" qui l'ouvre) la referme
+// et fait immédiatement revenir la recherche du stock à sa place
+document.addEventListener("click", function (e) {
+  if (autocompleteWrapper.hidden) return;
+  if (e.target.closest("#autocomplete") || e.target.closest("#btnToggleAjout")) return;
+  fermerRechercheAjoutStock();
 });
 
 // ============================================
@@ -348,11 +404,6 @@ function ajouterAuStock(idAliment, quantiteDepart) {
       // Et on ré-applique les filtres actifs (emplacement/type/recherche) : si le nouvel article
       // ne correspond pas au filtre en cours, il doit rester caché comme n'importe quel autre
       appliquerFiltresStock();
-
-      // On referme le panneau d'ajout automatiquement après un ajout réussi
-      panneauAjoutStock.classList.remove("ouvert");
-      panneauAjoutStock.classList.remove("pret");
-      btnToggleAjout.classList.remove("actif");
 
       // Puis on amène l'utilisateur directement sur la carte qu'il vient d'ajouter, là où le
       // tri/filtre actuel l'a placée, plutôt que de le laisser deviner où elle est passée
