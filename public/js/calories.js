@@ -251,12 +251,15 @@ function construireJournalItemDOM(entree) {
 
     <div class="journal-valeurs">
       <div class="journal-quantite-groupe">
+        <!-- min doit être un multiple de step (0.25), sinon la grille de valeurs valides du
+             navigateur démarre à "min" et des nombres ronds comme 166 ne tombent jamais dessus :
+             le navigateur affichait alors "Saisissez une valeur valide" même sur une valeur correcte -->
         <input
           type="number"
           class="journal-grammes-input"
           step="0.25"
           value="${quantite}"
-          min="0.01"
+          min="0.25"
         />
         ${selectUnite}
       </div>
@@ -680,7 +683,7 @@ function ajouterLigneIngredient(foodId, nom, quantiteG, gCafe, gSoupe) {
 
   ligne.innerHTML = `
     <span class="ingredient-nom-recette">${escapeHtml(nom)}</span>
-    <input type="number" class="ingredient-quantite-recette" step="0.25" min="0.01" placeholder="g" value="${quantiteG || ""}" />
+    <input type="number" class="ingredient-quantite-recette" step="0.25" min="0.25" placeholder="g" value="${quantiteG || ""}" />
     ${selectUnite}
     <button type="button" class="btn-supprimer-dash ingredient-x-recette" title="Retirer"></button>
   `;
@@ -729,6 +732,7 @@ function reinitialiserSheet() {
   listeIngredientsRecette.querySelectorAll(".ligne-ingredient-recette").forEach(function (ligne) {
     ligne.remove();
   });
+  listeIngredientsRecette.scrollTop = 0;
   // La recherche d'ingrédient repart repliée à chaque nouvelle ouverture du panneau
   autocompleteIngredient.classList.add("replie");
   autocompleteIngredient.classList.remove("pret");
@@ -776,6 +780,11 @@ function ouvrirSheetEdition(idRecette) {
 }
 
 function afficherSheet() {
+  // .sheet lui-même est scrollable (overflow-y:auto) et garde sa position de défilement d'une
+  // ouverture à l'autre (il n'est jamais retiré du DOM) : sans ce reset, rouvrir le panneau après
+  // l'avoir laissé défilé vers le bas (ex: clavier qui pousse la vue) l'ouvrait déjà en bas,
+  // sur les ingrédients, au lieu de partir du titre tout en haut.
+  sheet.scrollTop = 0;
   sheet.classList.add("ouvert");
   sheetBackdrop.classList.add("ouvert");
   // Bloque le défilement de la page derrière : sans ça, un geste de scroll pendant qu'on
