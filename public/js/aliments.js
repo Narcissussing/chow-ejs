@@ -11,6 +11,14 @@ const noResults = document.getElementById("noResults"); // message affiché quan
 // Variable qui garde en mémoire quelle catégorie est actuellement sélectionnée ("tous" par défaut)
 let categorieActive = "tous";
 
+// Retire les accents ("é" -> "e", "à" -> "a"...) pour que la recherche les ignore : taper "e"
+// doit trouver "Café" aussi bien que "Cafe". NFD décompose chaque lettre accentuée en deux
+// caractères (la lettre de base + un accent séparé), qu'on peut ensuite retirer avec la regex
+// (plage Unicode des signes diacritiques combinants).
+function normaliserTexte(str) {
+  return str.normalize("NFD").replace(new RegExp("[̀-ͯ]", "g"), "");
+}
+
 // ============================================
 // FILTRE CATÉGORIE
 // ============================================
@@ -43,14 +51,15 @@ searchInput.addEventListener("input", function () {
 
 // Affiche/cache chaque carte d'aliment selon la catégorie sélectionnée ET le texte recherché
 function appliquerFiltres() {
-  const recherche = searchInput.value.toLowerCase().trim();
+  const recherche = normaliserTexte(searchInput.value.toLowerCase().trim());
   const cartes = foodGrid.querySelectorAll(".food-card");
   let visibles = 0;
 
   cartes.forEach(function (carte) {
     const correspondCategorie =
       categorieActive === "tous" || carte.dataset.categorie === categorieActive;
-    const correspondRecherche = carte.dataset.nom.includes(recherche);
+    // normaliserTexte ignore les accents ("e" trouve aussi "Café")
+    const correspondRecherche = normaliserTexte(carte.dataset.nom).includes(recherche);
 
     if (correspondCategorie && correspondRecherche) {
       carte.classList.remove("hidden");

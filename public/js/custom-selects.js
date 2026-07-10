@@ -55,14 +55,28 @@ function enhanceSelect(select) {
     wrapper.classList.toggle("custom-select--disabled", select.disabled);
     button.disabled = select.disabled;
     label.textContent = select.selectedOptions[0]?.textContent || select.options[0]?.textContent || "";
+    // Reporte le title du <select> d'origine sur le bouton visible : utile pour un état "vide"
+    // (ex: "Aucune recette de plat pour le moment"), sinon un select désactivé sans texte visible
+    // (icône seule) ne donne aucune explication au survol.
+    if (select.title) {
+      button.title = select.title;
+    } else {
+      button.removeAttribute("title");
+    }
   }
 
-  // Referme la liste déroulante
+  // Referme la liste déroulante : on retire d'abord la classe qui l'anime (fondu + léger
+  // glissement vers le haut, voir .custom-select__list--ouverte en CSS), puis on la retire
+  // vraiment de la page une fois cette animation terminée, plutôt que de la faire disparaître
+  // d'un coup.
   function close() {
     wrapper.classList.remove("custom-select--open");
     button.setAttribute("aria-expanded", "false");
-    list.hidden = true;
-    list.remove(); // on la retire complètement de la page tant qu'elle n'est pas utilisée
+    list.classList.remove("custom-select__list--ouverte");
+    setTimeout(function () {
+      list.hidden = true;
+      list.remove(); // on la retire complètement de la page tant qu'elle n'est pas utilisée
+    }, 150);
   }
 
   // Ouvre la liste déroulante (et ferme d'abord tous les autres menus personnalisés déjà ouverts)
@@ -87,13 +101,22 @@ function enhanceSelect(select) {
     wrapper.classList.add("custom-select--open");
     button.setAttribute("aria-expanded", "true");
     list.hidden = false;
+    // Repart bien de l'état "fermé" (opacité 0, légèrement décalée, voir CSS) avant de déclencher
+    // la transition : sans ce forçage de reflow (void list.offsetWidth), le navigateur regroupe
+    // hidden=false et l'ajout de la classe dans la même passe, et la liste apparaît d'un coup au
+    // lieu de glisser/s'estomper comme un vrai menu déroulant.
+    void list.offsetWidth;
+    list.classList.add("custom-select__list--ouverte");
 
-    // Si la liste dépasse à droite de l'écran (bouton compact + options au texte long),
-    // on la recale vers la gauche pour qu'elle reste entièrement visible
-    const debordementDroite = list.getBoundingClientRect().right - (window.innerWidth - 12);
-    if (debordementDroite > 0) {
-      list.style.left = positionBouton.left - debordementDroite + "px";
-    }
+    // Si la liste dépasse à droite de l'écran (bouton compact + options au texte long, ex: les
+    // icônes de recette sur Calories, souvent proches du bord droit), on la recale pour qu'elle
+    // reste entièrement visible. Un clamp direct (Math.min) plutôt qu'un "si ça déborde, décale"
+    // conditionnel : plus fiable, sans dépendre d'un calcul de débordement qui peut se tromper
+    // de quelques pixels et laisser passer un cas comme un bouton collé au bord.
+    const margeEcran = 12;
+    const largeurListe = list.getBoundingClientRect().width;
+    const gaucheMax = window.innerWidth - largeurListe - margeEcran;
+    list.style.left = Math.max(margeEcran, Math.min(positionBouton.left, gaucheMax)) + "px";
   }
 
   // (Re)construit la liste des options affichées, à partir des vraies <option> du <select>
@@ -101,6 +124,11 @@ function enhanceSelect(select) {
     list.innerHTML = "";
 
     Array.from(select.options).forEach(function (option) {
+      // Une option vide (valeur ET texte, ex: le "aucune sélection" des menus recette) ne sert
+      // qu'à réinitialiser le <select> réel : l'afficher dans la liste donnait une ligne
+      // totalement blanche en haut du menu, qui ressemblait juste à un excès de padding.
+      if (option.value === "" && option.textContent.trim() === "") return;
+
       const item = document.createElement("li");
       item.className = "custom-select__option";
       item.textContent = option.textContent;
@@ -193,8 +221,13 @@ function closeAllCustomSelects(exceptWrapper) {
   });
 
   // Les listes ouvertes ne sont plus rangées dans leur wrapper (elles sont posées sur <body>
-  // pendant qu'elles sont ouvertes, voir open()) : on les cherche donc directement sur toute la page
+  // pendant qu'elles sont ouvertes, voir open()) : on les cherche donc directement sur toute la page.
+  // Fermeture instantanée ici (pas de fondu) : ce chemin sert au scroll/Échap/clic ailleurs, où on
+  // veut que tout disparaisse tout de suite. On retire quand même la classe d'animation avant de
+  // détacher la liste, sinon elle resterait "ouverte" pour la prochaine fois qu'on la rouvre
+  // (list.hidden=false l'afficherait alors instantanément, sans le glissement d'ouverture).
   document.querySelectorAll(".custom-select__list").forEach(function (list) {
+    list.classList.remove("custom-select__list--ouverte");
     list.hidden = true;
     list.remove();
   });

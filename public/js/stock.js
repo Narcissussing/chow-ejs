@@ -26,6 +26,29 @@ const btnVueListe = document.getElementById("btnVueListe"); // bouton "vue liste
 let emplacementActif = "tous";
 let typeActif = "tous";
 
+// Retire les accents ("é" -> "e", "à" -> "a"...) pour que la recherche les ignore : taper "e"
+// doit trouver "Café" aussi bien que "Cafe". NFD décompose chaque lettre accentuée en deux
+// caractères (la lettre de base + un accent séparé), qu'on peut ensuite retirer avec la regex
+// (plage Unicode des signes diacritiques combinants).
+function normaliserTexte(str) {
+  return str.normalize("NFD").replace(new RegExp("[̀-ͯ]", "g"), "");
+}
+
+// Ajoute la classe "entree" (petite animation d'apparition, voir @keyframes popIn) puis la
+// retire une fois l'animation terminée : "animation: ... both" (voir style.css) fait tenir la
+// valeur de fin indéfiniment tant que la classe reste posée, ce qui écraserait silencieusement
+// tout "transform" posé plus tard en JS si on ne la retirait jamais.
+function ajouterAnimationEntree(el) {
+  el.classList.add("entree");
+  el.addEventListener(
+    "animationend",
+    function () {
+      el.classList.remove("entree");
+    },
+    { once: true }
+  );
+}
+
 // Petite fonction de sécurité : transforme les caractères spéciaux (<, >, ", etc.)
 // en leur équivalent HTML pour éviter d'injecter du code HTML/JS dans la page (faille XSS)
 function escapeHtml(value) {
@@ -119,7 +142,7 @@ const items = listeAliments.querySelectorAll("li");
 
 // Quand l'utilisateur tape dans le champ de recherche d'aliment...
 rechercheAliment.addEventListener("input", function () {
-  const recherche = this.value.toLowerCase();
+  const recherche = normaliserTexte(this.value.toLowerCase());
 
   // Si le champ est vide, on cache la liste de suggestions et on s'arrête là
   if (recherche === "") {
@@ -130,9 +153,10 @@ rechercheAliment.addEventListener("input", function () {
   listeAliments.hidden = false;
 
   // On parcourt tous les aliments disponibles et on affiche tous ceux qui contiennent le texte tapé.
-  // Aucune limite de nombre : si la liste est longue, elle défile (voir max-height dans style.css)
+  // Aucune limite de nombre : si la liste est longue, elle défile (voir max-height dans style.css).
+  // normaliserTexte des deux côtés : taper "e" doit aussi trouver "Café" (accents ignorés).
   items.forEach(function (item) {
-    item.hidden = !item.textContent.toLowerCase().includes(recherche);
+    item.hidden = !normaliserTexte(item.textContent.toLowerCase()).includes(recherche);
   });
 });
 
@@ -236,7 +260,7 @@ searchInput.addEventListener("input", function () {
 // 2) le filtre de type actif (tous types, bouteilles = "cl", pièces = tout le reste)
 // 3) le texte tapé dans la barre de recherche
 function appliquerFiltresStock() {
-  const recherche = searchInput.value.toLowerCase().trim();
+  const recherche = normaliserTexte(searchInput.value.toLowerCase().trim());
   const stockItems = listeStock.querySelectorAll(".stock-item");
   let visibles = 0;
 
@@ -246,7 +270,9 @@ function appliquerFiltresStock() {
     const correspondType =
       typeActif === "tous" ||
       (typeActif === "cl" ? item.dataset.trackingType === "cl" : item.dataset.trackingType !== "cl");
-    const correspondRecherche = item.dataset.nom.includes(recherche);
+    // normaliserTexte ignore les accents ("e" trouve aussi "Café") ; dataset.nom est déjà en
+    // minuscules (voir stock.ejs/construireStockItemDOM), il ne reste qu'à retirer les accents
+    const correspondRecherche = normaliserTexte(item.dataset.nom).includes(recherche);
 
     if (correspondEmplacement && correspondType && correspondRecherche) {
       item.classList.remove("hidden");
@@ -397,7 +423,7 @@ function ajouterAuStock(idAliment, quantiteDepart) {
       activerEditionInline(nouvelItem);
       activerItemSuppression(nouvelItem);
       // Petite classe CSS pour une animation d'apparition
-      nouvelItem.classList.add("entree");
+      ajouterAnimationEntree(nouvelItem);
       // On retrie toute la liste (avec le nouvel article dedans) selon le tri actuellement choisi,
       // au lieu de laisser le nouvel article toujours coincé tout en bas
       trierStock(sortSelect.value);
@@ -494,6 +520,11 @@ function ouvrirEdition(item, zone, trackingType) {
     input.className = "stock-quantite-edit anim-fondu";
     input.value = valeurActuelle;
     input.min = "0";
+    // Ces quantités (unités/packs) sont toujours des nombres entiers côté serveur (voir
+    // /courses/acheter, qui fait un cast SQL "::integer") : step="1" empêche de taper une
+    // décimale ici, qui casserait silencieusement l'addition la prochaine fois que cet
+    // aliment est acheté depuis Courses (voir le repli sur 0 dans la requête SQL).
+    input.step = "1";
     zone.innerHTML = "";
     zone.appendChild(input);
     input.focus(); // le curseur se place directement dans le champ

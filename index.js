@@ -44,6 +44,23 @@ await db.query("ALTER TABLE recettes ADD COLUMN IF NOT EXISTS categorie TEXT NOT
 await db.query("ALTER TABLE foods ADD COLUMN IF NOT EXISTS grammes_par_cuil_a_cafe NUMERIC");
 await db.query("ALTER TABLE foods ADD COLUMN IF NOT EXISTS grammes_par_cuil_a_soupe NUMERIC");
 
+// Ordre d'affichage du journal (réarrangeable à la main, voir /calories/deplacer et calories.js).
+// Les recettes n'ont pas besoin de cette colonne : leurs ingrédients sont entièrement
+// supprimés/réinsérés à chaque enregistrement (voir /recettes/:id/modifier), donc l'ordre
+// d'insertion (déjà utilisé par ARRAY_AGG ... ORDER BY id dans chercherRecettes) suffit.
+await db.query("ALTER TABLE journal_repas ADD COLUMN IF NOT EXISTS ordre INTEGER");
+// Comble l'ordre pour les entrées déjà existantes (jamais réordonnées) : classées par heure
+// d'ajout, comme l'était le tri par défaut avant l'ajout de cette colonne. Ne touche jamais une
+// ligne qui a déjà un ordre réel (mise à jour idempotente, sûre à rejouer à chaque démarrage).
+await db.query(`
+    UPDATE journal_repas SET ordre = sub.rn
+    FROM (
+        SELECT id, ROW_NUMBER() OVER (PARTITION BY date_entree ORDER BY heure_entree) AS rn
+        FROM journal_repas WHERE ordre IS NULL
+    ) sub
+    WHERE journal_repas.id = sub.id
+`);
+
 // On dit à Express de comprendre les données envoyées par les formulaires HTML classiques
 app.use(express.urlencoded({ extended: true }));
 // On dit à Express de servir les fichiers du dossier "public" tels quels (CSS, JS, images...)
@@ -138,9 +155,15 @@ async function chercherRecettes() {
             COUNT(recette_ingredients.food_id) AS nb_ingredients,
             COALESCE(SUM(ROUND(foods.calories * recette_ingredients.quantite_g / 100)), 0) AS kcal_total,
             COALESCE(
-                ARRAY_AGG(recette_ingredients.food_id) FILTER (WHERE recette_ingredients.food_id IS NOT NULL),
+                ARRAY_AGG(recette_ingredients.food_id ORDER BY recette_ingredients.id) FILTER (WHERE recette_ingredients.food_id IS NOT NULL),
                 '{}'
-            ) AS food_ids
+            ) AS food_ids,
+            -- Émojis des ingrédients dans le même ordre que food_ids : sert à composer l'icône de
+            -- la carte recette (les 3 premiers combinés) plutôt qu'une icône générique de catégorie
+            COALESCE(
+                ARRAY_AGG(foods.emoji ORDER BY recette_ingredients.id) FILTER (WHERE recette_ingredients.food_id IS NOT NULL),
+                '{}'
+            ) AS emojis_ingredients
         FROM recettes
         LEFT JOIN recette_ingredients ON recette_ingredients.recette_id = recettes.id
         LEFT JOIN foods ON foods.id = recette_ingredients.food_id
@@ -173,6 +196,7 @@ async function chercherJournalDuJour() {
     const result = await db.query(
         `SELECT journal_repas.*, foods.nom, foods.emoji, foods.categorie,
                 foods.grammes_par_cuil_a_cafe, foods.grammes_par_cuil_a_soupe,
+                foods.poids_unite_g, foods.unite AS unite_piece, foods.tracking_type,
                 ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
                 ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
                 ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
@@ -180,7 +204,7 @@ async function chercherJournalDuJour() {
          FROM journal_repas
          JOIN foods ON journal_repas.food_id = foods.id
          WHERE date_entree = CURRENT_DATE
-         ORDER BY heure_entree ASC`
+         ORDER BY ordre ASC`
     );
     return result.rows;
 }
@@ -558,14 +582,30 @@ app.post("/courses/acheter", async (req, res) => {
                     [foodId]
                 );
             } else {
-                // Pour les autres aliments (unités, packs), on demande la quantité achetée
-                if (!quantiteAchetee) {
-                    return res.status(400).json({ erreur: "Quantité requise." });
+                // Pour les autres aliments (unités, packs), on demande la quantité achetée.
+                // On arrondit nous-mêmes plutôt que de faire confiance au champ HTML : ce
+                // formulaire est envoyé via fetch (pas une vraie soumission de formulaire), donc
+                // la validation native du navigateur (min="1", type="number") n'est jamais
+                // appliquée avant l'envoi — un "1.5" tapé au clavier arrivait tel quel ici et
+                // faisait planter le cast SQL "::integer" (qui refuse les décimales), renvoyant
+                // une erreur brute au milieu des courses.
+                const quantiteEntiere = Math.round(Number(quantiteAchetee));
+                if (!quantiteAchetee || !Number.isFinite(quantiteEntiere) || quantiteEntiere < 1) {
+                    return res.status(400).json({ erreur: "Quantité invalide." });
                 }
-                // Si l'aliment est déjà dans le stock, on additionne la quantité achetée à celle qui existe déjà
+                // Si l'aliment est déjà dans le stock, on additionne la quantité achetée à celle qui existe déjà.
+                // La quantité existante est protégée par une expression régulière avant le cast ::integer :
+                // si elle contenait encore une ancienne valeur "cl" (ex: "plein") suite à un changement de
+                // type de suivi, le cast direct planterait aussi (voir la même logique dans /stock/modifier).
                 await db.query(
-                    "INSERT INTO stock (food_id, quantite, date_maj) VALUES ($1, $2, NOW()) ON CONFLICT (food_id) DO UPDATE SET quantite = (stock.quantite::integer + $2::integer)::text, date_maj = NOW()",
-                    [foodId, quantiteAchetee]
+                    `INSERT INTO stock (food_id, quantite, date_maj) VALUES ($1, $2, NOW())
+                     ON CONFLICT (food_id) DO UPDATE SET
+                        quantite = (
+                            CASE WHEN stock.quantite ~ '^[0-9]+$' THEN stock.quantite::integer ELSE 0 END
+                            + $2::integer
+                        )::text,
+                        date_maj = NOW()`,
+                    [foodId, quantiteEntiere]
                 );
             }
         }
@@ -613,8 +653,12 @@ app.post("/calories/ajouter", async (req, res) => {
             return res.status(400).json({ erreur: "Champs requis." });
         }
 
+        // Le nouvel article va toujours à la fin (ordre max du jour + 1), pour apparaître après
+        // tout ce qui est déjà dans le journal plutôt qu'à une position arbitraire
         const insertResult = await db.query(
-            "INSERT INTO journal_repas (food_id, quantite_g) VALUES ($1, $2) RETURNING id",
+            `INSERT INTO journal_repas (food_id, quantite_g, ordre)
+             VALUES ($1, $2, COALESCE((SELECT MAX(ordre) FROM journal_repas WHERE date_entree = CURRENT_DATE), 0) + 1)
+             RETURNING id`,
             [idAliment, quantiteG]
         );
         const nouvelId = insertResult.rows[0].id;
@@ -623,6 +667,7 @@ app.post("/calories/ajouter", async (req, res) => {
         const itemResult = await db.query(
             `SELECT journal_repas.*, foods.nom, foods.emoji, foods.categorie,
             foods.grammes_par_cuil_a_cafe, foods.grammes_par_cuil_a_soupe,
+            foods.poids_unite_g, foods.unite AS unite_piece, foods.tracking_type,
             ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
             ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
             ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
@@ -690,6 +735,49 @@ app.post("/calories/supprimer", async (req, res) => {
     }
 });
 
+// -- POST /calories/deplacer : réarrange le journal (boutons monter/descendre) --
+
+// Échange l'ordre d'une entrée avec celle juste au-dessus ("haut") ou juste en dessous ("bas") :
+// un simple échange entre deux voisines suffit pour "monter/descendre d'un cran", pas besoin
+// d'envoyer toute la liste réordonnée à chaque clic.
+app.post("/calories/deplacer", async (req, res) => {
+    try {
+        const idEntree = req.body.idEntree;
+        const direction = req.body.direction;
+
+        if (!idEntree || (direction !== "haut" && direction !== "bas")) {
+            return res.status(400).json({ erreur: "Requête invalide." });
+        }
+
+        const actuelResult = await db.query("SELECT ordre FROM journal_repas WHERE id = $1", [idEntree]);
+        if (actuelResult.rows.length === 0) {
+            return res.status(400).json({ erreur: "Entrée introuvable." });
+        }
+        const ordreActuel = actuelResult.rows[0].ordre;
+
+        // La voisine à échanger : l'entrée du jour avec l'ordre le plus proche, du bon côté
+        const voisineResult = await db.query(
+            `SELECT id, ordre FROM journal_repas
+             WHERE date_entree = CURRENT_DATE AND ordre ${direction === "haut" ? "<" : ">"} $1
+             ORDER BY ordre ${direction === "haut" ? "DESC" : "ASC"}
+             LIMIT 1`,
+            [ordreActuel]
+        );
+        if (voisineResult.rows.length === 0) {
+            // Déjà tout en haut/en bas : rien à faire, ce n'est pas une erreur
+            return res.json({ succes: true });
+        }
+        const voisine = voisineResult.rows[0];
+
+        await db.query("UPDATE journal_repas SET ordre = $1 WHERE id = $2", [voisine.ordre, idEntree]);
+        await db.query("UPDATE journal_repas SET ordre = $1 WHERE id = $2", [ordreActuel, voisine.id]);
+
+        res.json({ succes: true });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
 
 // -- POST /calories/vider : nouvelle route, Tout Effacer --
 
@@ -744,14 +832,20 @@ app.post("/calories/ajouter-recette", async (req, res) => {
 
         const nouvellesEntrees = [];
 
-        // On insère une ligne de journal pour chaque ingrédient de la recette
+        // On insère une ligne de journal pour chaque ingrédient de la recette, avec un ordre
+        // séquentiel (le journal vient d'être entièrement vidé juste au-dessus, donc 1, 2, 3...) :
+        // sans ça, ces lignes gardaient un "ordre" NULL, ce qui cassait silencieusement les
+        // boutons monter/descendre dessus (la comparaison SQL "ordre < NULL" ne trouve jamais de
+        // voisine, donc /calories/deplacer répondait succès sans rien faire).
+        let ordre = 1;
         for (const ingredient of ingredients.rows) {
             const insertResult = await db.query(
-                "INSERT INTO journal_repas (food_id, quantite_g) VALUES ($1, $2) RETURNING id",
-                [ingredient.food_id, ingredient.quantite_g]
+                "INSERT INTO journal_repas (food_id, quantite_g, ordre) VALUES ($1, $2, $3) RETURNING id",
+                [ingredient.food_id, ingredient.quantite_g, ordre]
             );
 
             nouvellesEntrees.push(insertResult.rows[0].id);
+            ordre++;
         }
 
         // On relit toutes les nouvelles entrées créées, avec leurs valeurs nutritionnelles calculées
@@ -763,6 +857,9 @@ app.post("/calories/ajouter-recette", async (req, res) => {
                 foods.categorie,
                 foods.grammes_par_cuil_a_cafe,
                 foods.grammes_par_cuil_a_soupe,
+                foods.poids_unite_g,
+                foods.unite AS unite_piece,
+                foods.tracking_type,
                 ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
                 ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
                 ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
@@ -771,7 +868,7 @@ app.post("/calories/ajouter-recette", async (req, res) => {
             JOIN foods
                 ON journal_repas.food_id = foods.id
             WHERE journal_repas.id = ANY($1)
-            ORDER BY journal_repas.heure_entree ASC
+            ORDER BY journal_repas.ordre ASC
         `, [nouvellesEntrees]);
 
         // Tout s'est bien passé : on valide définitivement la transaction
@@ -849,7 +946,8 @@ app.get("/recettes/:id", async (req, res) => {
 
         const ingredientsResult = await db.query(
             `SELECT foods.id AS food_id, foods.nom, foods.emoji, recette_ingredients.quantite_g,
-                    foods.grammes_par_cuil_a_cafe, foods.grammes_par_cuil_a_soupe
+                    foods.grammes_par_cuil_a_cafe, foods.grammes_par_cuil_a_soupe,
+                    foods.poids_unite_g, foods.unite AS unite_piece, foods.tracking_type
              FROM recette_ingredients
              JOIN foods ON foods.id = recette_ingredients.food_id
              WHERE recette_ingredients.recette_id = $1

@@ -48,4 +48,28 @@
     publierHauteurHeader();
     window.addEventListener("resize", publierHauteurHeader);
   })();
+
+  // Filet de sécurité pour le zoom automatique au clic dans un champ : tous nos champs sont
+  // maintenant à 16px sur mobile (voir style.css), ce qui suffit sur iOS Safari récent, mais
+  // certains navigateurs (Android notamment) respectent encore maximum-scale et peuvent zoomer
+  // quand même selon le champ. Ici, on force le zoom à revenir à 1 dès qu'on quitte un champ, en
+  // désactivant brièvement le zoom utilisateur (ce qui recale instantanément l'affichage) avant
+  // de le réactiver, plutôt que de laisser la page zoomée tant qu'on n'a pas re-pincé soi-même.
+  (function () {
+    var viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) return;
+    var contenuNormal = viewport.getAttribute("content");
+
+    document.addEventListener(
+      "blur",
+      function (event) {
+        if (!event.target.matches("input, select, textarea")) return;
+        viewport.setAttribute("content", contenuNormal + ", user-scalable=0");
+        setTimeout(function () {
+          viewport.setAttribute("content", contenuNormal);
+        }, 300);
+      },
+      true // "blur" ne remonte pas (bubbles), il faut écouter en phase de capture
+    );
+  })();
 </script>

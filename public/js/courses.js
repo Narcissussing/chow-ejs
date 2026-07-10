@@ -27,6 +27,29 @@ function repositionnerPanneauAjout() {
     listeCourses.appendChild(panneauAjoutCourse);
 }
 
+// Ajoute la classe "entree" (petite animation d'apparition, voir @keyframes popIn) puis la
+// retire une fois l'animation terminée : "animation: ... both" (voir style.css) fait tenir la
+// valeur de fin indéfiniment tant que la classe reste posée, ce qui écraserait silencieusement
+// tout "transform" posé plus tard en JS si on ne la retirait jamais.
+function ajouterAnimationEntree(el) {
+    el.classList.add("entree");
+    el.addEventListener(
+        "animationend",
+        function () {
+            el.classList.remove("entree");
+        },
+        { once: true }
+    );
+}
+
+// Retire les accents ("é" -> "e", "à" -> "a"...) pour que la recherche les ignore : taper "e"
+// doit trouver "Café" aussi bien que "Cafe". NFD décompose chaque lettre accentuée en deux
+// caractères (la lettre de base + un accent séparé), qu'on peut ensuite retirer avec la regex
+// (plage Unicode des signes diacritiques combinants).
+function normaliserTexte(str) {
+    return str.normalize("NFD").replace(new RegExp("[̀-ͯ]", "g"), "");
+}
+
 // Petite fonction de sécurité : transforme les caractères spéciaux en leur équivalent HTML,
 // pour éviter d'injecter du code HTML/JS dangereux dans la page (faille XSS)
 function escapeHtml(value) {
@@ -224,7 +247,7 @@ btnPresetHebdo.addEventListener("click", function () {
                 const nouvelItem = construireItemDOM(item);
                 inserrerSelonTri(nouvelItem);
                 activerItem(nouvelItem);
-                nouvelItem.classList.add("entree");
+                ajouterAnimationEntree(nouvelItem);
             });
         });
 });
@@ -527,7 +550,7 @@ const itemsAutocomplete = listeAlimentsCourses.querySelectorAll("li");
 rechercheAlimentCourses.addEventListener("input", function () {
     idAlimentCacheCourses.value = "";
 
-    const recherche = this.value.toLowerCase();
+    const recherche = normaliserTexte(this.value.toLowerCase());
 
     if (recherche === "") {
         listeAlimentsCourses.hidden = true;
@@ -539,10 +562,11 @@ rechercheAlimentCourses.addEventListener("input", function () {
     listeAlimentsCourses.hidden = false;
 
     // On affiche tous les aliments correspondants. Aucune limite de nombre :
-    // si la liste est longue, elle défile (voir max-height dans style.css)
+    // si la liste est longue, elle défile (voir max-height dans style.css). normaliserTexte des
+    // deux côtés : taper "e" doit aussi trouver "Café" (accents ignorés).
     let aUneCorrespondance = false;
     itemsAutocomplete.forEach(function (item) {
-        const correspond = item.textContent.toLowerCase().includes(recherche);
+        const correspond = normaliserTexte(item.textContent.toLowerCase()).includes(recherche);
         item.hidden = !correspond;
         if (correspond) aUneCorrespondance = true;
     });
@@ -610,7 +634,7 @@ function ajouterArticle(idAliment, texteLibre) {
             const nouvelItem = construireItemDOM(data.item);
             inserrerSelonTri(nouvelItem);
             activerItem(nouvelItem);
-            nouvelItem.classList.add("entree"); // petite animation d'apparition
+            ajouterAnimationEntree(nouvelItem);
 
             rechercheAlimentCourses.value = "";
             idAlimentCacheCourses.value = "";

@@ -12,10 +12,12 @@
   // Les deux catégories de recette sont un ensemble fermé (voir le sélecteur du panneau détail,
   // qui n'offre que ces deux boutons) : on les fixe ici plutôt que de les déduire des recettes
   // existantes, sinon une catégorie sans aucune recette n'aurait jamais sa propre section.
+  // "Plat" (nourriture) est listé en premier, "Fraîcheur" regroupe boissons ET glaces (les deux
+  // catégories froides/à boire n'ont pas assez de recettes chacune pour justifier une section
+  // séparée, voir l'échange avec l'utilisateur).
   const CATEGORIES_RECETTE = [
-    { valeur: "boisson", icone: "🥤", label: "Boissons" },
     { valeur: "plat", icone: "🍽️", label: "Plats" },
-    { valeur: "glace", icone: "🍦", label: "Glaces" }
+    { valeur: "fraicheur", icone: "🍧", label: "Fraîcheur" }
   ];
 %>
 
@@ -73,21 +75,24 @@
         <!-- Menu déroulant pour appliquer directement une recette (remplace le journal du jour par ses ingrédients).
              Icône plutôt que texte : "Recette" se lisait comme un doublon de l'onglet "Recettes"
              juste au-dessus. aria-label garde l'action compréhensible pour les lecteurs d'écran
-             malgré l'absence de texte visible (voir custom-selects.js). Les recettes "glace" ont
-             leur propre menu juste à côté (voir #selectRecetteGlace) : celui-ci ne liste donc que
-             boissons/plats. -->
-        <select id="selectRecette" aria-label="Remplacer le journal du jour avec une recette">
-          <option value=""></option>
-          <% recettes.filter(function(r) { return r.categorie !== 'glace'; }).forEach(function(recette) { %>
+             malgré l'absence de texte visible (voir custom-selects.js). "Fraîcheur" (boissons +
+             glaces) a son propre menu juste à côté (voir #selectRecetteFraicheur) : celui-ci ne
+             liste donc que les plats. Une seule option désactivée sert de message "vide" quand
+             la catégorie n'a encore aucune recette (voir aussi custom-select__option--disabled). -->
+        <% const recettesPlat = recettes.filter(function(r) { return r.categorie === 'plat'; }); %>
+        <select id="selectRecettePlat" aria-label="Remplacer le journal du jour avec une recette" <%= recettesPlat.length === 0 ? 'disabled title="Aucune recette de plat pour le moment"' : '' %>>
+          <option value=""><%= recettesPlat.length === 0 ? 'Aucune recette de plat' : '' %></option>
+          <% recettesPlat.forEach(function(recette) { %>
           <option value="<%= recette.id %>"><%= recette.nom %></option>
           <% }) %>
         </select>
 
-        <!-- Même principe que #selectRecette juste à gauche, mais uniquement pour les recettes de
-             glace (icône dédiée public/images/svg/glacon.svg, voir style.css) -->
-        <select id="selectRecetteGlace" aria-label="Remplacer le journal du jour avec une recette de glace">
-          <option value=""></option>
-          <% recettes.filter(function(r) { return r.categorie === 'glace'; }).forEach(function(recette) { %>
+        <!-- Même principe que #selectRecettePlat juste à gauche, mais pour "Fraîcheur" (boissons
+             et glaces confondues, icône dédiée public/images/svg/glacon.svg, voir style.css) -->
+        <% const recettesFraicheur = recettes.filter(function(r) { return r.categorie === 'fraicheur'; }); %>
+        <select id="selectRecetteFraicheur" aria-label="Remplacer le journal du jour avec une recette de fraîcheur" <%= recettesFraicheur.length === 0 ? 'disabled title="Aucune recette de fraîcheur pour le moment"' : '' %>>
+          <option value=""><%= recettesFraicheur.length === 0 ? 'Aucune recette de fraîcheur' : '' %></option>
+          <% recettesFraicheur.forEach(function(recette) { %>
           <option value="<%= recette.id %>"><%= recette.nom %></option>
           <% }) %>
         </select>
@@ -106,7 +111,21 @@
         <% journal.forEach(function(entree) { %>
         <!-- Les valeurs nutritionnelles sont stockées dans des attributs data-*, réutilisées par calories.js
              pour recalculer les totaux sans avoir à redemander ces infos au serveur -->
-        <div class="journal-item carte-article" data-id="<%= entree.id %>" data-food-id="<%= entree.food_id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>" data-g-cafe="<%= entree.grammes_par_cuil_a_cafe ?? '' %>" data-g-soupe="<%= entree.grammes_par_cuil_a_soupe ?? '' %>" data-quantite-g="<%= parseFloat(entree.quantite_g) %>">
+        <%
+          // poids_unite_g est NOT NULL en base (0.00 sert de valeur "pas de pièce définie" pour
+          // les aliments qui n'en ont pas) : Postgres renvoie les colonnes NUMERIC sous forme de
+          // texte ("0.00"), qui est "vrai" en JS/EJS même quand la valeur vaut zéro — parseFloat
+          // est donc indispensable ici, sinon l'option "pièce" apparaissait pour absolument tous
+          // les aliments suivis à l'unité (banane, poulet...), pas seulement ceux réellement
+          // renseignés (oeuf, gousse de vanille...).
+          const poidsPieceServeur = entree.tracking_type === 'unite' ? parseFloat(entree.poids_unite_g) : 0;
+        %>
+        <div class="journal-item carte-article" data-id="<%= entree.id %>" data-food-id="<%= entree.food_id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>" data-emoji="<%= entree.emoji %>" data-g-cafe="<%= entree.grammes_par_cuil_a_cafe ?? '' %>" data-g-soupe="<%= entree.grammes_par_cuil_a_soupe ?? '' %>" data-poids-piece="<%= poidsPieceServeur || '' %>" data-unite-piece="<%= entree.unite_piece || '' %>" data-quantite-g="<%= parseFloat(entree.quantite_g) %>">
+          <!-- Réarranger l'ordre du journal : voir activerReorderJournal dans calories.js -->
+          <div class="reorder-controls">
+            <button type="button" class="btn-reorder btn-reorder-haut" title="Monter" aria-label="Monter"></button>
+            <button type="button" class="btn-reorder btn-reorder-bas" title="Descendre" aria-label="Descendre"></button>
+          </div>
           <div class="journal-nom-groupe">
             <span class="journal-nom"><%= entree.emoji %> <%= entree.nom %></span>
             <span class="journal-categorie"><%= entree.categorie %></span>
@@ -121,6 +140,7 @@
                 <option value="g">g</option>
                 <% if (entree.grammes_par_cuil_a_cafe) { %><option value="cafe">tsp</option><% } %>
                 <% if (entree.grammes_par_cuil_a_soupe) { %><option value="soupe">tbsp</option><% } %>
+                <% if (poidsPieceServeur) { %><option value="piece"><%= entree.unite_piece || 'pc' %></option><% } %>
               </select>
             </div>
             <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
@@ -154,7 +174,10 @@
             <!-- Pas de bouton "éditer" NI "supprimer" sur la carte : toucher la carte ouvre le
                  panneau de détail, et c'est SEULEMENT depuis ce panneau qu'on peut supprimer la
                  recette (bouton poubelle à côté du "✕" fermer, voir plus bas) -->
-            <span class="recette-emoji"><%= cat.icone %></span>
+            <!-- Les 3 premiers émojis d'ingrédients (dans l'ordre d'ajout, voir emojis_ingredients
+                 dans chercherRecettes) composent l'icône, plus parlant qu'une icône générique de
+                 catégorie ; repli sur l'icône de catégorie si jamais aucun ingrédient n'a d'émoji -->
+            <span class="recette-emoji"><%= recette.emojis_ingredients.slice(0, 3).join('') || cat.icone %></span>
             <p class="recette-nom"><%= recette.nom %></p>
             <div class="recette-sub"><span><%= recette.nb_ingredients %> ingr.</span><span><%= recette.kcal_total %> kcal</span></div>
           </div>
@@ -191,9 +214,8 @@
          d'ingrédient, repliée par défaut, même principe que les panneaux d'ajout de Stock/Courses. -->
     <div class="detail-tag-row">
       <div class="detail-tag-select" id="recetteCategoriePicker">
-        <button type="button" class="cat-pill actif" data-valeur="boisson">🥤 Boisson</button>
-        <button type="button" class="cat-pill" data-valeur="plat">🍽️ Plat</button>
-        <button type="button" class="cat-pill" data-valeur="glace">🍦 Glace</button>
+        <button type="button" class="cat-pill actif" data-valeur="plat">🍽️ Plat</button>
+        <button type="button" class="cat-pill" data-valeur="fraicheur">🍧 Fraîcheur</button>
       </div>
       <button type="button" id="btnToggleAjoutIngredient" class="btn-ajout-icone" title="Ajouter un ingrédient">Ajouter un ingrédient</button>
     </div>
@@ -207,7 +229,8 @@
         <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
         <ul id="listeIngredientsRecherche">
           <% alimentsTries.forEach(function(aliment) { %>
-          <li data-id="<%= aliment.id %>" data-emoji="<%= aliment.emoji %>" data-g-cafe="<%= aliment.grammes_par_cuil_a_cafe ?? '' %>" data-g-soupe="<%= aliment.grammes_par_cuil_a_soupe ?? '' %>"><%= aliment.emoji %> <%= aliment.nom %></li>
+          <% const poidsPieceLi = aliment.tracking_type === 'unite' ? parseFloat(aliment.poids_unite_g) : 0; %>
+          <li data-id="<%= aliment.id %>" data-emoji="<%= aliment.emoji %>" data-g-cafe="<%= aliment.grammes_par_cuil_a_cafe ?? '' %>" data-g-soupe="<%= aliment.grammes_par_cuil_a_soupe ?? '' %>" data-poids-piece="<%= poidsPieceLi || '' %>" data-unite-piece="<%= aliment.unite || '' %>"><%= aliment.emoji %> <%= aliment.nom %></li>
           <% }) %>
         </ul>
       </div>

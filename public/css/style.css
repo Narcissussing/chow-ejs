@@ -39,6 +39,11 @@
 
 html {
   scroll-behavior: smooth; /* les clics vers une ancre (#section) font défiler la page en douceur au lieu d'un saut brusque */
+  /* Empêche tout élément qui déborderait légèrement (par erreur) de créer un défilement
+     horizontal : sans ça, la largeur "réelle" de la page peut devenir plus grande que l'écran,
+     et le header (qui suit la largeur normale de la page) semble alors ne plus atteindre le
+     bord droit une fois qu'on dézoome sur mobile (on voit soudain ce surplus de largeur). */
+  overflow-x: hidden;
 }
 
 body {
@@ -47,6 +52,20 @@ body {
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.6;
+}
+
+/* iOS Safari ignore désormais maximum-scale/user-scalable dans le <meta viewport> (comportement
+   volontairement retiré pour l'accessibilité, voir partials/header.ejs) : le seul moyen fiable
+   d'empêcher le zoom automatique au clic dans un champ reste que ce champ affiche du texte à au
+   moins 16px. Beaucoup de nos champs sont plus petits (0.85rem, 0.9rem...) pour rester compacts
+   visuellement : on les remonte donc à 16px UNIQUEMENT sur mobile (voir @media plus bas), pas
+   question de perdre ce design compact sur desktop où le bug n'existe pas. */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* ---------- HEADER ---------- */
@@ -493,8 +512,8 @@ body {
 }
 
 #sortSelect,
-#selectRecette,
-#selectRecetteGlace {
+#selectRecettePlat,
+#selectRecetteFraicheur {
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 999px;
@@ -512,8 +531,8 @@ body {
   transition: border-color 0.2s ease;
 }
 
-#selectRecette,
-#selectRecetteGlace {
+#selectRecettePlat,
+#selectRecetteFraicheur {
   flex: 0 1 220px; /* ne grandit pas, peut rétrécir si besoin, taille de base 220px */
   min-width: 190px;
   padding-top: 9px;
@@ -522,10 +541,10 @@ body {
 
 #sortSelect:hover,
 #sortSelect:focus,
-#selectRecette:hover,
-#selectRecette:focus,
-#selectRecetteGlace:hover,
-#selectRecetteGlace:focus {
+#selectRecettePlat:hover,
+#selectRecettePlat:focus,
+#selectRecetteFraicheur:hover,
+#selectRecetteFraicheur:focus {
   border-color: var(--accent);
   outline: none;
 }
@@ -2267,9 +2286,84 @@ body.mode-magasin .course-item__shop-slot {
 
 .journal-item {
   display: grid;
+  /* Grille inchangée (nom + valeurs) : les boutons monter/descendre ne prennent PAS leur propre
+     colonne (voir .reorder-controls plus bas) — leur donner une colonne "auto" mangeait juste
+     assez de largeur pour faire passer des noms plus longs ("Boeuf Haché 20%", "Piment Marocain")
+     sur deux lignes. Ils flottent maintenant en position absolute dans la marge gauche, comme le
+     "−" de suppression flotte déjà dans le coin en haut à droite (voir .form-supprimer-journal) :
+     aucun impact sur la largeur disponible pour le nom. */
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: 12px;
+  /* Réserve la place occupée par les boutons flottants, sans leur donner de vraie colonne */
+  padding-left: 22px;
+}
+
+/* Boutons monter/descendre : une paire de chevrons discrets, façon "stepper" iOS, plutôt qu'une
+   vraie poignée de glisser-déposer (peu fiable au tactile sans librairie dédiée). Flottent dans
+   la marge gauche (position absolute) pour ne jamais réduire la largeur du nom à côté — voir le
+   commentaire sur .journal-item. Réutilisés tels quels pour le Journal ET les ingrédients de
+   recette (voir .ligne-ingredient-recette, qui a besoin de son propre "position: relative"). */
+.reorder-controls {
+  position: absolute;
+  left: 0;
+  /* Étiré sur (presque) toute la hauteur de la ligne (plutôt que centré avec les deux boutons
+     collés) : "space-between" pousse "monter" vers le haut et "descendre" vers le bas, chacun
+     proche du bord qu'il représente au lieu d'être tassés ensemble au milieu. 6px de marge en
+     haut/bas plutôt que 0 : collés pile sur les bords, ils touchaient visuellement le bord de
+     la carte, ce qui faisait trop serré. */
+  top: 6px;
+  bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.btn-reorder {
+  width: 22px;
+  height: 17px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+}
+
+.btn-reorder::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-color: currentColor;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  -webkit-mask-size: 12px 12px;
+  mask-size: 12px 12px;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.btn-reorder-haut::before {
+  transform: rotate(180deg);
+}
+
+.btn-reorder:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-reorder:not(:disabled):hover {
+    color: var(--accent);
+  }
+}
+
+.btn-reorder:not(:disabled):active {
+  transform: scale(0.8);
+  color: var(--accent);
 }
 
 .journal-nom-groupe {
@@ -2381,13 +2475,17 @@ body.mode-magasin .course-item__shop-slot {
    qu'on presse — même famille de police que les titres, gras, soulignés façon .nav__link.actif. */
 .calories-tabs {
   display: flex;
-  gap: 28px;
   margin-bottom: 24px;
   padding-bottom: 14px;
   border-bottom: 1.5px solid var(--border);
 }
 
 .calories-tab-btn {
+  /* Chaque onglet prend une part égale de toute la largeur (au lieu d'être collé à gauche avec
+     un "gap" fixe et un grand vide à droite) : Journal et Recette occupent ainsi toute la ligne,
+     comme une vraie barre d'onglets plutôt que deux libellés perdus dans le coin. */
+  flex: 1;
+  text-align: center;
   padding: 0;
   border: none;
   background: transparent;
@@ -2833,6 +2931,19 @@ body.mode-magasin .course-item__shop-slot {
   overflow-y: auto;
 }
 
+/* Même souci que #autocompleteIngredient.pret, un niveau plus haut : même avec
+   #autocompleteIngredient repassé en overflow:visible pendant la recherche, la liste de
+   suggestions (position:absolute) reste un DESCENDANT de #listeIngredientsRecette — son propre
+   "overflow-y: auto" continuait donc à couper toute suggestion qui dépassait ses 40vh, la
+   rendant invisible même si elle s'affichait bien dans le DOM (le champ s'ouvrait, mais taper
+   ne montrait jamais aucun résultat). Classe ajoutée par JS pendant que la recherche est ouverte
+   (voir btnToggleAjoutIngredient dans calories.js) : la liste peut alors dépasser librement, et
+   c'est .sheet (qui défile lui aussi) qui prend le relai pour rester scrollable. */
+#listeIngredientsRecette.recherche-ouverte {
+  overflow: visible;
+  max-height: none;
+}
+
 .ingredients-vide {
   text-align: center;
   color: var(--text-muted);
@@ -2881,8 +2992,11 @@ body.mode-magasin .course-item__shop-slot {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 0;
+  padding: 9px 0 9px 22px;
   border-bottom: 1px solid var(--border);
+  /* Nécessaire pour que .reorder-controls (position: absolute) se positionne par rapport à
+     CETTE ligne plutôt que par rapport à #listeIngredientsRecette entier */
+  position: relative;
 }
 
 .ingredient-nom-recette {
@@ -2984,10 +3098,21 @@ body.mode-magasin .course-item__shop-slot {
   transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.12s ease;
 }
 
-.custom-select__button:hover,
+/* :hover exclu du tactile (voir @media plus bas) : sur un écran tactile il n'y a pas de vrai
+   "survol", donc pas de mouseout pour l'annuler — sans cette condition, un bouton restait avec
+   sa bordure accentuée après un tap (ex: #selectRecettePlat/#selectRecetteFraicheur sur Calories)
+   tant qu'on ne touchait pas autre chose ailleurs, donnant l'impression que les deux étaient
+   "actifs" en même temps dès qu'on tapait l'un puis l'autre. */
 .custom-select__button:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .custom-select__button:hover {
+    outline: none;
+    border-color: var(--accent);
+  }
 }
 
 .custom-select__button:active {
@@ -3024,6 +3149,18 @@ body.mode-magasin .course-item__shop-slot {
   overflow: hidden;
   z-index: 1000; /* bien au-dessus de tout le reste de la page (header compris) */
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  /* Fermée par défaut : légèrement remontée et invisible, pour glisser/s'estomper à l'ouverture
+     comme un vrai menu déroulant plutôt que d'apparaître d'un coup (voir .custom-select__list--ouverte
+     et open()/close() dans custom-selects.js) */
+  opacity: 0;
+  transform: translateY(-6px);
+  transform-origin: top;
+  transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.custom-select__list--ouverte {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .custom-select__option {
@@ -3062,18 +3199,18 @@ body.mode-magasin .course-item__shop-slot {
   min-width: 190px;
 }
 
-/* #selectRecette/#selectRecetteGlace n'affichent qu'une icône (pas de texte, voir calories.ejs) :
+/* #selectRecettePlat/#selectRecetteFraicheur n'affichent qu'une icône (pas de texte, voir calories.ejs) :
    un rond compact comme les autres boutons d'action de la ligne plutôt que la largeur prévue
    pour un nom de recette */
-#selectRecette + .custom-select,
-#selectRecetteGlace + .custom-select {
+#selectRecettePlat + .custom-select,
+#selectRecetteFraicheur + .custom-select {
   flex: 0 0 auto;
   min-width: 0;
   width: 38px;
 }
 
-#selectRecette + .custom-select .custom-select__button,
-#selectRecetteGlace + .custom-select .custom-select__button {
+#selectRecettePlat + .custom-select .custom-select__button,
+#selectRecetteFraicheur + .custom-select .custom-select__button {
   width: 38px;
   height: 38px;
   padding: 0;
@@ -3082,21 +3219,21 @@ body.mode-magasin .course-item__shop-slot {
   text-align: center;
   /* Icône dédiée à la place du texte de l'option choisie et de la petite flèche du menu déroulant :
      contrairement à supprimer/enregistrer/fermer, ces dessins sont en plusieurs couleurs, donc
-     affichés tels quels (pas en mask-image recolorable) — recettes.svg pour "toutes les recettes"
-     (boisson/plat), glacon.svg pour les recettes de glace */
+     affichés tels quels (pas en mask-image recolorable) — recettes.svg pour les recettes de plat,
+     glacon.svg pour "Fraîcheur" (boissons + glaces) */
   background-image: url("/images/svg/recettes.svg");
   background-repeat: no-repeat;
   background-position: center;
   background-size: 20px 20px;
 }
 
-#selectRecetteGlace + .custom-select .custom-select__button {
+#selectRecetteFraicheur + .custom-select .custom-select__button {
   background-image: url("/images/svg/glacon.svg");
   background-size: 18px 18px;
 }
 
-#selectRecette + .custom-select .custom-select__label,
-#selectRecetteGlace + .custom-select .custom-select__label {
+#selectRecettePlat + .custom-select .custom-select__label,
+#selectRecetteFraicheur + .custom-select .custom-select__label {
   /* Le nom de la recette choisie reste inutile ici : seule l'icône compte, le texte est cité
      pour l'accessibilité mais retiré visuellement */
   font-size: 0;
@@ -3124,8 +3261,8 @@ body.mode-magasin .course-item__shop-slot {
 #rechercheAliment:focus,
 #rechercheAlimentCalories:focus,
 #rechercheIngredient:focus,
-#selectRecette:focus,
-#selectRecetteGlace:focus,
+#selectRecettePlat:focus,
+#selectRecetteFraicheur:focus,
 #champQuantite:focus,
 #champCL:focus {
   outline: none;
@@ -3245,14 +3382,11 @@ body.mode-magasin .course-item__shop-slot {
     width: 100%;
   }
 
-  #selectRecette,
-  #selectRecetteGlace {
-    flex-basis: 100%;
-    width: 100%;
-  }
-
-  .journal-actions-row .custom-select {
-    flex-basis: 100%;
-    width: 100%;
-  }
+  /* Pas de règle "pleine largeur" pour .journal-actions-row .custom-select ici : ça ne visait que
+     #selectRecettePlat/#selectRecetteFraicheur, deux ronds compacts (icône seule, pas de nom de
+     recette à lire) pour qui "pleine largeur" n'a jamais eu de sens, contrairement à un vrai
+     select texte. Une ancienne règle le forçait quand même (jusqu'ici sans effet à cause d'un
+     conflit de spécificité) ; la corriger les a fait passer en pleine largeur "un par ligne",
+     empilant Journal/Fraîcheur/Tout-effacer sur 3 rangs séparés au lieu de rester groupés à côté
+     de la recherche. Ils restent donc compacts sur mobile aussi, comme sur desktop. */
 }
