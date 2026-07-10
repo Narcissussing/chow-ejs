@@ -48,6 +48,28 @@
             <span class="macro-label">Lipides</span>
           </div>
         </div>
+
+        <!-- Poids d'une cuillère de CET aliment précis : ça n'a rien d'universel (1 c. à soupe
+             d'huile ≈ 13g, 1 c. à soupe de gomme xanthane ≈ 9g), donc renseigné une fois ici,
+             au poids réel constaté à la cuisine. Sert ensuite à saisir "1/2 c. à café" plutôt que
+             de deviner un poids en grammes, dans le Journal et les recettes (voir calories.js). -->
+        <div class="detail-equivalences" data-id="<%= aliment.id %>">
+          <p class="detail-equivalences__titre">Équivalences (poids d'une cuillère)</p>
+          <p class="detail-equivalences__aide">Laisse vide tant que tu ne l'as pas pesé toi-même — sans valeur, seuls les grammes restent proposés.</p>
+          <div class="detail-equivalences__champs">
+            <label>
+              1 c. à café =
+              <input type="number" id="equivGrammesCafe" min="0" step="0.1" placeholder="g" value="<%= aliment.grammes_par_cuil_a_cafe ?? '' %>" />
+              g
+            </label>
+            <label>
+              1 c. à soupe =
+              <input type="number" id="equivGrammesSoupe" min="0" step="0.1" placeholder="g" value="<%= aliment.grammes_par_cuil_a_soupe ?? '' %>" />
+              g
+            </label>
+          </div>
+          <p class="detail-equivalences__statut hidden" id="equivStatut">Enregistré ✓</p>
+        </div>
       </div>
     </div>
     <% } else { %>
@@ -56,5 +78,9 @@
     <% } %>
   </div>
 </main>
+
+<% if (aliment) { %>
+<script src="/js/aliment-detail.js" defer></script>
+<% } %>
 
 <%- include('partials/footer') %>

@@ -12,21 +12,26 @@
   </div>
 
   <div class="courses-section">
-    <!-- Trier — Au magasin — "+", espacés sur la ligne (justify-content: space-between) -->
+    <!-- Fond plein écran (voir .courses-controls-row), mais le contenu reste dans la même
+         colonne centrée (max-width 1200px) que le reste de la page : sinon "Trier par" et "+"
+         se retrouvaient collés aux bords réels de l'écran au lieu de s'aligner avec le titre
+         et les cartes en dessous, comme sur Stock (voir .filters/.filters__inner). -->
     <div class="courses-controls-row">
-      <div class="sort-wrapper">
-        <label for="sortSelectCourses">Trier par :</label>
-        <select id="sortSelectCourses">
-          <option value="nom">Nom</option>
-          <option value="categorie">Catégorie</option>
-        </select>
+      <div class="courses-controls-row__inner">
+        <div class="sort-wrapper">
+          <label for="sortSelectCourses">Trier par :</label>
+          <select id="sortSelectCourses">
+            <option value="nom">Nom</option>
+            <option value="categorie">Catégorie</option>
+          </select>
+        </div>
+        <!-- Interrupteur façon iOS plutôt qu'un bouton pilule classique -->
+        <button type="button" id="toggleMagasin" class="toggle-ios">
+          <span class="toggle-ios__track"><span class="toggle-ios__thumb"></span></span>
+          <span class="toggle-ios__label">Au magasin</span>
+        </button>
+        <button type="button" id="btnToggleAjoutCourse" class="btn-ajout-icone" title="Ajouter un article">Ajouter un article</button>
       </div>
-      <!-- Interrupteur façon iOS plutôt qu'un bouton pilule classique -->
-      <button type="button" id="toggleMagasin" class="toggle-ios">
-        <span class="toggle-ios__track"><span class="toggle-ios__thumb"></span></span>
-        <span class="toggle-ios__label">Au magasin</span>
-      </button>
-      <button type="button" id="btnToggleAjoutCourse" class="btn-ajout-icone" title="Ajouter un article">Ajouter un article</button>
     </div>
 
     <!-- Panneau d'ajout : fermé par défaut, ouvert/fermé en cliquant sur le "+" juste au-dessus.

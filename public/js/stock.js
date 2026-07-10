@@ -6,11 +6,6 @@
 
 const rechercheAliment = document.getElementById("rechercheAliment"); // champ de recherche pour ajouter un aliment
 const listeAliments = document.getElementById("listeAliments"); // liste déroulante des suggestions d'aliments
-const idAlimentCache = document.getElementById("idAlimentCache"); // champ caché qui stocke l'id de l'aliment choisi
-const champQuantite = document.getElementById("champQuantite"); // champ nombre (pour unités/packs)
-const champCL = document.getElementById("champCL"); // liste déroulante (pour les aliments suivis en "cl", ex: plein/vide)
-const btnAjouter = document.getElementById("btnAjouter"); // bouton "Ajouter"
-const formAjouterStock = document.getElementById("formAjouterStock"); // formulaire complet d'ajout au stock
 const listeStock = document.getElementById("listeStock"); // conteneur qui affiche tous les articles du stock
 
 const searchInput = document.getElementById("searchInput"); // champ de recherche dans le stock déjà présent
@@ -99,7 +94,7 @@ panneauAjoutStock.addEventListener("transitionend", function (event) {
 });
 
 // ============================================
-// AUTOCOMPLETE + RÉVÉLATION DU BON CHAMP
+// AUTOCOMPLETE + AJOUT INSTANTANÉ (comme Courses/Calories)
 // ============================================
 
 // Au départ, la liste de suggestions est cachée
@@ -109,21 +104,6 @@ const items = listeAliments.querySelectorAll("li");
 
 // Quand l'utilisateur tape dans le champ de recherche d'aliment...
 rechercheAliment.addEventListener("input", function () {
-  // On réinitialise la sélection précédente : tant qu'on n'a pas re-choisi un aliment dans la liste,
-  // on ne sait pas encore lequel c'est, donc le bouton Ajouter reste désactivé
-  idAlimentCache.value = "";
-  btnAjouter.disabled = true;
-
-  // On cache et on vide les deux champs de quantité (nombre et niveau cl),
-  // ils ne seront réaffichés qu'une fois qu'un aliment aura été choisi dans la liste
-  champQuantite.classList.add("hidden");
-  champQuantite.disabled = true;
-  champQuantite.value = "";
-
-  champCL.classList.add("hidden");
-  champCL.disabled = true;
-  champCL.selectedIndex = 0;
-
   const recherche = this.value.toLowerCase();
 
   // Si le champ est vide, on cache la liste de suggestions et on s'arrête là
@@ -141,41 +121,17 @@ rechercheAliment.addEventListener("input", function () {
   });
 });
 
-// (mode d'édition retiré : le tap fonctionne partout, tout le temps)
-
-// Quand on clique sur un aliment proposé dans la liste de suggestions...
+// Toucher une suggestion ajoute directement l'aliment au stock, avec une quantité de départ
+// par défaut ("plein" pour un niveau, 1 pour une quantité) : la valeur exacte se corrige
+// ensuite directement sur la carte, pas besoin d'un second champ + bouton "Ajouter" séparés.
 items.forEach(function (item) {
   item.addEventListener("click", function () {
     const type = this.dataset.type; // le type de suivi de cet aliment ("cl", "unite", "pack"...)
-    idAlimentCache.value = this.dataset.id; // on mémorise l'id de l'aliment choisi
-    rechercheAliment.value = this.textContent.trim(); // on affiche son nom dans le champ de recherche
-    listeAliments.hidden = true; // on referme la liste de suggestions
-
-    if (type === "cl") {
-      // Aliment suivi par niveau (ex: bouteille) : on affiche le menu déroulant plein/vide/etc.
-      champCL.classList.remove("hidden");
-      champCL.disabled = false;
-      champQuantite.classList.add("hidden");
-      champQuantite.disabled = true;
-      champQuantite.value = "";
-    } else {
-      // Aliment suivi par quantité (unités, packs) : on affiche le champ nombre
-      champQuantite.classList.remove("hidden");
-      champQuantite.disabled = false;
-      champCL.classList.add("hidden");
-      champCL.disabled = true;
-    }
+    const quantiteDepart = type === "cl" ? "plein" : 1;
+    ajouterAuStock(this.dataset.id, quantiteDepart);
+    rechercheAliment.value = "";
+    listeAliments.hidden = true;
   });
-});
-
-// Le bouton "Ajouter" ne devient cliquable que si une quantité a été saisie
-champQuantite.addEventListener("input", function () {
-  btnAjouter.disabled = this.value.trim() === "";
-});
-
-// Le bouton "Ajouter" ne devient cliquable que si un niveau (cl) a été choisi
-champCL.addEventListener("change", function () {
-  btnAjouter.disabled = this.value === "";
 });
 
 // Si l'utilisateur clique n'importe où en dehors de la zone d'autocomplétion, on referme la liste de suggestions
@@ -362,23 +318,13 @@ function construireStockItemDOM(item) {
 // AJOUT (fetch, sans rechargement)
 // ============================================
 
-// Quand on valide le formulaire d'ajout au stock...
-formAjouterStock.addEventListener("submit", function (event) {
-  // On empêche le comportement par défaut du formulaire (qui rechargerait toute la page)
-  event.preventDefault();
-
-  // On récupère toutes les données du formulaire et on les transforme en objet JavaScript simple
-  const donnees = new FormData(formAjouterStock);
-  const objet = {};
-  donnees.forEach(function (valeur, cle) {
-    objet[cle] = valeur;
-  });
-
-  // On envoie ces données au serveur en JSON, sans recharger la page (fetch = requête en arrière-plan)
+// Ajoute un aliment au stock (appelé au tap sur une suggestion, voir plus haut), avec une
+// quantité de départ déjà décidée (pas de deuxième étape de saisie avant l'ajout)
+function ajouterAuStock(idAliment, quantiteDepart) {
   fetch("/stock/ajouter", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(objet)
+    body: JSON.stringify({ idAliment: idAliment, quantiteAliment: quantiteDepart })
   })
     .then(function (response) { return response.json(); })
     .then(function (data) {
@@ -388,7 +334,7 @@ formAjouterStock.addEventListener("submit", function (event) {
         return;
       }
 
-      // Sinon, on construit le nouvel article et on l'ajoute à la liste affichée à l'écran
+      // On construit le nouvel article et on l'ajoute à la liste affichée à l'écran
       const nouvelItem = construireStockItemDOM(data.item);
       listeStock.appendChild(nouvelItem);
       // On active pour ce nouvel article les mêmes comportements que les autres (édition, suppression)
@@ -399,24 +345,26 @@ formAjouterStock.addEventListener("submit", function (event) {
       // On retrie toute la liste (avec le nouvel article dedans) selon le tri actuellement choisi,
       // au lieu de laisser le nouvel article toujours coincé tout en bas
       trierStock(sortSelect.value);
-
-      // On réinitialise le formulaire pour permettre un nouvel ajout
-      rechercheAliment.value = "";
-      idAlimentCache.value = "";
-      champQuantite.value = "";
-      champQuantite.classList.add("hidden");
-      champQuantite.disabled = true;
-      champCL.selectedIndex = 0;
-      champCL.classList.add("hidden");
-      champCL.disabled = true;
-      btnAjouter.disabled = true;
+      // Et on ré-applique les filtres actifs (emplacement/type/recherche) : si le nouvel article
+      // ne correspond pas au filtre en cours, il doit rester caché comme n'importe quel autre
+      appliquerFiltresStock();
 
       // On referme le panneau d'ajout automatiquement après un ajout réussi
       panneauAjoutStock.classList.remove("ouvert");
       panneauAjoutStock.classList.remove("pret");
       btnToggleAjout.classList.remove("actif");
+
+      // Puis on amène l'utilisateur directement sur la carte qu'il vient d'ajouter, là où le
+      // tri/filtre actuel l'a placée, plutôt que de le laisser deviner où elle est passée
+      if (!nouvelItem.classList.contains("hidden")) {
+        nouvelItem.scrollIntoView({ behavior: "smooth", block: "center" });
+        nouvelItem.classList.add("mise-en-avant");
+        setTimeout(function () {
+          nouvelItem.classList.remove("mise-en-avant");
+        }, 1500);
+      }
     });
-});
+}
 
 // ============================================
 // ÉDITION INLINE PAR CLIC (pas de bouton modifier/enregistrer)

@@ -37,6 +37,13 @@ await db.connect();
 // maintenant des recettes de type "boisson" (voir /recettes/creer et /recettes/:id/modifier).
 await db.query("ALTER TABLE recettes ADD COLUMN IF NOT EXISTS categorie TEXT NOT NULL DEFAULT 'plat'");
 
+// Le poids d'une cuillère dépend entièrement de l'aliment (1 c. à soupe d'huile ≈ 13g, 1 c. à
+// soupe de gomme xanthane ≈ 9g) : il n'existe aucune conversion universelle. On stocke donc ce
+// ratio directement sur chaque aliment, une fois pesé à la cuillère (voir /aliments/:id/equivalences),
+// plutôt que de deviner un poids au moment de préparer une recette. NULL = pas encore renseigné.
+await db.query("ALTER TABLE foods ADD COLUMN IF NOT EXISTS grammes_par_cuil_a_cafe NUMERIC");
+await db.query("ALTER TABLE foods ADD COLUMN IF NOT EXISTS grammes_par_cuil_a_soupe NUMERIC");
+
 // On dit à Express de comprendre les données envoyées par les formulaires HTML classiques
 app.use(express.urlencoded({ extended: true }));
 // On dit à Express de servir les fichiers du dossier "public" tels quels (CSS, JS, images...)
@@ -148,6 +155,7 @@ async function chercherRecettes() {
 async function chercherJournalDuJour() {
     const result = await db.query(
         `SELECT journal_repas.*, foods.nom, foods.emoji, foods.categorie,
+                foods.grammes_par_cuil_a_cafe, foods.grammes_par_cuil_a_soupe,
                 ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
                 ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
                 ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
@@ -208,6 +216,35 @@ app.get("/aliments/:idAliment", async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send("Internal Server Error");
+    }
+});
+
+// -- POST /aliments/:id/equivalences : enregistre le poids d'une c. à café / c. à soupe pour cet aliment --
+// (voir le formulaire "Équivalences" sur la page détail d'un aliment)
+app.post("/aliments/:idAliment/equivalences", async (req, res) => {
+    try {
+        const idAliment = req.params.idAliment;
+        // Un champ laissé vide (pas encore pesé) est envoyé comme chaîne vide : on le stocke en
+        // NULL plutôt qu'en 0, pour bien distinguer "non renseigné" de "pèse réellement 0g"
+        const grammesCafe = req.body.grammesCafe === "" ? null : req.body.grammesCafe;
+        const grammesSoupe = req.body.grammesSoupe === "" ? null : req.body.grammesSoupe;
+
+        const result = await db.query(
+            `UPDATE foods
+             SET grammes_par_cuil_a_cafe = $1, grammes_par_cuil_a_soupe = $2
+             WHERE id = $3
+             RETURNING grammes_par_cuil_a_cafe, grammes_par_cuil_a_soupe`,
+            [grammesCafe, grammesSoupe, idAliment]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ erreur: "Aliment introuvable." });
+        }
+
+        res.json({ succes: true, equivalences: result.rows[0] });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
     }
 });
 
@@ -568,6 +605,7 @@ app.post("/calories/ajouter", async (req, res) => {
         // On relit la nouvelle entrée avec ses valeurs nutritionnelles déjà calculées
         const itemResult = await db.query(
             `SELECT journal_repas.*, foods.nom, foods.emoji, foods.categorie,
+            foods.grammes_par_cuil_a_cafe, foods.grammes_par_cuil_a_soupe,
             ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
             ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
             ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
@@ -706,6 +744,8 @@ app.post("/calories/ajouter-recette", async (req, res) => {
                 foods.nom,
                 foods.emoji,
                 foods.categorie,
+                foods.grammes_par_cuil_a_cafe,
+                foods.grammes_par_cuil_a_soupe,
                 ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
                 ROUND(foods.glucides * journal_repas.quantite_g / 100, 1) AS glucides_calc,
                 ROUND(foods.proteines * journal_repas.quantite_g / 100, 1) AS proteines_calc,
@@ -790,7 +830,8 @@ app.get("/recettes/:id", async (req, res) => {
         }
 
         const ingredientsResult = await db.query(
-            `SELECT foods.id AS food_id, foods.nom, foods.emoji, recette_ingredients.quantite_g
+            `SELECT foods.id AS food_id, foods.nom, foods.emoji, recette_ingredients.quantite_g,
+                    foods.grammes_par_cuil_a_cafe, foods.grammes_par_cuil_a_soupe
              FROM recette_ingredients
              JOIN foods ON foods.id = recette_ingredients.food_id
              WHERE recette_ingredients.recette_id = $1

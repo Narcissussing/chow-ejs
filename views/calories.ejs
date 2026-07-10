@@ -74,7 +74,7 @@
              juste au-dessus. aria-label garde l'action compréhensible pour les lecteurs d'écran
              malgré l'absence de texte visible (voir custom-selects.js). -->
         <select id="selectRecette" aria-label="Remplacer le journal du jour avec une recette">
-          <option value="">🔁</option>
+          <option value=""></option>
           <% recettes.forEach(function(recette) { %>
           <option value="<%= recette.id %>"><%= recette.nom %></option>
           <% }) %>
@@ -94,14 +94,23 @@
         <% journal.forEach(function(entree) { %>
         <!-- Les valeurs nutritionnelles sont stockées dans des attributs data-*, réutilisées par calories.js
              pour recalculer les totaux sans avoir à redemander ces infos au serveur -->
-        <div class="journal-item carte-article" data-id="<%= entree.id %>" data-food-id="<%= entree.food_id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>">
+        <div class="journal-item carte-article" data-id="<%= entree.id %>" data-food-id="<%= entree.food_id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>" data-g-cafe="<%= entree.grammes_par_cuil_a_cafe ?? '' %>" data-g-soupe="<%= entree.grammes_par_cuil_a_soupe ?? '' %>" data-quantite-g="<%= parseFloat(entree.quantite_g) %>">
           <div class="journal-nom-groupe">
             <span class="journal-nom"><%= entree.emoji %> <%= entree.nom %></span>
             <span class="journal-categorie"><%= entree.categorie %></span>
           </div>
           <div class="journal-valeurs">
-            <!-- Champ modifiable : changer la quantité en grammes met à jour les calories en direct (voir calories.js) -->
-            <input type="number" class="journal-grammes-input" value="<%= parseFloat(entree.quantite_g) %>" min="1" />
+            <!-- Champ modifiable : changer la quantité met à jour les calories en direct (voir calories.js).
+                 Le sélecteur d'unité est toujours affiché (même juste "g" seul) : chaque ligne
+                 a la même forme, plutôt que certaines lignes ayant un menu et d'autres non. -->
+            <div class="journal-quantite-groupe">
+              <input type="number" class="journal-grammes-input" step="0.25" value="<%= parseFloat(entree.quantite_g) %>" min="0.01" />
+              <select class="journal-unite-select">
+                <option value="g">g</option>
+                <% if (entree.grammes_par_cuil_a_cafe) { %><option value="cafe">tsp</option><% } %>
+                <% if (entree.grammes_par_cuil_a_soupe) { %><option value="soupe">tbsp</option><% } %>
+              </select>
+            </div>
             <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
           </div>
           <!-- Formulaire de suppression, intercepté par le JavaScript pour l'envoyer sans recharger la page -->
@@ -130,11 +139,9 @@
         <div class="recette-grid" data-grid-cat="<%= cat.valeur %>">
           <% recettes.filter(function(r) { return r.categorie === cat.valeur; }).forEach(function(recette) { %>
           <div class="recette-card" data-id="<%= recette.id %>" data-cat="<%= recette.categorie %>">
-            <!-- Pas de bouton "éditer" séparé : toucher la carte ouvre déjà le panneau de
-                 modification. Seule la suppression a besoin de sa propre icône, dans le même
-                 style que .btn-supprimer-dash (Journal/Stock/Courses) : rond rouge avec un "−",
-                 posé sur le coin de la carte. -->
-            <button type="button" class="btn-supprimer-dash btn-supprimer-recette" title="Supprimer"></button>
+            <!-- Pas de bouton "éditer" NI "supprimer" sur la carte : toucher la carte ouvre le
+                 panneau de détail, et c'est SEULEMENT depuis ce panneau qu'on peut supprimer la
+                 recette (bouton poubelle à côté du "✕" fermer, voir plus bas) -->
             <span class="recette-emoji"><%= cat.icone %></span>
             <p class="recette-nom"><%= recette.nom %></p>
             <div class="recette-sub"><span><%= recette.nb_ingredients %> ingr.</span><span><%= recette.kcal_total %> kcal</span></div>
@@ -164,31 +171,44 @@
     <div class="detail-header">
       <input type="text" id="recetteNom" class="detail-nom-edit" placeholder="Nom de la recette" required />
       <div class="detail-header-actions">
-        <!-- Supprimer une recette se fait uniquement depuis le "✕" de sa carte (grille Recettes) :
-             pas de deuxième bouton de suppression ici, pour ne jamais avoir deux "✕" à distinguer -->
         <button type="button" id="sheetCloseBtn" class="sheet-close-btn" title="Fermer">✕</button>
       </div>
     </div>
 
+    <!-- Boisson/Plat à gauche, "+" à droite sur la même ligne : le "+" ouvre/ferme la recherche
+         d'ingrédient (voir #autocompleteIngredient plus bas), repliée par défaut, même principe
+         que les panneaux d'ajout de Stock/Courses. position:relative ici sert d'ancrage pour que
+         la recherche flotte juste sous le "+" (voir CSS) au lieu de pousser le reste vers le bas. -->
     <div class="detail-tag-row">
       <div class="detail-tag-select" id="recetteCategoriePicker">
         <button type="button" class="cat-pill actif" data-valeur="boisson">🍨 Boisson</button>
         <button type="button" class="cat-pill" data-valeur="plat">🍽️ Plat</button>
       </div>
+      <button type="button" id="btnToggleAjoutIngredient" class="btn-ajout-icone" title="Ajouter un ingrédient">Ajouter un ingrédient</button>
+
+      <!-- Flotte sous le "+" (position:absolute, voir CSS) et recouvre la liste d'ingrédients
+           juste en dessous plutôt que de la repousser vers le bas -->
+      <div id="autocompleteIngredient" class="hidden">
+        <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
+        <ul id="listeIngredientsRecherche">
+          <% alimentsTries.forEach(function(aliment) { %>
+          <li data-id="<%= aliment.id %>" data-emoji="<%= aliment.emoji %>" data-g-cafe="<%= aliment.grammes_par_cuil_a_cafe ?? '' %>" data-g-soupe="<%= aliment.grammes_par_cuil_a_soupe ?? '' %>"><%= aliment.emoji %> <%= aliment.nom %></li>
+          <% }) %>
+        </ul>
+      </div>
     </div>
 
     <div id="listeIngredientsRecette"></div>
 
-    <div id="autocompleteIngredient">
-      <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
-      <ul id="listeIngredientsRecherche">
-        <% alimentsTries.forEach(function(aliment) { %>
-        <li data-id="<%= aliment.id %>" data-emoji="<%= aliment.emoji %>"><%= aliment.emoji %> <%= aliment.nom %></li>
-        <% }) %>
-      </ul>
-    </div>
-
     <button type="submit" id="btnEnregistrerSheet">Enregistrer</button>
+
+    <!-- Séparée du "✕" fermer (en haut) : façon Apple (ex. "Delete Contact"), une action
+         destructive ne vit jamais collée à un bouton de fermeture/annulation, pour ne jamais
+         la déclencher par un tap malheureux. Cachée pour "Nouvelle recette" (rien à supprimer
+         avant le premier enregistrement), affichée en mode édition (voir calories.js). -->
+    <button type="button" id="btnSupprimerRecetteSheet" class="btn-supprimer-pleine-largeur hidden">
+      Supprimer la recette
+    </button>
   </form>
 </div>
 

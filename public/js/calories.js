@@ -184,7 +184,11 @@ btnEnregistrerRecette.addEventListener("click", function () {
     return {
       food_id: item.dataset.foodId,
       nom: item.querySelector(".journal-nom").textContent.trim(),
-      quantite_g: item.querySelector(".journal-grammes-input").value
+      // dataset.quantiteG (toujours en grammes) plutôt que la valeur affichée dans le champ,
+      // qui peut être en c. à café/soupe si l'aliment a une équivalence (voir activerItem)
+      quantite_g: item.dataset.quantiteG,
+      grammes_par_cuil_a_cafe: item.dataset.gCafe,
+      grammes_par_cuil_a_soupe: item.dataset.gSoupe
     };
   });
 
@@ -215,6 +219,16 @@ function construireJournalItemDOM(entree) {
   div.dataset.glucides = entree.glucides_calc;
   div.dataset.proteines = entree.proteines_calc;
   div.dataset.lipides = entree.lipides_calc;
+  div.dataset.gCafe = entree.grammes_par_cuil_a_cafe ?? "";
+  div.dataset.gSoupe = entree.grammes_par_cuil_a_soupe ?? "";
+  div.dataset.quantiteG = quantite;
+
+  // Même logique que côté serveur (calories.ejs) : le sélecteur d'unité est toujours affiché
+  // (au moins "g"), pour que toutes les lignes du journal aient la même forme
+  let optionsUnite = "";
+  if (entree.grammes_par_cuil_a_cafe) optionsUnite += `<option value="cafe">tsp</option>`;
+  if (entree.grammes_par_cuil_a_soupe) optionsUnite += `<option value="soupe">tbsp</option>`;
+  const selectUnite = `<select class="journal-unite-select"><option value="g">g</option>${optionsUnite}</select>`;
 
   div.innerHTML = `
     <div class="journal-nom-groupe">
@@ -228,12 +242,16 @@ function construireJournalItemDOM(entree) {
     </div>
 
     <div class="journal-valeurs">
-      <input
-        type="number"
-        class="journal-grammes-input"
-        value="${quantite}"
-        min="1"
-      />
+      <div class="journal-quantite-groupe">
+        <input
+          type="number"
+          class="journal-grammes-input"
+          step="0.25"
+          value="${quantite}"
+          min="0.01"
+        />
+        ${selectUnite}
+      </div>
 
       <span class="journal-kcal">
         ${kcal} kcal
@@ -266,15 +284,44 @@ function construireJournalItemDOM(entree) {
 // ÉDITION INLINE DE LA QUANTITÉ (auto-save au blur)
 // ============================================
 
+// Renvoie le poids (en grammes) d'une unité donnée pour l'aliment de cette entrée de journal
+// ("g" vaut toujours 1 par définition ; "cafe"/"soupe" viennent des équivalences renseignées
+// sur la page détail de l'aliment, voir aliment-detail.js)
+function grammesParUnite(item, unite) {
+  if (unite === "cafe") return Number(item.dataset.gCafe);
+  if (unite === "soupe") return Number(item.dataset.gSoupe);
+  return 1;
+}
+
 // Active les comportements interactifs d'une entrée du journal : modification de la quantité et suppression
 function activerItem(item) {
   const champGrammes = item.querySelector(".journal-grammes-input");
+  const selectUnite = item.querySelector(".journal-unite-select");
   const kcalSpan = item.querySelector(".journal-kcal");
+
+  // La vraie donnée reste toujours les grammes (c'est ce que le serveur stocke et calcule) ;
+  // le champ affiché, lui, peut représenter "0.5" en c. à café tout en valant 2.5g en vrai
+  let grammesActuels = Number(champGrammes.value) * grammesParUnite(item, "g");
+
+  // Changer d'unité ne modifie rien en base : ça recalcule juste l'affichage du même poids
+  // dans la nouvelle unité (ex : 15g devient "1" quand on passe en c. à soupe si 1 c. à
+  // soupe = 15g pour cet aliment), sans déclencher de sauvegarde
+  if (selectUnite) {
+    selectUnite.addEventListener("change", function () {
+      const ratio = grammesParUnite(item, this.value);
+      champGrammes.value = Math.round((grammesActuels / ratio) * 100) / 100;
+    });
+  }
 
   // "change" se déclenche quand on quitte le champ après l'avoir modifié (pas à chaque frappe)
   champGrammes.addEventListener("change", function () {
-    const nouvelleQuantite = this.value;
-    if (!nouvelleQuantite || Number(nouvelleQuantite) <= 0) return;
+    const uniteActuelle = selectUnite ? selectUnite.value : "g";
+    const ratio = grammesParUnite(item, uniteActuelle);
+    const valeurSaisie = Number(this.value);
+    if (!valeurSaisie || valeurSaisie <= 0 || !ratio) return;
+
+    // Ce que le serveur reçoit est TOUJOURS en grammes, quelle que soit l'unité affichée
+    const nouvelleQuantite = valeurSaisie * ratio;
 
     fetch("/calories/modifier", {
       method: "POST",
@@ -288,6 +335,8 @@ function activerItem(item) {
           return;
         }
         // On met à jour les valeurs stockées et affichées avec celles recalculées par le serveur
+        grammesActuels = nouvelleQuantite;
+        item.dataset.quantiteG = nouvelleQuantite;
         item.dataset.kcal = data.item.calories_calc;
         item.dataset.glucides = data.item.glucides_calc;
         item.dataset.proteines = data.item.proteines_calc;
@@ -433,7 +482,6 @@ function construireRecetteCardDOM(recette) {
   const icone = ICONE_CATEGORIE[recette.categorie] || "🍽️";
 
   div.innerHTML = `
-    <button type="button" class="btn-supprimer-dash btn-supprimer-recette" title="Supprimer"></button>
     <span class="recette-emoji">${icone}</span>
     <p class="recette-nom">${escapeHtml(recette.nom)}</p>
     <div class="recette-sub"><span>${recette.nb_ingredients} ingr.</span><span>${recette.kcal_total} kcal</span></div>
@@ -443,17 +491,12 @@ function construireRecetteCardDOM(recette) {
   return div;
 }
 
-// Toucher la carte ouvre son détail (édition) ; le "−" a sa propre action (suppression),
-// donc stopPropagation empêche le clic dessus de déclencher aussi l'ouverture du détail
+// Toucher la carte ouvre son détail (édition) : c'est la SEULE action sur une carte, plus de
+// bouton "−" séparé dessus — supprimer la recette ne se fait plus que depuis le panneau détail
+// (voir btnSupprimerRecetteSheet), une fois qu'on l'a vraiment ouverte
 function activerCarteRecette(card) {
-  card.addEventListener("click", function (e) {
-    if (e.target.closest(".btn-supprimer-recette")) return;
+  card.addEventListener("click", function () {
     ouvrirSheetEdition(card.dataset.id);
-  });
-
-  card.querySelector(".btn-supprimer-recette").addEventListener("click", function (e) {
-    e.stopPropagation();
-    supprimerRecette(card.dataset.id);
   });
 }
 
@@ -500,11 +543,23 @@ function supprimerRecette(idRecette) {
 const sheet = document.getElementById("sheet");
 const sheetBackdrop = document.getElementById("sheetBackdrop");
 const sheetCloseBtn = document.getElementById("sheetCloseBtn");
+const btnSupprimerRecetteSheet = document.getElementById("btnSupprimerRecetteSheet");
 const formRecette = document.getElementById("formRecette");
 const recetteIdInput = document.getElementById("recetteId");
 const recetteNomInput = document.getElementById("recetteNom");
 const recetteCategoriePicker = document.getElementById("recetteCategoriePicker");
 const listeIngredientsRecette = document.getElementById("listeIngredientsRecette");
+const btnToggleAjoutIngredient = document.getElementById("btnToggleAjoutIngredient");
+const autocompleteIngredient = document.getElementById("autocompleteIngredient");
+
+// Le "+" ouvre/ferme la recherche d'ingrédient, repliée par défaut (voir calories.ejs)
+btnToggleAjoutIngredient.addEventListener("click", function () {
+  const ouvert = autocompleteIngredient.classList.toggle("hidden") === false;
+  btnToggleAjoutIngredient.classList.toggle("actif", ouvert);
+  if (ouvert) {
+    document.getElementById("rechercheIngredient").focus();
+  }
+});
 
 recetteCategoriePicker.querySelectorAll(".cat-pill").forEach(function (pill) {
   pill.addEventListener("click", function () {
@@ -524,8 +579,18 @@ function choisirCategorie(categorie) {
   });
 }
 
-// Ajoute une ligne d'ingrédient éditable dans le panneau (nom, grammage, bouton de suppression)
-function ajouterLigneIngredient(foodId, nom, quantiteG) {
+// Même idée que grammesParUnite (Journal), mais lue depuis le dataset d'une ligne d'ingrédient
+// de recette plutôt que celui d'une entrée de journal
+function grammesParUniteIngredient(ligne, unite) {
+  if (unite === "cafe") return Number(ligne.dataset.gCafe);
+  if (unite === "soupe") return Number(ligne.dataset.gSoupe);
+  return 1;
+}
+
+// Ajoute une ligne d'ingrédient éditable dans le panneau (nom, grammage, bouton de suppression).
+// gCafe/gSoupe sont les équivalences cuillère de CET aliment (voir aliment-detail.js) : le
+// sélecteur d'unité est toujours affiché (au moins "g"), tsp/tbsp s'ajoutent s'ils existent.
+function ajouterLigneIngredient(foodId, nom, quantiteG, gCafe, gSoupe) {
   // Si l'ingrédient est déjà dans la liste, on ne le duplique pas : on remet juste le focus sur sa quantité
   const existante = listeIngredientsRecette.querySelector('.ligne-ingredient-recette[data-food-id="' + foodId + '"]');
   if (existante) {
@@ -536,16 +601,42 @@ function ajouterLigneIngredient(foodId, nom, quantiteG) {
   const ligne = document.createElement("div");
   ligne.className = "ligne-ingredient-recette";
   ligne.dataset.foodId = foodId;
+  ligne.dataset.gCafe = gCafe || "";
+  ligne.dataset.gSoupe = gSoupe || "";
+
+  let optionsUnite = "";
+  if (gCafe) optionsUnite += `<option value="cafe">tsp</option>`;
+  if (gSoupe) optionsUnite += `<option value="soupe">tbsp</option>`;
+  const selectUnite = `<select class="ingredient-unite-recette"><option value="g">g</option>${optionsUnite}</select>`;
 
   ligne.innerHTML = `
     <span class="ingredient-nom-recette">${escapeHtml(nom)}</span>
-    <input type="number" class="ingredient-quantite-recette" min="1" placeholder="g" value="${quantiteG || ""}" />
+    <input type="number" class="ingredient-quantite-recette" step="0.25" min="0.01" placeholder="g" value="${quantiteG || ""}" />
+    ${selectUnite}
     <button type="button" class="btn-supprimer-dash ingredient-x-recette" title="Retirer"></button>
   `;
 
   ligne.querySelector(".ingredient-x-recette").addEventListener("click", function () {
     ligne.remove();
   });
+
+  const champQuantite = ligne.querySelector(".ingredient-quantite-recette");
+  const champUnite = ligne.querySelector(".ingredient-unite-recette");
+
+  if (champUnite) {
+    // Comme le Journal : la vraie donnée reste les grammes, l'unité affichée n'est qu'une
+    // façon différente de saisir/lire le même poids
+    let grammesActuels = Number(champQuantite.value) || 0;
+
+    champQuantite.addEventListener("input", function () {
+      grammesActuels = Number(this.value) * grammesParUniteIngredient(ligne, champUnite.value);
+    });
+
+    champUnite.addEventListener("change", function () {
+      const ratio = grammesParUniteIngredient(ligne, this.value);
+      if (ratio) champQuantite.value = Math.round((grammesActuels / ratio) * 100) / 100;
+    });
+  }
 
   listeIngredientsRecette.appendChild(ligne);
 }
@@ -556,6 +647,12 @@ function reinitialiserSheet() {
   recetteNomInput.value = "";
   choisirCategorie("plat");
   listeIngredientsRecette.innerHTML = "";
+  // La recherche d'ingrédient repart repliée à chaque nouvelle ouverture du panneau
+  autocompleteIngredient.classList.add("hidden");
+  btnToggleAjoutIngredient.classList.remove("actif");
+  document.getElementById("rechercheIngredient").value = "";
+  // Rien à supprimer avant le premier enregistrement : caché par défaut (voir ouvrirSheetEdition)
+  btnSupprimerRecetteSheet.classList.add("hidden");
 }
 
 // Ouvre le panneau en mode "création" (vide, ou pré-rempli avec des ingrédients de départ —
@@ -565,7 +662,7 @@ function ouvrirSheet(options) {
   reinitialiserSheet();
   if (options.categorie) choisirCategorie(options.categorie);
   (options.ingredients || []).forEach(function (ing) {
-    ajouterLigneIngredient(ing.food_id, ing.nom, ing.quantite_g);
+    ajouterLigneIngredient(ing.food_id, ing.nom, ing.quantite_g, ing.grammes_par_cuil_a_cafe, ing.grammes_par_cuil_a_soupe);
   });
   afficherSheet();
   recetteNomInput.focus();
@@ -586,8 +683,10 @@ function ouvrirSheetEdition(idRecette) {
       recetteNomInput.value = data.recette.nom;
       choisirCategorie(data.recette.categorie);
       data.ingredients.forEach(function (ing) {
-        ajouterLigneIngredient(ing.food_id, `${ing.emoji} ${ing.nom}`, parseFloat(ing.quantite_g));
+        ajouterLigneIngredient(ing.food_id, `${ing.emoji} ${ing.nom}`, parseFloat(ing.quantite_g), ing.grammes_par_cuil_a_cafe, ing.grammes_par_cuil_a_soupe);
       });
+      // On sait maintenant qu'il y a bien une recette existante à supprimer
+      btnSupprimerRecetteSheet.classList.remove("hidden");
       afficherSheet();
     });
 }
@@ -604,6 +703,10 @@ function fermerSheet() {
 
 sheetCloseBtn.addEventListener("click", fermerSheet);
 sheetBackdrop.addEventListener("click", fermerSheet);
+
+btnSupprimerRecetteSheet.addEventListener("click", function () {
+  supprimerRecette(recetteIdInput.value);
+});
 
 // ---------- Recherche d'ingrédient à ajouter (dans le panneau) ----------
 
@@ -629,7 +732,7 @@ rechercheIngredient.addEventListener("input", function () {
 
 itemsIngredientsRecherche.forEach(function (item) {
   item.addEventListener("click", function () {
-    ajouterLigneIngredient(this.dataset.id, this.textContent.trim(), "");
+    ajouterLigneIngredient(this.dataset.id, this.textContent.trim(), "", this.dataset.gCafe, this.dataset.gSoupe);
     rechercheIngredient.value = "";
     listeIngredientsRecherche.hidden = true;
     listeIngredientsRecette.querySelector(":scope > .ligne-ingredient-recette:last-child .ingredient-quantite-recette").focus();
@@ -653,10 +756,17 @@ formRecette.addEventListener("submit", function (event) {
   const ingredients = [];
 
   listeIngredientsRecette.querySelectorAll(".ligne-ingredient-recette").forEach(function (ligne) {
-    const quantite = ligne.querySelector(".ingredient-quantite-recette").value;
-    if (ligne.dataset.foodId && quantite) {
-      ingredients.push({ food_id: ligne.dataset.foodId, quantite_g: quantite });
-    }
+    const champQuantite = ligne.querySelector(".ingredient-quantite-recette");
+    const champUnite = ligne.querySelector(".ingredient-unite-recette");
+    const quantite = champQuantite.value;
+    if (!ligne.dataset.foodId || !quantite) return;
+
+    // Ce qui part au serveur est TOUJOURS en grammes : si une unité (c. à café/soupe) est
+    // sélectionnée, on convertit avant d'envoyer plutôt que de faire croire au serveur que
+    // "0.5" désigne 0.5 gramme
+    const unite = champUnite ? champUnite.value : "g";
+    const ratio = grammesParUniteIngredient(ligne, unite);
+    ingredients.push({ food_id: ligne.dataset.foodId, quantite_g: Number(quantite) * ratio });
   });
 
   if (!nom || ingredients.length === 0) {

@@ -291,6 +291,10 @@ body {
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
+  /* Centre le bloc de boutons dans .filters__inner quand il y a de la place (grand écran) ;
+     sur mobile, dès que le contenu déborde, les marges auto s'annulent d'elles-mêmes et on
+     retombe sur un simple défilement classique, sans couper le début de la liste ("Tous") */
+  margin: 0 auto;
   gap: 10px;
   /* Cache la barre de défilement visuellement (le défilement au doigt/à la molette reste possible) */
   scrollbar-width: none;
@@ -714,6 +718,67 @@ body {
   padding: 80px 0;
 }
 
+/* ---------- ÉQUIVALENCES (poids d'une cuillère, page détail Aliment) ---------- */
+
+.detail-equivalences {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1.5px solid var(--border);
+}
+
+.detail-equivalences__titre {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.detail-equivalences__aide {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.detail-equivalences__champs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 28px;
+}
+
+.detail-equivalences__champs label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.detail-equivalences__champs input {
+  width: 70px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--text);
+  text-align: center;
+}
+
+.detail-equivalences__champs input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.detail-equivalences__statut {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 /* ---------- PAGE COURSES ---------- */
 
 .courses-section {
@@ -724,14 +789,6 @@ body {
 }
 
 .courses-controls-row {
-  /* Trier — Au magasin — "+", chacun à sa place, avec de l'espace réparti entre eux plutôt
-     qu'une grille à colonnes fixes */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-
   /* Reste visible en scrollant la liste : on peut vouloir ajouter un article ou basculer
      "Au magasin" à tout moment, sans avoir à remonter en haut de la page. Même principe que
      .filters (Aliments/Stock), collé juste sous le header grâce à --header-h (voir header.ejs). */
@@ -745,17 +802,35 @@ body {
   border-top: 1.5px solid var(--border);
   border-bottom: 1.5px solid var(--border);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
-  padding: 14px 40px;
   margin-bottom: 0;
-  /* "Full-bleed" : cette barre vit dans .courses-section (max-width 1200px + padding), mais
-     son fond doit couvrir toute la largeur de l'écran, sinon les pastilles de stock des cartes
-     en dessous (position absolute, en haut à gauche/droite) débordent visuellement au-dessus
-     du fond aux deux bords pendant le scroll. On l'étire donc en 100vw puis on recentre son
-     contenu avec le même padding que .courses-section, pour que "Nom"/"Au magasin"/"+"
-     restent alignés avec le reste de la page malgré la largeur pleine écran. */
+  /* "Full-bleed" : le FOND doit couvrir toute la largeur de l'écran (sinon les pastilles de
+     stock des cartes en dessous, position absolute, débordent visuellement au-dessus aux deux
+     bords pendant le scroll), mais le CONTENU, lui, ne doit pas coller aux bords réels de
+     l'écran : voir .courses-controls-row__inner, qui recentre "Trier par/Au magasin/+" dans la
+     même colonne (max-width 1200px) que le titre et les cartes, comme .filters/.filters__inner
+     sur Aliments/Stock. Sans cette séparation fond/contenu, le contenu suivait le fond jusqu'aux
+     bords de l'écran sur un grand moniteur, très décalé par rapport au reste de la page. */
   width: 100vw;
   margin-left: calc(50% - 50vw);
   box-sizing: border-box;
+}
+
+.courses-controls-row__inner {
+  /* "Trier par" et "Au magasin" restent groupés avec un espacement normal (ce sont deux
+     réglages liés) ; seul le "+" est poussé tout à droite (margin-left: auto, voir plus bas).
+     "space-between" sur les 3 à la fois créait des vides très inégaux selon la largeur de
+     chaque élément, plutôt qu'un espacement réellement uniforme. */
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 40px;
+}
+
+/* Poussé tout à droite de .courses-controls-row__inner, séparé du groupe "Trier/Au magasin" */
+#btnToggleAjoutCourse {
+  margin-left: auto;
 }
 
 /* ---- Bascule "Au magasin" façon interrupteur iOS, plus simple qu'un bouton pilule ---- */
@@ -1456,7 +1531,10 @@ body.mode-magasin .course-item__shop-slot {
 
 #autocomplete {
   position: relative;
-  flex: 1;
+  /* flex:1 avait du sens quand ce champ partageait la ligne avec la quantité + "Ajouter" ; seul
+     maintenant (tap-to-add, voir stock.js), il n'a plus besoin de s'étirer sur toute la largeur
+     du panneau */
+  flex: 0 1 320px;
   min-width: 220px;
 }
 
@@ -1584,6 +1662,24 @@ body.mode-magasin .course-item__shop-slot {
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* Bref halo accent : attire l'œil sur la carte qu'on vient d'ajouter au stock, une fois amenée
+   à l'écran par scrollIntoView (voir ajouterAuStock dans stock.js), puis s'efface tout seul */
+.mise-en-avant {
+  animation: pulseMiseEnAvant 1.5s ease;
+}
+
+@keyframes pulseMiseEnAvant {
+  0% {
+    box-shadow: 0 0 0 0 rgba(200, 71, 43, 0.45);
+  }
+  60% {
+    box-shadow: 0 0 0 10px rgba(200, 71, 43, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 71, 43, 0);
   }
 }
 
@@ -1928,7 +2024,7 @@ body.mode-magasin .course-item__shop-slot {
     width: 100%;
   }
 
-  .courses-controls-row {
+  .courses-controls-row__inner {
     gap: 6px;
     padding: 12px 20px; /* même padding horizontal que .courses-section en mobile (20px, vs 40px en desktop) */
   }
@@ -1989,20 +2085,47 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .journal-grammes-input {
-  width: 95px;
+  width: 72px;
   background: var(--bg);
   border: 1.5px solid var(--border);
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 6px 8px;
   font-family: var(--font-body);
   font-size: 0.85rem;
   color: var(--text);
   text-align: center;
+  /* Les flèches natives du navigateur grignotaient la place du chiffre lui-même sur un champ
+     déjà étroit (ex: "32,4" collé contre les flèches) : on les enlève, le champ +/− du clavier
+     numérique mobile ou la saisie directe suffisent */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.journal-grammes-input::-webkit-outer-spin-button,
+.journal-grammes-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .journal-grammes-input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.journal-quantite-groupe {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.journal-quantite-groupe .custom-select {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.journal-quantite-groupe .custom-select__button {
+  padding: 6px 26px 6px 10px;
+  font-size: 0.78rem;
 }
 
 .journal-section {
@@ -2122,10 +2245,33 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .btn-supprimer-dash::before {
-  content: "−"; /* signe moins, dessiné via le pseudo-élément ::before plutôt qu'écrit dans le HTML */
+  /* "−" reste le signe par défaut (Journal, cartes/ingrédients de Recette) : retirer un
+     aliment du journal ou un ingrédient d'une recette qu'on compose est une action légère,
+     pas une vraie suppression d'inventaire. Voir .btn-supprimer-icone ci-dessous pour
+     Stock/Courses, où c'est bien la poubelle (public/images/svg/supprimer.svg). */
+  content: "−";
   font-size: 15px;
   font-weight: 700;
   line-height: 1;
+}
+
+/* Stock et Courses seuls ont cette classe en plus de .btn-supprimer-dash (voir stock.ejs/js et
+   courses.ejs/js) : retirer un article de l'inventaire ou de la liste de courses est une vraie
+   suppression, donc la poubelle plutôt que le "−" plus léger du Journal/Recette. */
+.btn-supprimer-icone::before {
+  content: "";
+  display: block;
+  width: 12px;
+  height: 12px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/supprimer.svg");
+  mask-image: url("/images/svg/supprimer.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 .btn-supprimer-dash:hover {
@@ -2210,8 +2356,21 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .btn-x-rond::before {
-  content: "✕";
-  font-size: 0.8rem;
+  /* Icône dédiée "tout supprimer" (public/images/svg/tout-supprimer.svg), pas juste un "✕" :
+     vider tout le journal d'un coup est une action bien plus lourde qu'un "−" sur une seule ligne */
+  content: "";
+  display: block;
+  width: 14px;
+  height: 14px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/tout-supprimer.svg");
+  mask-image: url("/images/svg/tout-supprimer.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 .btn-x-rond:hover {
@@ -2456,16 +2615,64 @@ body.mode-magasin .course-item__shop-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
+  font-size: 0; /* le texte du HTML est caché (gardé pour l'accessibilité), seule l'icône ::before est visible */
   cursor: pointer;
   flex-shrink: 0;
   border: 1.5px solid var(--border);
-  color: var(--text-muted);
   background: var(--bg);
+  color: var(--text-muted);
+}
+
+/* Pleine largeur, tout en bas du panneau : façon Apple ("Delete Contact", Réglages...), jamais
+   collée au "✕" fermer en haut, pour qu'un tap malheureux ne puisse pas la déclencher par erreur */
+.btn-supprimer-pleine-largeur {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-supprimer-pleine-largeur:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.sheet-close-btn::before {
+  /* Icône dédiée "fermer" (public/images/svg/fermer.svg), distincte de la poubelle : fermer ce
+     panneau n'efface rien, contrairement au "−"/poubelle utilisés pour les vraies suppressions */
+  content: "";
+  display: block;
+  width: 12px;
+  height: 12px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/fermer.svg");
+  mask-image: url("/images/svg/fermer.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 .detail-tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 16px;
+  /* Ancre #autocompleteIngredient (absolute) : la recherche flotte par rapport à CETTE ligne,
+     donc juste sous le "+", plutôt que par rapport à .sheet (tout le panneau) */
+  position: relative;
 }
 
 .detail-tag-select {
@@ -2477,6 +2684,21 @@ body.mode-magasin .course-item__shop-slot {
   display: flex;
   flex-direction: column;
   margin-bottom: 12px;
+}
+
+/* Popover ancré sous le "+" (voir .detail-tag-row) : recouvre la liste d'ingrédients juste en
+   dessous au lieu de la repousser vers le bas, comme n'importe quel menu déroulant de l'app */
+#autocompleteIngredient {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(260px, 90vw);
+  padding: 10px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  z-index: 15;
 }
 
 .ligne-ingredient-recette {
@@ -2495,20 +2717,39 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .ingredient-quantite-recette {
-  width: 80px;
+  width: 68px;
   background: var(--bg);
   border: 1.5px solid var(--border);
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 6px 8px;
   font-family: var(--font-body);
   font-size: 0.82rem;
   color: var(--text);
   text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.ingredient-quantite-recette::-webkit-outer-spin-button,
+.ingredient-quantite-recette::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .ingredient-quantite-recette:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+/* Sélecteur d'unité (g / tsp / tbsp) : toujours affiché, voir ajouterLigneIngredient dans calories.js */
+.ligne-ingredient-recette .custom-select {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.ligne-ingredient-recette .custom-select__button {
+  padding: 6px 26px 6px 10px;
+  font-size: 0.78rem;
 }
 
 /* Même bouton que .btn-supprimer-dash (Journal/Stock/Courses/cartes Recette) : un seul langage
@@ -2654,13 +2895,21 @@ body.mode-magasin .course-item__shop-slot {
   height: 38px;
   padding: 0;
   border-radius: 50%;
-  background: transparent;
+  background-color: transparent;
   text-align: center;
-  background-image: none; /* pas de petite flèche : ça n'a pas de sens à côté d'une seule icône */
+  /* Icône dédiée (public/images/svg/recettes.svg) à la place du texte de l'option choisie et
+     de la petite flèche du menu déroulant : contrairement à supprimer/enregistrer/fermer, ce
+     dessin est en plusieurs couleurs, donc affiché tel quel (pas en mask-image recolorable) */
+  background-image: url("/images/svg/recettes.svg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px 20px;
 }
 
 #selectRecette + .custom-select .custom-select__label {
-  overflow: visible;
+  /* Le nom de la recette choisie reste inutile ici : seule l'icône compte, le texte est cité
+     pour l'accessibilité mais retiré visuellement */
+  font-size: 0;
 }
 
 .stock-editable-zone .custom-select {
@@ -2744,6 +2993,32 @@ body.mode-magasin .course-item__shop-slot {
   color: white;
   cursor: pointer;
   transition: opacity 0.2s ease;
+}
+
+/* Icône disquette (public/images/svg/enregistrer.svg) devant le texte, plutôt que "Enregistrer"
+   tout seul : mêmes contrôles que .btn-supprimer-dash pour recolorer l'icône via currentColor */
+#btnEnregistrerSheet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#btnEnregistrerSheet::before {
+  content: "";
+  display: block;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/enregistrer.svg");
+  mask-image: url("/images/svg/enregistrer.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 #btnAjouter:disabled,
