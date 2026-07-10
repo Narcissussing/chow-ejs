@@ -150,6 +150,23 @@ async function chercherRecettes() {
     return result.rows;
 }
 
+// Calcule nb_ingredients/kcal_total pour UNE recette (même calcul que chercherRecettes, mais
+// filtré sur un seul id) : utilisée juste après création/modification pour renvoyer tout de
+// suite le vrai total au client, plutôt que de le laisser afficher "…" jusqu'au prochain
+// rechargement de page (le client n'a pas accès aux calories/100g des aliments côté serveur).
+async function calculerTotauxRecette(idRecette) {
+    const result = await db.query(
+        `SELECT
+            COUNT(recette_ingredients.food_id) AS nb_ingredients,
+            COALESCE(SUM(ROUND(foods.calories * recette_ingredients.quantite_g / 100)), 0) AS kcal_total
+        FROM recette_ingredients
+        LEFT JOIN foods ON foods.id = recette_ingredients.food_id
+        WHERE recette_ingredients.recette_id = $1`,
+        [idRecette]
+    );
+    return result.rows[0];
+}
+
 // Récupère le journal alimentaire du jour (tout ce qui a été mangé aujourd'hui)
 // et calcule les calories/glucides/protéines/lipides réels en fonction de la quantité mangée
 async function chercherJournalDuJour() {
@@ -808,7 +825,8 @@ app.post("/recettes/creer", async (req, res) => {
             );
         }
 
-        res.json({ succes: true, recette: { id: idRecette, nom: nom, categorie: categorie } });
+        const totaux = await calculerTotauxRecette(idRecette);
+        res.json({ succes: true, recette: { id: idRecette, nom: nom, categorie: categorie, nb_ingredients: totaux.nb_ingredients, kcal_total: totaux.kcal_total } });
     } catch (err) {
         console.log("ERREUR:", err.message);
         res.status(500).json({ erreur: err.message });
@@ -887,7 +905,8 @@ app.post("/recettes/:id/modifier", async (req, res) => {
         await db.query("COMMIT");
         transactionStarted = false;
 
-        res.json({ succes: true });
+        const totaux = await calculerTotauxRecette(idRecette);
+        res.json({ succes: true, recette: { nb_ingredients: totaux.nb_ingredients, kcal_total: totaux.kcal_total } });
     } catch (err) {
         if (transactionStarted) {
             await db.query("ROLLBACK");

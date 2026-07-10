@@ -12,11 +12,17 @@ const totalGlucidesEl = document.getElementById("totalGlucides"); // affichage d
 const totalProteinesEl = document.getElementById("totalProteines"); // affichage du total de protéines
 const totalLipidesEl = document.getElementById("totalLipides"); // affichage du total de lipides
 
-const selectRecette = document.getElementById("selectRecette"); // menu déroulant pour choisir une recette
+const selectRecette = document.getElementById("selectRecette"); // menu déroulant pour choisir une recette (boisson/plat)
+const selectRecetteGlace = document.getElementById("selectRecetteGlace"); // même chose, mais pour les recettes de glace uniquement
 const btnToutEffacer = document.getElementById("btnToutEffacer"); // bouton rond "X" pour tout effacer
 const btnEnregistrerRecette = document.getElementById("btnEnregistrerRecette"); // bouton "Enregistrer comme recette" (conditionnel)
 
-const ICONE_CATEGORIE = { boisson: "🍨", plat: "🍽️" };
+const ICONE_CATEGORIE = { boisson: "🥤", plat: "🍽️", glace: "🍦" };
+
+// Renvoie le menu déroulant "appliquer une recette" correspondant à une catégorie donnée
+function selectRecettePourCategorie(categorie) {
+  return categorie === "glace" ? selectRecetteGlace : selectRecette;
+}
 
 // Petite fonction de sécurité : transforme les caractères spéciaux en leur équivalent HTML,
 // pour éviter d'injecter du code HTML/JS dangereux dans la page (faille XSS)
@@ -401,9 +407,11 @@ function activerSuppression(item) {
 // RECETTES — application via dropdown (remplace le journal du jour)
 // ============================================
 
-// Quand on choisit une recette dans le menu déroulant, on remplace tout le journal du jour par ses ingrédients
-selectRecette.addEventListener("change", function () {
-  const idRecette = this.value;
+// Quand on choisit une recette dans l'un ou l'autre menu déroulant, on remplace tout le journal
+// du jour par ses ingrédients : même comportement pour #selectRecette (boisson/plat) et
+// #selectRecetteGlace (glace), donc factorisé ici plutôt que dupliqué deux fois.
+function appliquerRecetteAuJournal(selectEl) {
+  const idRecette = selectEl.value;
 
   if (!idRecette) return;
 
@@ -434,14 +442,22 @@ selectRecette.addEventListener("change", function () {
 
       recalculerTotaux();
       // On réinitialise le menu déroulant (sinon la recette resterait affichée comme sélectionnée)
-      selectRecette.value = "";
+      selectEl.value = "";
       // On informe notre "custom select" (voir custom-selects.js) que la valeur a changé, pour qu'il se mette à jour visuellement
-      selectRecette.dispatchEvent(new Event("custom-select:update"));
+      selectEl.dispatchEvent(new Event("custom-select:update"));
     })
     .catch(function (err) {
       console.error(err);
       alert("Une erreur est survenue.");
     });
+}
+
+selectRecette.addEventListener("change", function () {
+  appliquerRecetteAuJournal(selectRecette);
+});
+
+selectRecetteGlace.addEventListener("change", function () {
+  appliquerRecetteAuJournal(selectRecetteGlace);
 });
 
 // ============================================
@@ -557,9 +573,15 @@ function supprimerRecette(idRecette) {
         }, 300);
       }
 
-      const option = selectRecette.querySelector('option[value="' + idRecette + '"]');
-      if (option) option.remove();
-      selectRecette.dispatchEvent(new Event("custom-select:update"));
+      // L'option peut vivre dans l'un ou l'autre menu déroulant selon la catégorie de la recette
+      // (voir selectRecettePourCategorie) : on cherche/retire des deux plutôt que de deviner lequel.
+      [selectRecette, selectRecetteGlace].forEach(function (select) {
+        const option = select.querySelector('option[value="' + idRecette + '"]');
+        if (option) {
+          option.remove();
+          select.dispatchEvent(new Event("custom-select:update"));
+        }
+      });
 
       window.RECETTES = window.RECETTES.filter(function (r) { return String(r.id) !== String(idRecette); });
       miseAJourBoutonEnregistrerRecette();
@@ -911,18 +933,16 @@ formRecette.addEventListener("submit", function (event) {
         return;
       }
 
-      // On reconstruit une version "grille" de la recette (compteur d'ingrédients...) à partir
-      // de ce qu'on vient d'envoyer, pour mettre à jour la carte sans recharger la page. Le kcal
-      // exact par aliment n'est pas connu côté client (seul le serveur a la table foods sous la
-      // main) : on garde l'ancien total en attendant, un rechargement de page l'affine ensuite.
+      // On reconstruit une version "grille" de la recette (compteur d'ingrédients, total kcal...)
+      // à partir de ce qu'on vient d'envoyer, pour mettre à jour la carte sans recharger la page.
+      // Le total kcal vient directement de la réponse du serveur (seul endroit qui connaît les
+      // calories/100g de chaque aliment) : plus besoin d'attendre un rechargement pour l'afficher.
       const recetteMaj = {
         id: idRecette || data.recette.id,
         nom: nom,
         categorie: categorie,
-        nb_ingredients: ingredients.length,
-        // Le total kcal affiché sur la carte est recalculé au prochain chargement de page ;
-        // en attendant on garde l'ancien total s'il existe, sinon "…"
-        kcal_total: (window.RECETTES.find(function (r) { return String(r.id) === String(idRecette); }) || {}).kcal_total ?? "…",
+        nb_ingredients: data.recette.nb_ingredients,
+        kcal_total: data.recette.kcal_total,
         food_ids: ingredients.map(function (ing) { return ing.food_id; })
       };
 
@@ -932,12 +952,23 @@ formRecette.addEventListener("submit", function (event) {
       // que de la remplacer sur place là où elle ne devrait plus être.
       const grille = grilleDeCategorie(categorie);
 
+      // Le menu déroulant concerné dépend de la catégorie (glace a le sien, voir
+      // selectRecettePourCategorie) : si on vient de changer la catégorie d'une recette existante,
+      // son option doit être retirée de l'ancien menu avant d'être (re)créée dans le bon.
+      const bonSelect = selectRecettePourCategorie(categorie);
+
       if (idRecette) {
         const ancienneCard = document.querySelector('.recette-card[data-id="' + idRecette + '"]');
         if (ancienneCard) ancienneCard.remove();
 
-        const option = selectRecette.querySelector('option[value="' + idRecette + '"]');
-        if (option) option.textContent = nom;
+        [selectRecette, selectRecetteGlace].forEach(function (select) {
+          const option = select.querySelector('option[value="' + idRecette + '"]');
+          if (option) option.remove();
+        });
+        const nouvelleOption = document.createElement("option");
+        nouvelleOption.value = idRecette;
+        nouvelleOption.textContent = nom;
+        bonSelect.appendChild(nouvelleOption);
 
         window.RECETTES = window.RECETTES.map(function (r) {
           return String(r.id) === String(idRecette) ? recetteMaj : r;
@@ -946,7 +977,7 @@ formRecette.addEventListener("submit", function (event) {
         const option = document.createElement("option");
         option.value = recetteMaj.id;
         option.textContent = nom;
-        selectRecette.appendChild(option);
+        bonSelect.appendChild(option);
 
         window.RECETTES.push(recetteMaj);
       }
@@ -954,6 +985,7 @@ formRecette.addEventListener("submit", function (event) {
       grille.insertBefore(construireRecetteCardDOM(recetteMaj), grille.querySelector(".btn-nouvelle-recette"));
 
       selectRecette.dispatchEvent(new Event("custom-select:update"));
+      selectRecetteGlace.dispatchEvent(new Event("custom-select:update"));
       miseAJourBoutonEnregistrerRecette();
       fermerSheet();
     });

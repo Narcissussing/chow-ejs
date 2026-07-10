@@ -493,7 +493,8 @@ body {
 }
 
 #sortSelect,
-#selectRecette {
+#selectRecette,
+#selectRecetteGlace {
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 999px;
@@ -511,7 +512,8 @@ body {
   transition: border-color 0.2s ease;
 }
 
-#selectRecette {
+#selectRecette,
+#selectRecetteGlace {
   flex: 0 1 220px; /* ne grandit pas, peut rétrécir si besoin, taille de base 220px */
   min-width: 190px;
   padding-top: 9px;
@@ -521,7 +523,9 @@ body {
 #sortSelect:hover,
 #sortSelect:focus,
 #selectRecette:hover,
-#selectRecette:focus {
+#selectRecette:focus,
+#selectRecetteGlace:hover,
+#selectRecetteGlace:focus {
   border-color: var(--accent);
   outline: none;
 }
@@ -3058,31 +3062,41 @@ body.mode-magasin .course-item__shop-slot {
   min-width: 190px;
 }
 
-/* #selectRecette n'affiche qu'une icône (🔁, pas de texte, voir calories.ejs) : un rond compact
-   comme les autres boutons d'action de la ligne plutôt que la largeur prévue pour un nom de recette */
-#selectRecette + .custom-select {
+/* #selectRecette/#selectRecetteGlace n'affichent qu'une icône (pas de texte, voir calories.ejs) :
+   un rond compact comme les autres boutons d'action de la ligne plutôt que la largeur prévue
+   pour un nom de recette */
+#selectRecette + .custom-select,
+#selectRecetteGlace + .custom-select {
   flex: 0 0 auto;
   min-width: 0;
   width: 38px;
 }
 
-#selectRecette + .custom-select .custom-select__button {
+#selectRecette + .custom-select .custom-select__button,
+#selectRecetteGlace + .custom-select .custom-select__button {
   width: 38px;
   height: 38px;
   padding: 0;
   border-radius: 50%;
   background-color: transparent;
   text-align: center;
-  /* Icône dédiée (public/images/svg/recettes.svg) à la place du texte de l'option choisie et
-     de la petite flèche du menu déroulant : contrairement à supprimer/enregistrer/fermer, ce
-     dessin est en plusieurs couleurs, donc affiché tel quel (pas en mask-image recolorable) */
+  /* Icône dédiée à la place du texte de l'option choisie et de la petite flèche du menu déroulant :
+     contrairement à supprimer/enregistrer/fermer, ces dessins sont en plusieurs couleurs, donc
+     affichés tels quels (pas en mask-image recolorable) — recettes.svg pour "toutes les recettes"
+     (boisson/plat), glacon.svg pour les recettes de glace */
   background-image: url("/images/svg/recettes.svg");
   background-repeat: no-repeat;
   background-position: center;
   background-size: 20px 20px;
 }
 
-#selectRecette + .custom-select .custom-select__label {
+#selectRecetteGlace + .custom-select .custom-select__button {
+  background-image: url("/images/svg/glacon.svg");
+  background-size: 18px 18px;
+}
+
+#selectRecette + .custom-select .custom-select__label,
+#selectRecetteGlace + .custom-select .custom-select__label {
   /* Le nom de la recette choisie reste inutile ici : seule l'icône compte, le texte est cité
      pour l'accessibilité mais retiré visuellement */
   font-size: 0;
@@ -3111,6 +3125,7 @@ body.mode-magasin .course-item__shop-slot {
 #rechercheAlimentCalories:focus,
 #rechercheIngredient:focus,
 #selectRecette:focus,
+#selectRecetteGlace:focus,
 #champQuantite:focus,
 #champCL:focus {
   outline: none;
@@ -3230,7 +3245,8 @@ body.mode-magasin .course-item__shop-slot {
     width: 100%;
   }
 
-  #selectRecette {
+  #selectRecette,
+  #selectRecetteGlace {
     flex-basis: 100%;
     width: 100%;
   }

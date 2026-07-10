@@ -13,8 +13,9 @@
   // qui n'offre que ces deux boutons) : on les fixe ici plutôt que de les déduire des recettes
   // existantes, sinon une catégorie sans aucune recette n'aurait jamais sa propre section.
   const CATEGORIES_RECETTE = [
-    { valeur: "boisson", icone: "🍨", label: "Boissons" },
-    { valeur: "plat", icone: "🍽️", label: "Plats" }
+    { valeur: "boisson", icone: "🥤", label: "Boissons" },
+    { valeur: "plat", icone: "🍽️", label: "Plats" },
+    { valeur: "glace", icone: "🍦", label: "Glaces" }
   ];
 %>
 
@@ -72,10 +73,21 @@
         <!-- Menu déroulant pour appliquer directement une recette (remplace le journal du jour par ses ingrédients).
              Icône plutôt que texte : "Recette" se lisait comme un doublon de l'onglet "Recettes"
              juste au-dessus. aria-label garde l'action compréhensible pour les lecteurs d'écran
-             malgré l'absence de texte visible (voir custom-selects.js). -->
+             malgré l'absence de texte visible (voir custom-selects.js). Les recettes "glace" ont
+             leur propre menu juste à côté (voir #selectRecetteGlace) : celui-ci ne liste donc que
+             boissons/plats. -->
         <select id="selectRecette" aria-label="Remplacer le journal du jour avec une recette">
           <option value=""></option>
-          <% recettes.forEach(function(recette) { %>
+          <% recettes.filter(function(r) { return r.categorie !== 'glace'; }).forEach(function(recette) { %>
+          <option value="<%= recette.id %>"><%= recette.nom %></option>
+          <% }) %>
+        </select>
+
+        <!-- Même principe que #selectRecette juste à gauche, mais uniquement pour les recettes de
+             glace (icône dédiée public/images/svg/glacon.svg, voir style.css) -->
+        <select id="selectRecetteGlace" aria-label="Remplacer le journal du jour avec une recette de glace">
+          <option value=""></option>
+          <% recettes.filter(function(r) { return r.categorie === 'glace'; }).forEach(function(recette) { %>
           <option value="<%= recette.id %>"><%= recette.nom %></option>
           <% }) %>
         </select>
@@ -179,8 +191,9 @@
          d'ingrédient, repliée par défaut, même principe que les panneaux d'ajout de Stock/Courses. -->
     <div class="detail-tag-row">
       <div class="detail-tag-select" id="recetteCategoriePicker">
-        <button type="button" class="cat-pill actif" data-valeur="boisson">🍨 Boisson</button>
+        <button type="button" class="cat-pill actif" data-valeur="boisson">🥤 Boisson</button>
         <button type="button" class="cat-pill" data-valeur="plat">🍽️ Plat</button>
+        <button type="button" class="cat-pill" data-valeur="glace">🍦 Glace</button>
       </div>
       <button type="button" id="btnToggleAjoutIngredient" class="btn-ajout-icone" title="Ajouter un ingrédient">Ajouter un ingrédient</button>
     </div>
