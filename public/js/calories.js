@@ -150,9 +150,12 @@ function recalculerTotaux() {
 // ET que cette combinaison exacte ne correspond à aucune recette déjà enregistrée
 // ============================================
 
-// Renvoie l'ensemble (sans doublon) des food_id actuellement dans le journal du jour
+// Renvoie l'ensemble (sans doublon) des food_id actuellement dans le journal du jour.
+// ":not(.disparait)" exclut les lignes en cours de suppression (même raison que recalculerTotaux) :
+// sans ça, le bouton "Enregistrer en recette" restait visible après être passé sous 3 aliments,
+// car ce calcul comptait encore la ligne en train de disparaître au moment où il tournait.
 function foodIdsDuJournal() {
-  const ids = Array.from(listeJournal.querySelectorAll(".journal-item")).map(function (item) {
+  const ids = Array.from(listeJournal.querySelectorAll(".journal-item:not(.disparait)")).map(function (item) {
     return item.dataset.foodId;
   });
   return [...new Set(ids)];
