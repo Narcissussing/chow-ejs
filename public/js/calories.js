@@ -482,6 +482,9 @@ function activerItem(item) {
     selectUnite.addEventListener("change", function () {
       const ratio = grammesParUnite(item, this.value);
       champGrammes.value = Math.round((grammesActuels / ratio) * 100) / 100;
+      // Même raison que côté Recette (voir ajouterLigneIngredient) : le minimum est un poids
+      // (0.25g), pas un nombre fixe valable dans n'importe quelle unité affichée.
+      champGrammes.min = Math.round((0.25 / ratio) * 10000) / 10000;
     });
   }
 
@@ -916,7 +919,13 @@ function ajouterLigneIngredient(foodId, nom, quantiteG, gCafe, gSoupe, poidsPiec
 
     champUnite.addEventListener("change", function () {
       const ratio = grammesParUniteIngredient(ligne, this.value);
-      if (ratio) champQuantite.value = Math.round((grammesActuels / ratio) * 100) / 100;
+      if (ratio) {
+        champQuantite.value = Math.round((grammesActuels / ratio) * 100) / 100;
+        // Le minimum (0.25g à l'origine) est un poids, pas un nombre magique : sans cette
+        // conversion, 0.25 restait le seuil MÊME en cuillère/pièce, rejetant des quantités
+        // pourtant valides (ex: 0.17 c. à café de sel = 1g, largement au-dessus du vrai minimum)
+        champQuantite.min = Math.round((0.25 / ratio) * 10000) / 10000;
+      }
     });
   }
 
