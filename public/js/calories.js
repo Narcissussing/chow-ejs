@@ -1085,6 +1085,14 @@ recetteNomInput.addEventListener("keydown", function (event) {
 formRecette.addEventListener("submit", function (event) {
   event.preventDefault();
 
+  // Sans ça, un clic répété pendant que la requête est en cours (l'utilisateur ne voyant
+  // aucun retour visuel immédiat) déclenche plusieurs "submit" et donc plusieurs recettes
+  // créées en double côté serveur avant que la première réponse ne revienne fermer le sheet.
+  if (btnEnregistrerSheet.disabled) return;
+  const texteBoutonInitial = btnEnregistrerSheet.textContent;
+  btnEnregistrerSheet.disabled = true;
+  btnEnregistrerSheet.textContent = "Enregistrement...";
+
   const idRecette = recetteIdInput.value;
   const nom = recetteNomInput.value.trim();
   const categorie = categorieChoisie();
@@ -1110,6 +1118,8 @@ formRecette.addEventListener("submit", function (event) {
 
   if (!nom || ingredients.length === 0) {
     alert("Ajoute un nom et au moins un ingrédient valide.");
+    btnEnregistrerSheet.disabled = false;
+    btnEnregistrerSheet.textContent = texteBoutonInitial;
     return;
   }
 
@@ -1124,6 +1134,8 @@ formRecette.addEventListener("submit", function (event) {
     .then(function (data) {
       if (data.erreur) {
         alert(data.erreur);
+        btnEnregistrerSheet.disabled = false;
+        btnEnregistrerSheet.textContent = texteBoutonInitial;
         return;
       }
 
@@ -1194,5 +1206,10 @@ formRecette.addEventListener("submit", function (event) {
       selectRecetteFraicheur.dispatchEvent(new Event("custom-select:update"));
       miseAJourBoutonEnregistrerRecette();
       fermerSheet();
+    })
+    .catch(function () {
+      alert("Erreur réseau, réessaie.");
+      btnEnregistrerSheet.disabled = false;
+      btnEnregistrerSheet.textContent = texteBoutonInitial;
     });
 });
