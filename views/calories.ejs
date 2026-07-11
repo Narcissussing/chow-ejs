@@ -135,7 +135,7 @@
                  Le sélecteur d'unité est toujours affiché (même juste "g" seul) : chaque ligne
                  a la même forme, plutôt que certaines lignes ayant un menu et d'autres non. -->
             <div class="journal-quantite-groupe">
-              <input type="number" class="journal-grammes-input" step="0.25" value="<%= parseFloat(entree.quantite_g) %>" min="0.25" />
+              <input type="number" class="journal-grammes-input" step="any" value="<%= parseFloat(entree.quantite_g) %>" min="0.25" />
               <select class="journal-unite-select">
                 <option value="g">g</option>
                 <% if (entree.grammes_par_cuil_a_cafe) { %><option value="cafe">tsp</option><% } %>

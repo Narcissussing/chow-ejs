@@ -304,7 +304,7 @@ function construireJournalItemDOM(entree) {
         <input
           type="number"
           class="journal-grammes-input"
-          step="0.25"
+          step="any"
           value="${quantite}"
           min="0.25"
         />
@@ -886,7 +886,7 @@ function ajouterLigneIngredient(foodId, nom, quantiteG, gCafe, gSoupe, poidsPiec
       <button type="button" class="btn-reorder btn-reorder-bas" title="Descendre" aria-label="Descendre"></button>
     </div>
     <span class="ingredient-nom-recette">${escapeHtml(nom)}</span>
-    <input type="number" class="ingredient-quantite-recette" step="0.25" min="0.25" placeholder="g" value="${quantiteG || ""}" />
+    <input type="number" class="ingredient-quantite-recette" step="any" min="0.25" placeholder="g" value="${quantiteG || ""}" />
     ${selectUnite}
     <button type="button" class="btn-supprimer-dash ingredient-x-recette" title="Retirer"></button>
   `;
@@ -931,6 +931,10 @@ function ajouterLigneIngredient(foodId, nom, quantiteG, gCafe, gSoupe, poidsPiec
 
 // Réinitialise le panneau : formulaire vide, prêt pour une nouvelle recette (ou pré-rempli, voir ouvrirSheet)
 function reinitialiserSheet() {
+  // Filet de sécurité : après un enregistrement réussi, le bouton reste sur "Enregistrement..."
+  // (voir formRecette submit) puisque fermerSheet() ne le remet pas lui-même à son état normal.
+  // Sans ça, rouvrir n'importe quel panneau ensuite affichait ce texte figé en permanence.
+  btnEnregistrerSheet.textContent = "Enregistrer";
   recetteIdInput.value = "";
   recetteNomInput.value = "";
   choisirCategorie("plat");
@@ -1203,6 +1207,7 @@ formRecette.addEventListener("submit", function (event) {
       selectRecettePlat.dispatchEvent(new Event("custom-select:update"));
       selectRecetteFraicheur.dispatchEvent(new Event("custom-select:update"));
       miseAJourBoutonEnregistrerRecette();
+      btnEnregistrerSheet.textContent = texteBoutonInitial;
       fermerSheet();
     })
     .catch(function () {
