@@ -2232,9 +2232,16 @@ body.mode-magasin .course-item__shop-slot {
   min-width: 0;
 }
 
+/* Largeur fixe : sinon un libellé plus long ("gousse", "tbsp"...) élargit ce bouton et désaligne
+   toutes les lignes entre elles. Le nom de l'aliment (flex:1) garde toujours la priorité d'espace,
+   quitte à se tronquer lui-même en premier sur un écran étroit. */
 .journal-quantite-groupe .custom-select__button {
-  padding: 6px 26px 6px 10px;
+  width: 52px;
+  padding: 6px 22px 6px 8px;
   font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .journal-section {
@@ -3037,9 +3044,16 @@ body.mode-magasin .course-item__shop-slot {
   min-width: 0;
 }
 
+/* Largeur fixe : sinon un libellé plus long ("gousse", "tbsp"...) élargit ce bouton et désaligne
+   toutes les lignes entre elles. Le nom de l'aliment (flex:1) garde toujours la priorité d'espace,
+   quitte à se tronquer lui-même en premier sur un écran étroit. */
 .ligne-ingredient-recette .custom-select__button {
-  padding: 6px 26px 6px 10px;
+  width: 52px;
+  padding: 6px 22px 6px 8px;
   font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Même bouton que .btn-supprimer-dash (Journal/Stock/Courses/cartes Recette) : un seul langage

@@ -279,7 +279,7 @@ function construireJournalItemDOM(entree) {
   // (au moins "g"), pour que toutes les lignes du journal aient la même forme
   let optionsUnite = "";
   if (entree.grammes_par_cuil_a_cafe) optionsUnite += `<option value="cafe">tsp</option>`;
-  if (entree.grammes_par_cuil_a_soupe) optionsUnite += `<option value="soupe">tbsp</option>`;
+  if (entree.grammes_par_cuil_a_soupe) optionsUnite += `<option value="soupe">tbs</option>`;
   if (poidsPiece) optionsUnite += `<option value="piece">${escapeHtml(entree.unite_piece || "pc")}</option>`;
   const selectUnite = `<select class="journal-unite-select"><option value="g">g</option>${optionsUnite}</select>`;
 
@@ -878,7 +878,7 @@ function ajouterLigneIngredient(foodId, nom, quantiteG, gCafe, gSoupe, poidsPiec
 
   let optionsUnite = "";
   if (gCafe) optionsUnite += `<option value="cafe">tsp</option>`;
-  if (gSoupe) optionsUnite += `<option value="soupe">tbsp</option>`;
+  if (gSoupe) optionsUnite += `<option value="soupe">tbs</option>`;
   if (poidsPieceNum) optionsUnite += `<option value="piece">${escapeHtml(unitePiece || "pc")}</option>`;
   const selectUnite = `<select class="ingredient-unite-recette"><option value="g">g</option>${optionsUnite}</select>`;
 
