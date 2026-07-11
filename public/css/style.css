@@ -393,15 +393,16 @@ body {
 }
 
 .btn-ajout-icone {
-  /* Contour fin plutôt qu'un rond plein en couleur accent : moins criard sur une barre qui
-     reste collée à l'écran en permanence (voir .courses-controls-row / .search-ajout-row),
-     tout en restant bien visible grâce à la couleur du "+" */
+  /* L'icône (public/images/svg/ajouter.svg) dessine déjà son propre contour arrondi : pas besoin
+     d'un cadre séparé sur le bouton, sinon on empile un cercle autour d'un carré arrondi. Le
+     border-radius reste (arrondi léger plutôt que 50%, pour suivre la même forme que l'icône)
+     pour que le fond plein au survol/actif garde une forme cohérente avec elle. */
   width: 30px;
   height: 30px;
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: 9px;
   background: transparent;
-  border: 1.5px solid var(--accent);
+  border: none;
   color: var(--accent);
   font-size: 0; /* cache le texte du bouton (gardé pour l'accessibilité), seule l'icône ::before est visible */
   cursor: pointer;
@@ -410,17 +411,25 @@ body {
 }
 
 .btn-ajout-icone::before {
-  /* Centré par position absolue + translate plutôt que par le flex du bouton : centrer un
-     glyphe "+" avec justify/align-items le cale sur sa boîte de ligne, pas sur son encre
-     réelle, ce qui le décalait visiblement d'un ou deux pixels selon la police */
-  content: "+";
+  /* Centré par position absolue + translate plutôt que par le flex du bouton : centrer une
+     icône avec justify/align-items le cale sur sa boîte de ligne, pas sur son encre
+     réelle, ce qui la décalait visiblement d'un ou deux pixels selon la police */
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1;
+  width: 24px;
+  height: 24px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/ajouter.svg");
+  mask-image: url("/images/svg/ajouter.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 /* (hover: hover) exclut les écrans tactiles : au doigt il n'y a pas de vrai "survol", donc
@@ -817,10 +826,29 @@ body {
 }
 
 .detail-equivalences__statut {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   margin: 10px 0 0;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--accent);
+}
+
+.icone-reussi {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/reussi.svg");
+  mask-image: url("/images/svg/reussi.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 /* ---------- PAGE COURSES ---------- */
@@ -2119,7 +2147,13 @@ body.mode-magasin .course-item__shop-slot {
 
   #autocomplete,
   #autocompleteCourses {
+    /* flex-basis (320px/280px, déclaré plus haut pour la mise en page en ligne du desktop) suit
+       l'axe principal du flex, qui devient vertical avec flex-direction:column ci-dessus : sans
+       ce reset, ce qui était une largeur de base devient une HAUTEUR de base, forçant ce champ
+       (juste un input de recherche) à occuper 280-320px de haut sur mobile au lieu de sa hauteur
+       réelle, avec la liste de suggestions qui se retrouve poussée loin en dessous. */
     width: 100%;
+    flex-basis: auto;
   }
 
   #btnAjouter {
@@ -2423,12 +2457,11 @@ body.mode-magasin .course-item__shop-slot {
   width: 22px;
   height: 22px;
   padding: 0;
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-  background: var(--accent);
-  color: white;
+  border: none;
+  background: none;
+  color: var(--accent);
   cursor: pointer;
-  font-size: 0; /* le texte du bouton est caché, seul le signe "−" ajouté via ::before est visible */
+  font-size: 0; /* le texte du bouton est caché, seule l'icône ::before est visible */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2436,19 +2469,40 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .btn-supprimer-dash::before {
-  /* "−" reste le signe par défaut (Journal, cartes/ingrédients de Recette) : retirer un
+  /* Icône dédiée (public/images/svg/supprimer-article.svg, un cercle plein avec une encoche
+     "−") reste l'icône par défaut (Journal, cartes/ingrédients de Recette) : retirer un
      aliment du journal ou un ingrédient d'une recette qu'on compose est une action légère,
      pas une vraie suppression d'inventaire. Voir .btn-supprimer-icone ci-dessous pour
-     Stock/Courses, où c'est bien la poubelle (public/images/svg/supprimer.svg). */
-  content: "−";
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
+     Stock/Courses, où c'est bien la poubelle (public/images/svg/supprimer.svg). L'icône
+     dessine déjà son propre cercle : pas besoin d'un fond/bordure séparé sur le bouton. */
+  content: "";
+  display: block;
+  width: 17px;
+  height: 17px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/supprimer-article.svg");
+  mask-image: url("/images/svg/supprimer-article.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 /* Stock et Courses seuls ont cette classe en plus de .btn-supprimer-dash (voir stock.ejs/js et
    courses.ejs/js) : retirer un article de l'inventaire ou de la liste de courses est une vraie
-   suppression, donc la poubelle plutôt que le "−" plus léger du Journal/Recette. */
+   suppression, donc la poubelle plutôt que le "−" plus léger du Journal/Recette. Contrairement à
+   supprimer-article.svg (qui dessine déjà son propre cercle), supprimer.svg est une simple
+   poubelle : ce variant a donc besoin de son propre cercle/bordure, plus repris automatiquement
+   depuis .btn-supprimer-dash de base depuis qu'elle ne le dessine plus. */
+.btn-supprimer-icone {
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  color: white;
+}
+
 .btn-supprimer-icone::before {
   content: "";
   display: block;
@@ -2643,6 +2697,9 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .recette-groupe-titre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-display);
   font-weight: 900;
   font-size: 1.1rem;
@@ -2652,8 +2709,21 @@ body.mode-magasin .course-item__shop-slot {
   border-bottom: 1.5px solid var(--border);
 }
 
+.recette-groupe-titre .icone-categorie-recette {
+  width: 20px;
+  height: 20px;
+}
+
+.recette-groupe-titre .icone-categorie-recette--fraicheur {
+  width: 19px;
+  height: 19px;
+}
+
 /* .cat-pill reste utilisé par le sélecteur de catégorie du panneau détail (boisson/plat) */
 .cat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 30px;
   padding: 0 14px;
   border-radius: 999px;
@@ -2670,6 +2740,30 @@ body.mode-magasin .course-item__shop-slot {
 .cat-pill:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Icône de catégorie de recette (Plat/Fraîcheur) : mêmes SVG en plusieurs couleurs que les
+   boutons du Journal (voir #selectRecettePlat + .custom-select ci-dessus), donc affichés tels
+   quels plutôt qu'en mask-image recolorable. Utilisée ici sur les pastilles de catégorie, le
+   titre de groupe de la grille de recettes, et en repli sur une carte recette sans émoji connu. */
+.icone-categorie-recette {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.icone-categorie-recette--plat {
+  background-image: url("/images/svg/recettes.svg");
+}
+
+.icone-categorie-recette--fraicheur {
+  width: 15px;
+  height: 15px;
+  background-image: url("/images/svg/glacon.svg");
 }
 
 .cat-pill.actif {
@@ -2749,8 +2843,18 @@ body.mode-magasin .course-item__shop-slot {
 }
 
 .recette-new-plus {
-  font-size: 1.4rem;
-  line-height: 1;
+  display: block;
+  width: 22px;
+  height: 22px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/ajouter.svg");
+  mask-image: url("/images/svg/ajouter.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 /* ---------- PANNEAU DÉTAIL DE RECETTE (overlay plein écran, pas un onglet) ---------- */

@@ -16,8 +16,8 @@
   // catégories froides/à boire n'ont pas assez de recettes chacune pour justifier une section
   // séparée, voir l'échange avec l'utilisateur).
   const CATEGORIES_RECETTE = [
-    { valeur: "plat", icone: "🍽️", label: "Plats" },
-    { valeur: "fraicheur", icone: "🍧", label: "Fraîcheur" }
+    { valeur: "plat", label: "Plats" },
+    { valeur: "fraicheur", label: "Fraîcheur" }
   ];
 %>
 
@@ -167,7 +167,7 @@
            mélangent jamais visuellement, même dans la vue par défaut -->
       <% CATEGORIES_RECETTE.forEach(function(cat) { %>
       <section class="recette-groupe">
-        <h3 class="recette-groupe-titre"><%= cat.icone %> <%= cat.label %></h3>
+        <h3 class="recette-groupe-titre"><span class="icone-categorie-recette icone-categorie-recette--<%= cat.valeur %>"></span> <%= cat.label %></h3>
         <div class="recette-grid" data-grid-cat="<%= cat.valeur %>">
           <% recettes.filter(function(r) { return r.categorie === cat.valeur; }).forEach(function(recette) { %>
           <div class="recette-card" data-id="<%= recette.id %>" data-cat="<%= recette.categorie %>">
@@ -177,13 +177,14 @@
             <!-- Les 3 premiers émojis d'ingrédients (dans l'ordre d'ajout, voir emojis_ingredients
                  dans chercherRecettes) composent l'icône, plus parlant qu'une icône générique de
                  catégorie ; repli sur l'icône de catégorie si jamais aucun ingrédient n'a d'émoji -->
-            <span class="recette-emoji"><%= recette.emojis_ingredients.slice(0, 3).join('') || cat.icone %></span>
+            <% const emojisRecette = recette.emojis_ingredients.slice(0, 3).join(''); %>
+            <span class="recette-emoji"><% if (emojisRecette) { %><%= emojisRecette %><% } else { %><span class="icone-categorie-recette icone-categorie-recette--<%= cat.valeur %>"></span><% } %></span>
             <p class="recette-nom"><%= recette.nom %></p>
             <div class="recette-sub"><span><%= recette.nb_ingredients %> ingr.</span><span><%= recette.kcal_total %> kcal</span></div>
           </div>
           <% }) %>
           <div class="recette-card recette-new-card btn-nouvelle-recette" data-nouvelle-cat="<%= cat.valeur %>">
-            <span class="recette-new-plus">+</span>
+            <span class="recette-new-plus"></span>
             <span>Nouvelle recette</span>
           </div>
         </div>
@@ -214,8 +215,8 @@
          d'ingrédient, repliée par défaut, même principe que les panneaux d'ajout de Stock/Courses. -->
     <div class="detail-tag-row">
       <div class="detail-tag-select" id="recetteCategoriePicker">
-        <button type="button" class="cat-pill actif" data-valeur="plat">🍽️ Plat</button>
-        <button type="button" class="cat-pill" data-valeur="fraicheur">🍧 Fraîcheur</button>
+        <button type="button" class="cat-pill actif" data-valeur="plat"><span class="icone-categorie-recette icone-categorie-recette--plat"></span> Plat</button>
+        <button type="button" class="cat-pill" data-valeur="fraicheur"><span class="icone-categorie-recette icone-categorie-recette--fraicheur"></span> Fraîcheur</button>
       </div>
       <button type="button" id="btnToggleAjoutIngredient" class="btn-ajout-icone" title="Ajouter un ingrédient">Ajouter un ingrédient</button>
     </div>

@@ -68,25 +68,42 @@ function escapeHtml(value) {
 // dessous de lui (au lieu du formulaire fixe tout en bas de page qu'il y avait avant), avec la
 // même animation d'accordéon (voir .panneau-ajout dans style.css).
 
+// Referme le panneau et réinitialise son contenu : rouvrir le panneau plus tard ne doit pas
+// retrouver un vieux texte tapé (et le bouton "Ajouter" qu'il avait éventuellement fait apparaître).
+// Partagé entre le bouton "+", le tap en dehors du panneau, et la fermeture automatique après
+// un ajout réussi.
+function fermerPanneauAjoutCourse() {
+    panneauAjoutCourse.classList.remove("ouvert");
+    panneauAjoutCourse.classList.remove("pret");
+    btnToggleAjoutCourse.classList.remove("actif");
+    rechercheAlimentCourses.value = "";
+    idAlimentCacheCourses.value = "";
+    listeAlimentsCourses.hidden = true;
+    btnAjouterCourse.classList.add("hidden");
+}
+
 btnToggleAjoutCourse.addEventListener("click", function () {
     const estOuvert = panneauAjoutCourse.classList.toggle("ouvert");
     // Le "+" reste rouge (plein) tant que le panneau est ouvert, pour indiquer qu'on est
     // en train d'ajouter, puis redevient un simple contour dès qu'on le referme
     btnToggleAjoutCourse.classList.toggle("actif", estOuvert);
     if (!estOuvert) {
-        panneauAjoutCourse.classList.remove("pret");
-        // On efface la recherche en fermant : rouvrir le panneau plus tard ne doit pas retrouver
-        // un vieux texte tapé (et le bouton "Ajouter" qu'il avait éventuellement fait apparaître)
-        rechercheAlimentCourses.value = "";
-        idAlimentCacheCourses.value = "";
-        listeAlimentsCourses.hidden = true;
-        btnAjouterCourse.classList.add("hidden");
+        fermerPanneauAjoutCourse();
     } else {
         // Le panneau vit tout en bas de la liste (voir plus haut) : on y fait défiler la page
         // pour qu'il soit visible avant d'y mettre le curseur, sinon on tape sans rien voir
         panneauAjoutCourse.scrollIntoView({ behavior: "smooth", block: "center" });
         rechercheAlimentCourses.focus();
     }
+});
+
+// Taper n'importe où en dehors du panneau (et du bouton qui l'ouvre, sinon on l'ouvrirait et
+// refermerait dans la foulée) le referme, comme un vrai menu déroulant plutôt qu'un panneau qui
+// ne se referme qu'en retapant explicitement sur le "+"
+document.addEventListener("click", function (e) {
+    if (!panneauAjoutCourse.classList.contains("ouvert")) return;
+    if (e.target.closest("#panneauAjoutCourse") || e.target.closest("#btnToggleAjoutCourse")) return;
+    fermerPanneauAjoutCourse();
 });
 
 // Une fois l'animation d'ouverture terminée, on ajoute "pret" : le panneau repasse en
@@ -636,13 +653,7 @@ function ajouterArticle(idAliment, texteLibre) {
             activerItem(nouvelItem);
             ajouterAnimationEntree(nouvelItem);
 
-            rechercheAlimentCourses.value = "";
-            idAlimentCacheCourses.value = "";
-            btnAjouterCourse.classList.add("hidden");
-
             // On referme le panneau d'ajout automatiquement après un ajout réussi, comme sur Stock
-            panneauAjoutCourse.classList.remove("ouvert");
-            panneauAjoutCourse.classList.remove("pret");
-            btnToggleAjoutCourse.classList.remove("actif");
+            fermerPanneauAjoutCourse();
         });
 }

@@ -17,8 +17,6 @@ const selectRecetteFraicheur = document.getElementById("selectRecetteFraicheur")
 const btnToutEffacer = document.getElementById("btnToutEffacer"); // bouton rond "X" pour tout effacer
 const btnEnregistrerRecette = document.getElementById("btnEnregistrerRecette"); // bouton "Enregistrer comme recette" (conditionnel)
 
-const ICONE_CATEGORIE = { plat: "🍽️", fraicheur: "🍧" };
-
 // Renvoie le menu déroulant "appliquer une recette" correspondant à une catégorie donnée
 function selectRecettePourCategorie(categorie) {
   return categorie === "fraicheur" ? selectRecetteFraicheur : selectRecettePlat;
@@ -681,8 +679,8 @@ function construireRecetteCardDOM(recette) {
   div.dataset.cat = recette.categorie;
 
   // L'icône combine les 3 premiers émojis d'ingrédients (ex: 🍜🫑🥕), plus parlant qu'une icône
-  // générique de catégorie ; repli sur l'icône de catégorie si jamais aucun émoji n'est connu
-  const icone = recette.emoji_combo || ICONE_CATEGORIE[recette.categorie] || "🍽️";
+  // générique de catégorie ; repli sur l'icône SVG de catégorie si jamais aucun émoji n'est connu
+  const icone = recette.emoji_combo || `<span class="icone-categorie-recette icone-categorie-recette--${recette.categorie}"></span>`;
 
   div.innerHTML = `
     <span class="recette-emoji">${icone}</span>
