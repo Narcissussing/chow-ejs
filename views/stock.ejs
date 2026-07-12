@@ -101,6 +101,8 @@
         data-tracking-type="<%= aliment.tracking_type %>"
         data-jours="<%= aliment.jours_depuis %>"
         data-quantite="<%= aliment.quantite %>"
+        data-food-id="<%= aliment.food_id %>"
+        data-deja-en-courses="<%= aliment.deja_en_courses %>"
       >
         <!-- On affiche la vraie photo si elle existe, sinon l'emoji comme solution de secours -->
         <% if (aliment.image) { %>
@@ -135,7 +137,9 @@
           </div>
 
           <!-- Zone cliquable pour modifier la quantité : le contenu affiché dépend du type de suivi de l'aliment.
-               Sépararée du bloc nom/emplacement par un filet vertical, et centrée sur toute la hauteur des deux lignes. -->
+               Sépararée du bloc nom/emplacement par un filet vertical, et centrée sur toute la hauteur des deux lignes.
+               "Ajouter aux courses" (bas de stock, voir data-deja-en-courses ci-dessus) n'apparaît qu'en mode
+               édition, pas ici : voir ouvrirEdition dans stock.js. -->
           <div class="stock-editable-zone" data-valeur-actuelle="<%= aliment.quantite %>">
             <% if (aliment.tracking_type === 'cl') { %>
             <!--

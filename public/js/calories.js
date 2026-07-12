@@ -102,13 +102,39 @@ rechercheAlimentCalories.addEventListener("input", function () {
   });
 });
 
+// Renvoie l'entrée du journal DU JOUR déjà présente pour un aliment donné, s'il y en a une
+function trouverJournalItemParFoodId(foodId) {
+  return Array.from(listeJournal.querySelectorAll(".journal-item")).find(function (item) {
+    return item.dataset.foodId === foodId;
+  });
+}
+
+// Amène l'utilisateur directement sur une entrée déjà présente (même effet que sur Stock/Courses) :
+// défilement + brève surbrillance, plutôt que de créer une deuxième entrée pour le même aliment
+function mettreEnAvantJournalItem(item) {
+  item.scrollIntoView({ behavior: "smooth", block: "center" });
+  item.classList.add("mise-en-avant");
+  setTimeout(function () {
+    item.classList.remove("mise-en-avant");
+  }, 1500);
+}
+
 // Cliquer directement sur une suggestion ajoute l'aliment au journal avec 100g par défaut
-// (pas besoin de valider un formulaire séparé, c'est immédiat)
+// (pas besoin de valider un formulaire séparé, c'est immédiat). Si l'aliment est déjà dans le
+// journal du jour, on ne l'ajoute pas une 2e fois : on amène directement l'utilisateur sur
+// l'entrée existante, comme sur Stock/Courses.
 itemsAutocomplete.forEach(function (item) {
   item.addEventListener("click", function () {
-    ajouterAlimentAuJournal(this.dataset.id, 100);
     rechercheAlimentCalories.value = "";
     listeAlimentsCalories.hidden = true;
+
+    const itemExistant = trouverJournalItemParFoodId(this.dataset.id);
+    if (itemExistant) {
+      mettreEnAvantJournalItem(itemExistant);
+      return;
+    }
+
+    ajouterAlimentAuJournal(this.dataset.id, 100);
   });
 });
 

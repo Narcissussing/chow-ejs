@@ -66,16 +66,24 @@
       </div>
     </div>
 
-    <!-- Ajoute d'un coup les courses habituelles de la semaine, sans effacer ce qui est déjà dans la liste
-         (contrairement au bouton recette de la page Calories, qui lui remplace tout) -->
-    <button type="button" id="btnPresetHebdo" class="filter-btn btn-preset-hebdo">🧺 Courses de la semaine</button>
+    <!-- "Enregistrer" (icône seule, à gauche) remplace le preset "Courses de la semaine" (au milieu)
+         par la liste actuelle : voir courses.js pour les règles d'affichage (5+ articles) et
+         d'activation (liste différente du preset). Le preset lui-même ajoute d'un coup les courses
+         habituelles, sans effacer ce qui est déjà dans la liste (contrairement au bouton recette de
+         la page Calories, qui lui remplace tout). -->
+    <div class="preset-hebdo-row">
+      <button type="button" id="btnEnregistrerPresetHebdo" class="btn-enregistrer-preset hidden" title="Mettre à jour le preset avec la liste actuelle">Enregistrer</button>
+      <button type="button" id="btnPresetHebdo" class="filter-btn btn-preset-hebdo">🧺 Semaine</button>
+    </div>
 
     <!-- Liste des articles à acheter, générée côté serveur -->
     <div id="listeCourses">
       <% courses.forEach(function(item) { %>
       <!-- data-nom et data-categorie servent au tri fait en JavaScript ; "zzz" place les articles
            sans catégorie tout à la fin quand on trie par catégorie -->
-      <div class="course-item carte-article" data-nom="<%= item.nom.toLowerCase() %>" data-categorie="<%= item.categorie || 'zzz' %>">
+      <!-- data-food-id sert à comparer cette liste au preset "Courses de la semaine" (voir
+           mettreAJourBoutonPresetHebdo dans courses.js) : vide pour un article "libre" (nom_libre) -->
+      <div class="course-item carte-article" data-nom="<%= item.nom.toLowerCase() %>" data-categorie="<%= item.categorie || 'zzz' %>" data-food-id="<%= item.food_id || '' %>">
         <!-- Combien on en a déjà en stock à la maison (pastille en haut à gauche) :
              un nombre pour les aliments suivis en quantité, un point de couleur pour les "cl" (ex: bouteille) -->
         <% if (item.quantite_stock !== null && item.tracking_type !== 'cl') { %>
@@ -146,6 +154,11 @@
       <% }) %>
     </div>
 
+    <script>
+      // Utilisé par courses.js pour comparer en direct la liste actuelle au preset enregistré
+      // (activer/désactiver "Enregistrer" sans recharger la page à chaque ajout/suppression)
+      window.PRESET_HEBDO = <%- JSON.stringify(presetHebdo) %>;
+    </script>
     <script src="/js/courses.js" defer></script>
   </div>
 </main>

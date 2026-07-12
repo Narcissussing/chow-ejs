@@ -61,6 +61,17 @@ await db.query(`
     WHERE journal_repas.id = sub.id
 `);
 
+// Courses habituelles de la semaine (bouton "preset" sur la page Courses) : vivait avant comme
+// un simple tableau figé dans le code (voir PRESET_COURSES_HEBDO plus bas), maintenant modifiable
+// depuis l'app elle-même (voir /courses/preset-hebdo/enregistrer) — il faut donc une vraie table.
+await db.query(`
+    CREATE TABLE IF NOT EXISTS courses_preset (
+        id SERIAL PRIMARY KEY,
+        food_id TEXT REFERENCES foods(id),
+        nom_libre TEXT
+    )
+`);
+
 // On dit à Express de comprendre les données envoyées par les formulaires HTML classiques
 app.use(express.urlencoded({ extended: true }));
 // On dit à Express de servir les fichiers du dossier "public" tels quels (CSS, JS, images...)
@@ -105,6 +116,19 @@ const PRESET_COURSES_HEBDO = [
     { food_id: "chips" },
 ];
 
+// Ensemencement unique de courses_preset à partir de la liste figée ci-dessus, seulement si la
+// table est encore vide (jamais rejoué ensuite, même après un redémarrage : sinon "enregistrer"
+// serait aussitôt écrasé par cette liste au prochain déploiement).
+const presetExistant = await db.query("SELECT 1 FROM courses_preset LIMIT 1");
+if (presetExistant.rows.length === 0) {
+    for (const article of PRESET_COURSES_HEBDO) {
+        await db.query(
+            "INSERT INTO courses_preset (food_id, nom_libre) VALUES ($1, $2)",
+            [article.food_id || null, article.food_id ? null : article.nom_libre]
+        );
+    }
+}
+
 //Function
 
 // Récupère la liste de tous les aliments connus dans la table "foods"
@@ -115,7 +139,16 @@ async function chercherAliments() {
 
 // Récupère tout le stock actuel, en associant chaque ligne de stock à son aliment (nom, emoji, photo, type, emplacement)
 async function chercherStock() {
-    const result = await db.query("SELECT stock.*, foods.nom, foods.emoji, foods.image, foods.tracking_type, foods.emplacement FROM stock JOIN foods ON stock.food_id = foods.id");
+    // deja_en_courses : sert à savoir si on doit proposer "Ajouter aux courses" sur un article bas
+    // (voir views/stock.ejs) — inutile de le reproposer s'il y est déjà en attente d'achat.
+    const result = await db.query(
+        `SELECT stock.*, foods.nom, foods.emoji, foods.image, foods.tracking_type, foods.emplacement,
+                EXISTS(
+                    SELECT 1 FROM courses
+                    WHERE courses.food_id = stock.food_id AND courses.achete = false
+                ) AS deja_en_courses
+         FROM stock JOIN foods ON stock.food_id = foods.id`
+    );
     // Pour chaque article du stock, on calcule le nombre de jours écoulés depuis sa dernière mise à jour
     const aujourdhui = new Date();
     result.rows.forEach(row => {
@@ -351,6 +384,7 @@ app.post("/stock/ajouter", async (req, res) => {
             succes: true,
             item: {
                 id: insertResult.rows[0].id,
+                food_id: idAliment,
                 nom: nom,
                 emoji: emoji,
                 image: image,
@@ -413,12 +447,16 @@ app.get("/courses", async (req, res) => {
         const courses = await chercherCourses()
         const aliments = await chercherAliments()
         const stock = await chercherStock()
+        // Transmis au client pour comparer en direct la liste actuelle au preset enregistré
+        // (voir courses.js) : sert à activer/désactiver "Enregistrer" sans recharger la page.
+        const presetHebdo = await db.query("SELECT food_id, nom_libre FROM courses_preset");
 
         res.render("courses.ejs", {
             title: "Courses",
             courses: courses,
             aliments: aliments,
-            stock: stock
+            stock: stock,
+            presetHebdo: presetHebdo.rows
         });
     } catch (err) {
         console.error(err);
@@ -461,12 +499,15 @@ app.post("/courses/ajouter", async (req, res) => {
     }
 });
 
-// Ajouter d'un coup toutes les courses habituelles de la semaine (voir PRESET_COURSES_HEBDO).
+// Ajouter d'un coup toutes les courses habituelles de la semaine (voir la table courses_preset,
+// modifiable depuis l'app elle-même — voir /courses/preset-hebdo/enregistrer ci-dessous).
 // Contrairement à la recette de /calories/ajouter-recette, on n'efface rien : on ajoute seulement
 // les articles du preset qui ne sont pas déjà dans la liste de courses en attente (pour ne pas créer
 // de doublons si on clique plusieurs fois sur le bouton).
 app.post("/courses/preset-hebdo", async (req, res) => {
     try {
+        const presetResult = await db.query("SELECT food_id, nom_libre FROM courses_preset");
+
         // On récupère ce qui est déjà dans la liste (pas encore acheté), pour savoir quoi ne pas dupliquer
         const dejaLa = await db.query("SELECT food_id, nom_libre FROM courses WHERE achete = false");
         const foodIdsDejaLa = new Set(dejaLa.rows.map(r => r.food_id).filter(Boolean));
@@ -476,7 +517,7 @@ app.post("/courses/preset-hebdo", async (req, res) => {
 
         const nouveauxIds = [];
 
-        for (const article of PRESET_COURSES_HEBDO) {
+        for (const article of presetResult.rows) {
             if (article.food_id) {
                 if (foodIdsDejaLa.has(article.food_id)) continue; // déjà présent, on ne l'ajoute pas une 2e fois
                 const insertResult = await db.query(
@@ -512,6 +553,36 @@ app.post("/courses/preset-hebdo", async (req, res) => {
 
         res.json({ succes: true, items: itemsResult.rows });
     } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
+// Remplace le preset "Courses de la semaine" par la liste de courses actuelle (en attente, pas
+// encore achetée) : DELETE + réinsertion plutôt qu'un diff ligne à ligne, comme pour les recettes
+// (voir /recettes/:id/modifier) — plus simple à maintenir, et cette liste reste toujours courte.
+app.post("/courses/preset-hebdo/enregistrer", async (req, res) => {
+    let transactionStarted = false;
+    try {
+        await db.query("BEGIN");
+        transactionStarted = true;
+
+        await db.query("DELETE FROM courses_preset");
+
+        const courant = await db.query("SELECT food_id, nom_libre FROM courses WHERE achete = false");
+        for (const article of courant.rows) {
+            await db.query(
+                "INSERT INTO courses_preset (food_id, nom_libre) VALUES ($1, $2)",
+                [article.food_id, article.food_id ? null : article.nom_libre]
+            );
+        }
+
+        await db.query("COMMIT");
+        transactionStarted = false;
+
+        res.json({ succes: true });
+    } catch (err) {
+        if (transactionStarted) await db.query("ROLLBACK");
         console.log("ERREUR:", err.message);
         res.status(500).json({ erreur: err.message });
     }

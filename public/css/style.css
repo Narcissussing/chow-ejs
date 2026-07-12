@@ -955,8 +955,96 @@ body {
   transform: translateX(16px);
 }
 
+/* Même colonne que "Enregistrer" (voir .preset-hebdo-row juste en dessous) : la marge qui
+   séparait ce bouton du premier article de la liste vit maintenant sur le conteneur commun. */
+.preset-hebdo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  /* Pas de margin-bottom ici : l'espace avant le premier article vient de #listeCourses
+     (margin-top), pour rester présent même quand cette rangée est masquée (mode magasin) —
+     sinon la pastille de stock d'un article (position: absolute, top:-8px) se retrouvait à
+     chevaucher la barre d'outils sticky juste au-dessus.
+     max-height (plutôt que display:none) rend l'apparition/disparition animable : "Au magasin"
+     bascule juste la classe sur le body (voir toggleMagasin dans courses.js), la transition
+     se joue automatiquement des deux côtés. */
+  max-height: 50px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* "Au magasin" : on fait ses courses, pas de la gestion de preset — ce bouton n'a rien à faire
+   là (voir toggleMagasin dans courses.js, qui pose "mode-magasin" sur le body) */
+body.mode-magasin .preset-hebdo-row {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  pointer-events: none;
+}
+
 .btn-preset-hebdo {
-  margin-bottom: 20px; /* sans ça, il collait directement sur le premier article de la liste */
+  margin-bottom: 0;
+}
+
+/* "Enregistrer" : icône seule (même langage que .btn-ajout-icone), à gauche du preset "Semaine" */
+.btn-enregistrer-preset {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0; /* cache le texte du bouton (gardé pour l'accessibilité), seule l'icône ::before est visible */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-enregistrer-preset.hidden {
+  display: none;
+}
+
+.btn-enregistrer-preset::before {
+  content: "";
+  display: block;
+  width: 13px;
+  height: 13px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/enregistrer.svg");
+  mask-image: url("/images/svg/enregistrer.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.btn-enregistrer-preset:active {
+  transform: scale(0.9);
+}
+
+.btn-enregistrer-preset:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Confirmation "réussi" temporaire (voir courses.js) : même icône que sur Aliments (reussi.svg),
+   le temps que l'icône redevienne la disquette */
+.btn-enregistrer-preset.confirme {
+  border-color: #34c759;
+  background: rgba(52, 199, 89, 0.12);
+  color: #1f7a3d;
+}
+
+.btn-enregistrer-preset.confirme::before {
+  -webkit-mask-image: url("/images/svg/reussi.svg");
+  mask-image: url("/images/svg/reussi.svg");
 }
 
 /* Flux normal (pas flex) : #panneauAjoutCourse vit maintenant dans cette liste (voir courses.js)
@@ -965,6 +1053,13 @@ body {
    flexible et se retrouvait étiré/mal dimensionné (grand bloc vide) au lieu de ne prendre que
    la hauteur de son contenu. Le flux bloc normal n'a pas ce problème (comme #listeStock,
    qui n'a jamais ce souci car son panneau d'ajout reste hors de la liste). */
+
+/* Espace fixe avant le premier article, qu'importe si .preset-hebdo-row (juste au-dessus) est
+   visible ou masquée (mode magasin) : sans lui, la pastille de stock d'un article (position:
+   absolute, top:-8px) chevauchait la barre d'outils sticky dès que cette rangée disparaissait. */
+#listeCourses {
+  margin-top: 14px;
+}
 
 /* .panneau-ajout est exclu : sa propre marge (0 fermé / 20px ouvert, voir plus haut) gère déjà
    son espacement, animée en même temps que son ouverture/fermeture. */
@@ -1512,9 +1607,61 @@ body.mode-magasin .course-item__shop-slot {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   padding: 0 12px; /* réduit (était 16px) pour laisser plus de largeur au bloc nom/emplacement */
   cursor: pointer;
   transition: background 0.15s ease;
+}
+
+/* "Ajouter aux courses" : ne s'affiche que si l'article est bas ET pas déjà dans la liste de
+   courses (voir chercherStock/stock.ejs). Rond discret (contour, pas plein) pour rester secondaire
+   par rapport à la quantité elle-même, qui reste l'info principale de cette zone. */
+.btn-ajouter-courses {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0; /* cache le texte du bouton (gardé pour l'accessibilité), seule l'icône ::before est visible */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease, opacity 0.2s ease;
+}
+
+.btn-ajouter-courses::before {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 14px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/courses.svg");
+  mask-image: url("/images/svg/courses.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-ajouter-courses:hover {
+    background: var(--accent);
+    color: white;
+  }
+}
+
+.btn-ajouter-courses:active {
+  transform: scale(0.9);
+}
+
+.btn-ajouter-courses.disparait {
+  opacity: 0;
+  transform: scale(0.5);
 }
 
 .stock-editable-zone:hover {

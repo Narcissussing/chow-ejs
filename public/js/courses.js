@@ -6,6 +6,7 @@ const listeCourses = document.getElementById("listeCourses"); // conteneur de to
 const sortSelectCourses = document.getElementById("sortSelectCourses"); // menu de tri (Nom/Catégorie), même select que sur Aliments/Stock
 const toggleMagasin = document.getElementById("toggleMagasin"); // bouton pour activer/désactiver le "mode magasin"
 const btnPresetHebdo = document.getElementById("btnPresetHebdo"); // bouton "Courses de la semaine" (ajout groupé)
+const btnEnregistrerPresetHebdo = document.getElementById("btnEnregistrerPresetHebdo"); // bouton "Enregistrer" (remplace le preset par la liste actuelle)
 
 const rechercheAlimentCourses = document.getElementById("rechercheAlimentCourses"); // champ de recherche pour ajouter un article
 const listeAlimentsCourses = document.getElementById("listeAlimentsCourses"); // liste de suggestions d'aliments
@@ -213,6 +214,80 @@ function inserrerSelonTri(nouvelItem) {
 }
 
 // ============================================
+// PRESET "COURSES DE LA SEMAINE" — ENREGISTRER/METTRE À JOUR
+// ============================================
+
+// Clé unique pour un article, qu'il vienne d'un data-food-id (article connu) ou d'un data-nom /
+// nom_libre (article "libre") : sert à comparer la liste actuelle au preset sans dépendre de l'id
+// de ligne (qui change à chaque fois qu'on vide/recrée la liste).
+function cleArticlePreset(foodId, nom) {
+    return foodId ? "f:" + foodId : "n:" + (nom || "").toLowerCase();
+}
+
+// Affiche "Enregistrer" seulement à partir de 5 articles dans la liste, et le désactive si la
+// liste actuelle est déjà identique au preset (rien à mettre à jour). Appelé après chaque ajout
+// ou suppression d'article (voir plus bas), pas seulement au chargement.
+function mettreAJourBoutonPresetHebdo() {
+    const items = Array.from(listeCourses.querySelectorAll(".course-item"));
+
+    if (items.length < 5) {
+        btnEnregistrerPresetHebdo.classList.add("hidden");
+        return;
+    }
+    btnEnregistrerPresetHebdo.classList.remove("hidden");
+
+    const ensembleActuel = new Set(
+        items.map(function (item) {
+            return cleArticlePreset(item.dataset.foodId, item.dataset.nom);
+        })
+    );
+    const ensemblePreset = new Set(
+        window.PRESET_HEBDO.map(function (article) {
+            return cleArticlePreset(article.food_id, article.nom_libre);
+        })
+    );
+
+    const identique =
+        ensembleActuel.size === ensemblePreset.size &&
+        Array.from(ensembleActuel).every(function (cle) { return ensemblePreset.has(cle); });
+
+    btnEnregistrerPresetHebdo.disabled = identique;
+}
+
+mettreAJourBoutonPresetHebdo();
+
+btnEnregistrerPresetHebdo.addEventListener("click", function () {
+    // Remplace définitivement l'ancien preset : pas d'annulation possible une fois enregistré,
+    // donc on confirme avant (même principe que "Tout effacer"/"Supprimer cette recette")
+    if (!confirm("Remplacer \"Courses de la semaine\" par la liste actuelle ?")) return;
+
+    fetch("/courses/preset-hebdo/enregistrer", { method: "POST" })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            if (data.erreur) {
+                alert(data.erreur);
+                return;
+            }
+
+            // Le preset côté client doit refléter ce qu'on vient d'enregistrer, sinon le bouton
+            // resterait activable pour rien tant que la page n'est pas rechargée
+            window.PRESET_HEBDO = Array.from(listeCourses.querySelectorAll(".course-item")).map(function (item) {
+                return item.dataset.foodId
+                    ? { food_id: item.dataset.foodId, nom_libre: null }
+                    : { food_id: null, nom_libre: item.dataset.nom };
+            });
+            mettreAJourBoutonPresetHebdo();
+
+            // Petite confirmation visuelle (icône "réussi", même que sur Aliments), avant de
+            // revenir à l'icône normale (disquette) après un court délai
+            btnEnregistrerPresetHebdo.classList.add("confirme");
+            setTimeout(function () {
+                btnEnregistrerPresetHebdo.classList.remove("confirme");
+            }, 1500);
+        });
+});
+
+// ============================================
 // MODE MAGASIN
 // ============================================
 
@@ -266,6 +341,7 @@ btnPresetHebdo.addEventListener("click", function () {
                 activerItem(nouvelItem);
                 ajouterAnimationEntree(nouvelItem);
             });
+            mettreAJourBoutonPresetHebdo();
         });
 });
 
@@ -441,6 +517,7 @@ function retirerItem(form, classeAnim) {
     item.classList.add(classeAnim);
     setTimeout(function () {
         item.remove();
+        mettreAJourBoutonPresetHebdo();
     }, 300);
 }
 
@@ -490,6 +567,8 @@ function construireItemDOM(item) {
     div.dataset.nom = item.nom.toLowerCase();
     // "zzz" pour que les articles sans catégorie se retrouvent triés en dernier
     div.dataset.categorie = item.categorie || "zzz";
+    // Sert à comparer cette liste au preset "Courses de la semaine" (voir mettreAJourBoutonPresetHebdo)
+    div.dataset.foodId = item.food_id || "";
 
     // Le formulaire "Acheté" est différent selon le type de l'article :
     let formAchat;
@@ -593,12 +672,39 @@ rechercheAlimentCourses.addEventListener("input", function () {
     btnAjouterCourse.classList.toggle("hidden", aUneCorrespondance);
 });
 
-// Cliquer sur une suggestion ajoute directement l'article à la liste de courses
+// Renvoie l'article de la liste de courses déjà en attente pour un aliment donné, s'il y en a un
+function trouverCourseItemParFoodId(foodId) {
+    return Array.from(listeCourses.querySelectorAll(".course-item")).find(function (item) {
+        return item.dataset.foodId === foodId;
+    });
+}
+
+// Amène l'utilisateur directement sur un article déjà présent (même effet que sur Stock) :
+// défilement + brève surbrillance, plutôt que de créer un doublon dans la liste
+function mettreEnAvantCourseItem(item) {
+    item.scrollIntoView({ behavior: "smooth", block: "center" });
+    item.classList.add("mise-en-avant");
+    setTimeout(function () {
+        item.classList.remove("mise-en-avant");
+    }, 1500);
+}
+
+// Cliquer sur une suggestion ajoute directement l'article à la liste de courses. Si l'aliment
+// choisi y est déjà (pas de doublon possible), on ne l'ajoute pas une 2e fois : on amène
+// directement l'utilisateur sur l'article existant, comme sur Stock.
 itemsAutocomplete.forEach(function (item) {
     item.addEventListener("click", function () {
-        ajouterArticle(item.dataset.id, null);
         listeAlimentsCourses.hidden = true;
         btnAjouterCourse.classList.add("hidden");
+        fermerPanneauAjoutCourse();
+
+        const itemExistant = trouverCourseItemParFoodId(this.dataset.id);
+        if (itemExistant) {
+            mettreEnAvantCourseItem(itemExistant);
+            return;
+        }
+
+        ajouterArticle(this.dataset.id, null);
     });
 });
 
@@ -652,6 +758,7 @@ function ajouterArticle(idAliment, texteLibre) {
             inserrerSelonTri(nouvelItem);
             activerItem(nouvelItem);
             ajouterAnimationEntree(nouvelItem);
+            mettreAJourBoutonPresetHebdo();
 
             // On referme le panneau d'ajout automatiquement après un ajout réussi, comme sur Stock
             fermerPanneauAjoutCourse();

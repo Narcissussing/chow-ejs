@@ -69,6 +69,51 @@ const OPTIONS_CL = [
   { valeur: "vide", texte: "Vide" }
 ];
 
+// "Bas" : pour un aliment suivi en "cl" (bouteille), les deux niveaux les plus bas ; pour les
+// autres (unité/pack), moins de 2 restants. Même logique que côté serveur (voir chercherStock/stock.ejs).
+function estQuantiteBasse(valeur, trackingType) {
+  if (trackingType === "cl") return valeur === "presque vide" || valeur === "vide";
+  return Number(valeur) < 2;
+}
+
+// HTML du bouton "Ajouter aux courses" (icône seule, voir .btn-ajouter-courses dans style.css)
+function htmlBoutonAjouterCourses(foodId) {
+  return `<button type="button" class="btn-ajouter-courses" data-food-id="${escapeHtml(foodId)}" title="Ajouter aux courses"></button>`;
+}
+
+// Câble le clic sur le bouton "Ajouter aux courses" d'un article, s'il est présent : l'ajoute à
+// la liste de courses via fetch, puis fait disparaître le bouton (jamais reproposé tant qu'il y
+// reste, voir data-deja-en-courses posé ici après coup).
+function activerBoutonAjouterCourses(item) {
+  const bouton = item.querySelector(".btn-ajouter-courses");
+  if (!bouton) return;
+
+  bouton.addEventListener("click", function (e) {
+    // Empêche ce clic d'ouvrir aussi le mode édition de la quantité (toute la carte est cliquable)
+    e.stopPropagation();
+    bouton.disabled = true;
+
+    fetch("/courses/ajouter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idAliment: bouton.dataset.foodId })
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        if (data.erreur) {
+          alert(data.erreur);
+          bouton.disabled = false;
+          return;
+        }
+        item.dataset.dejaEnCourses = "true";
+        bouton.classList.add("disparait");
+        setTimeout(function () {
+          bouton.remove();
+        }, 200);
+      });
+  });
+}
+
 // Pour trier les articles "cl" par quantité, on donne un rang numérique à chaque niveau
 // (0 = le moins rempli, 3 = le plus rempli) puisque "plein"/"vide" ne sont pas des nombres
 const RANG_NIVEAU_CL = {
@@ -352,8 +397,13 @@ function construireStockItemDOM(item) {
   div.dataset.trackingType = item.tracking_type;
   div.dataset.jours = 0; // un article tout juste ajouté a été mis à jour "aujourd'hui" (0 jour)
   div.dataset.quantite = item.quantite; // nécessaire pour que le tri par quantité fonctionne tout de suite, sans recharger la page
+  div.dataset.foodId = item.food_id;
+  // Un article qu'on vient d'ajouter n'est presque jamais déjà dans la liste de courses ; pas de
+  // vraie donnée du serveur pour ça ici (voir /stock/ajouter), donc "false" par défaut est sûr.
+  div.dataset.dejaEnCourses = "false";
 
   // Selon le type de suivi, on affiche soit une barre de niveau (cl), soit un simple nombre
+  // ("Ajouter aux courses" n'apparaît qu'en mode édition, voir ouvrirEdition)
   const infosHtml =
     item.tracking_type === "cl"
       ? `<div class="stock-barre-cl" title="${quantite}"><div class="stock-barre-cl-remplissage ${niveauCl}"></div></div>`
@@ -513,6 +563,7 @@ function ouvrirEdition(item, zone, trackingType) {
     });
     zone.innerHTML = "";
     zone.appendChild(select);
+    ajouterBoutonCoursesSiBas(item, zone, valeurActuelle, trackingType);
   } else {
     // Cas "unité"/"pack" : on affiche un simple champ nombre, avec la valeur actuelle déjà remplie
     const input = document.createElement("input");
@@ -529,7 +580,17 @@ function ouvrirEdition(item, zone, trackingType) {
     zone.appendChild(input);
     input.focus(); // le curseur se place directement dans le champ
     input.select(); // et le texte existant est sélectionné, pour pouvoir le remplacer facilement
+    ajouterBoutonCoursesSiBas(item, zone, valeurActuelle, trackingType);
   }
+}
+
+// "Ajouter aux courses" n'apparaît qu'ici, en mode édition (jamais dans l'affichage normal) :
+// seulement si la quantité est basse et que l'article n'y est pas déjà (voir data-deja-en-courses,
+// posé au chargement puis mis à jour par activerBoutonAjouterCourses une fois ajouté).
+function ajouterBoutonCoursesSiBas(item, zone, valeurActuelle, trackingType) {
+  if (!estQuantiteBasse(valeurActuelle, trackingType) || item.dataset.dejaEnCourses === "true") return;
+  zone.insertAdjacentHTML("beforeend", htmlBoutonAjouterCourses(item.dataset.foodId));
+  activerBoutonAjouterCourses(item);
 }
 
 // Referme le mode édition d'un article : si la valeur a changé, on l'enregistre côté serveur
@@ -576,6 +637,7 @@ function fermerEditionEtSauvegarder(item, zone, trackingType) {
 }
 
 // Construit le petit bout de HTML affiché normalement (hors édition) pour une valeur donnée
+// ("Ajouter aux courses" n'apparaît qu'en mode édition, voir ouvrirEdition — jamais ici)
 function construireAffichageStatique(valeur, trackingType) {
   const valeurHtml = escapeHtml(valeur);
 
