@@ -156,8 +156,14 @@ function ouvrirRechercheAjoutStock() {
   btnToggleAjout.classList.add("actif");
   // Assombrit le reste de la page pour concentrer l'attention sur la recherche d'ajout
   ajoutBackdropStock.classList.add("ouvert");
-  // Le curseur se place directement dans le champ, pour pouvoir taper tout de suite
+  // Reprend ce qui était tapé dans la recherche du stock : si elle ne trouvait rien, c'est
+  // probablement que cet aliment n'est pas encore dans le stock — pas la peine de retaper le
+  // même texte ici. "select()" plutôt que juste focus() : un tap sur "+" pour chercher autre
+  // chose doit pouvoir remplacer ce texte d'un coup, pas devoir l'effacer à la main d'abord.
+  rechercheAliment.value = searchInput.value;
   rechercheAliment.focus();
+  rechercheAliment.select();
+  rechercheAliment.dispatchEvent(new Event("input"));
 }
 
 function fermerRechercheAjoutStock() {
@@ -625,7 +631,7 @@ function ajouterBoutonsSoustraction(item, zone, input, valeurActuelle, trackingT
     bouton.className = "suggestion";
     // Le signe "−" dans son propre span (plus petit, voir CSS) : à la même taille que le chiffre,
     // il dominait visuellement le bouton et le rendait plus dur à lire qu'un simple chiffre.
-    bouton.innerHTML = '<span class="soustraction-signe">−</span>' + valeur;
+    bouton.innerHTML = '<span class="signe-mini">−</span>' + valeur;
     bouton.addEventListener("click", function (e) {
       // Empêche ce clic de rouvrir l'édition juste après l'avoir fermée (même raison que
       // .btn-ajouter-courses : toute la carte est cliquable, voir activerEditionInline)

@@ -454,7 +454,7 @@ function activerNote(item) {
 // FORMULAIRES QUANTITÉ (suggestions 1/2/5)
 // ============================================
 
-// Active les boutons de suggestion rapide de quantité (1, 2, 5) pour un article donné
+// Active les boutons de suggestion rapide de quantité (+1/+2/+5) pour un article donné
 function activerQuantite(item) {
     const form = item.querySelector(".form-quantite");
     if (!form) return; // certains articles (ex: suivis en "cl") n'ont pas ce formulaire de quantité
@@ -463,17 +463,31 @@ function activerQuantite(item) {
     const btnEnregistrer = form.querySelector(".btn-enregistrer-achat");
     const suggestions = form.querySelectorAll(".suggestion");
 
-    // Cliquer sur une suggestion (1/2/5) remplit directement le champ quantité
+    // Cliquer sur une suggestion (+1/+2/+5) achète directement cette quantité, comme les boutons
+    // de soustraction rapide sur Stock (même geste en un tap, pas besoin de confirmer avec
+    // "Acheté" en plus) : remplit le champ puis soumet le formulaire tout de suite.
     suggestions.forEach(function (bouton) {
         bouton.addEventListener("click", function () {
             champ.value = this.dataset.valeur;
-            btnEnregistrer.disabled = false;
+            form.requestSubmit();
         });
     });
 
     // Le bouton "Acheté" ne devient cliquable que si une quantité valide (>= 1) a été saisie
     champ.addEventListener("input", function () {
+        const etaitDesactive = btnEnregistrer.disabled;
         btnEnregistrer.disabled = champ.value.trim() === "" || Number(champ.value) < 1;
+
+        // Même couleur au repos, activé ou pas (voir style.css) : ce petit "pop" au moment précis
+        // où il devient cliquable est le seul signal que quelque chose a changé, sans avoir besoin
+        // de deux couleurs différentes en permanence (qui ne correspondaient plus entre un article
+        // "cl", toujours actif, et un article à quantité, désactivé par défaut).
+        if (etaitDesactive && !btnEnregistrer.disabled) {
+            btnEnregistrer.classList.add("vient-de-s-activer");
+            setTimeout(function () {
+                btnEnregistrer.classList.remove("vient-de-s-activer");
+            }, 350);
+        }
     });
 }
 
@@ -547,7 +561,57 @@ function activerItem(item) {
     activerNote(item);
     activerQuantite(item);
     activerActions(item);
+    // Pas d'appel à un "activerArmement(item)" ici : un seul écouteur global s'en charge pour
+    // toutes les cartes à la fois (voir plus bas, juste avant le chargement initial des articles).
 }
+
+// ============================================
+// "ARMEMENT" (confirmation avant d'acheter)
+// ============================================
+
+// Un seul article "armé" à la fois : tap ailleurs (une autre carte, ou en dehors) désarme
+// automatiquement celui qui l'était (même principe que l'édition sur Stock)
+let itemArmeActuellement = null;
+
+// Tant qu'une carte n'a pas été tapée une première fois, le panier reste inerte (voir CSS) : un
+// tap accidentel sur celui d'un article "cl" (toujours actif, sans quantité à saisir) ne peut
+// plus déclencher un achat tout seul — il faut d'abord "armer" la carte.
+//
+// Un seul gestionnaire global (plutôt qu'un par carte, voir l'ancienne version) : sinon, taper
+// sur une zone à comportement propre (ex: le nom d'UNE AUTRE carte, pour ouvrir sa note) ne
+// désarmait jamais la carte encore armée — chaque carte ne surveillait que ses propres clics, pas
+// ceux des autres. Un seul écouteur sur "document" voit tous les clics, peu importe leur cible.
+function desarmerCarteActuelle() {
+    if (!itemArmeActuellement) return;
+    itemArmeActuellement.classList.remove("arme");
+    itemArmeActuellement = null;
+}
+
+document.addEventListener("click", function (e) {
+    const carte = e.target.closest(".course-item");
+
+    // Clic entièrement en dehors de toute carte : désarme, rien d'autre à faire
+    if (!carte) {
+        desarmerCarteActuelle();
+        return;
+    }
+
+    // Zones à comportement propre (note, suppression, "+1/+2/+5", panier) : ne réarment/ne
+    // redésarment jamais la carte cliquée elle-même, mais désarment quand même une AUTRE carte
+    // qui serait restée armée (ex: on ouvre la note d'une carte pendant qu'une autre est armée)
+    if (e.target.closest(".course-nom, .input-commentaire, .note-affichee, .form-supprimer, .course-item__quantite-groupe, .course-item__shop-slot")) {
+        if (carte !== itemArmeActuellement) desarmerCarteActuelle();
+        return;
+    }
+
+    if (carte === itemArmeActuellement) {
+        desarmerCarteActuelle();
+    } else {
+        desarmerCarteActuelle();
+        carte.classList.add("arme");
+        itemArmeActuellement = carte;
+    }
+});
 
 // Au chargement de la page, on active tous les articles déjà présents dans le HTML
 document.querySelectorAll(".course-item").forEach(activerItem);
@@ -589,9 +653,9 @@ function construireItemDOM(item) {
         <input type="hidden" name="idCourse" value="${id}" />
         <div class="course-item__quantite-groupe">
           <div class="suggestions-quantite">
-            <button type="button" class="suggestion" data-valeur="1">1</button>
-            <button type="button" class="suggestion" data-valeur="2">2</button>
-            <button type="button" class="suggestion" data-valeur="5">5</button>
+            <button type="button" class="suggestion" data-valeur="1"><span class="signe-mini">+</span>1</button>
+            <button type="button" class="suggestion" data-valeur="2"><span class="signe-mini">+</span>2</button>
+            <button type="button" class="suggestion" data-valeur="5"><span class="signe-mini">+</span>5</button>
           </div>
           <input type="number" name="quantiteAchetee" class="champ-quantite-achat" min="1" placeholder="Quantité" />
         </div>

@@ -1222,34 +1222,64 @@ body.mode-magasin .course-item__shop-slot {
   opacity: 1;
 }
 
+/* Tant que la carte n'a pas été tapée une première fois (voir activerArmement dans courses.js),
+   seul le panier ("Acheté") reste inerte — "+1/+2/+5" restent cliquables tout de suite, sans
+   armer la carte d'abord, pas besoin de confirmation en plus pour ceux-là. Un tap accidentel sur
+   le panier d'un article "cl" (toujours actif autrement, jamais de saisie à faire) ne peut plus
+   valider un achat tout seul — il faut d'abord "armer" la carte, comme confirmation. */
+body.mode-magasin .course-item:not(.arme) .course-item__shop-slot {
+  pointer-events: none;
+  opacity: 0.4;
+  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+}
+
+/* Repère visuel que la carte est "armée" (comme .stock-item.en-edition sur Stock) */
+.course-item.arme {
+  border-color: var(--accent);
+}
+
 .suggestions-quantite {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
+/* Boutons "+1/+2/+5" : achètent directement cette quantité (voir activerQuantite dans
+   courses.js). Même structure exacte que .stock-quick-subtract .suggestion (Stock, "-1/-2/-5"),
+   juste recolorée en vert — la couleur déjà utilisée pour "Acheté" (.btn-acheter-icone) — plutôt
+   que le rouge d'un retrait : une teinte "fanée" dès le repos, pas juste au survol. */
+/* Vert désaturé ("sauge") plutôt que le vert vif iOS (#34c759) : sur le fond crème chaud de
+   l'app, ce vert-là ressortait trop et distrayait l'œil, contrairement au rouge de Stock qui se
+   fond mieux (déjà proche des autres accents rouges de l'app). */
 .form-quantite .suggestion {
-  /* Boutons de raccourci "1", "2", "5" pour remplir rapidement la quantité achetée */
-  background: var(--bg);
-  border: 1.5px solid var(--border);
+  width: 26px;
+  height: 26px;
+  padding: 0;
   border-radius: 999px;
-  width: 34px;
-  height: 34px;
+  background: rgba(107, 142, 111, 0.12);
+  border: 1.5px solid rgba(107, 142, 111, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 0.74rem;
   font-weight: 500;
-  color: var(--text);
+  color: #4a6b4f;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.form-quantite .suggestion:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  .form-quantite .suggestion:hover {
+    border-color: #4a6b4f;
+    background: rgba(107, 142, 111, 0.22);
+  }
 }
 
 .form-quantite .suggestion:active {
   transform: scale(0.9);
+  background: rgba(107, 142, 111, 0.3);
 }
 
 .champ-quantite-achat {
@@ -1739,13 +1769,19 @@ body.mode-magasin .course-item__shop-slot {
   gap: 4px;
 }
 
+/* Teinte rouge "fanée" dès le repos (pas juste au survol) : lisible comme une action de
+   retrait/déduction sans crier, contrairement au premier essai (gris neutre). Même structure
+   exacte que .form-quantite .suggestion (Courses, "+1/+2/+5") plus bas, seule la couleur change —
+   rouge ici pour retirer du stock, vert là-bas pour un achat, chacun réutilisant une couleur déjà
+   établie ailleurs dans l'app (var(--accent) / le vert de .btn-acheter-icone) plutôt qu'en inventer
+   une nouvelle. */
 .stock-quick-subtract .suggestion {
   width: 26px;
   height: 26px;
   padding: 0;
   border-radius: 999px;
-  background: transparent;
-  border: 1.5px solid var(--border);
+  background: rgba(200, 71, 43, 0.08);
+  border: 1.5px solid rgba(200, 71, 43, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1753,31 +1789,29 @@ body.mode-magasin .course-item__shop-slot {
   font-family: var(--font-body);
   font-size: 0.74rem;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--accent);
   cursor: pointer;
   transition: all 0.2s ease;
-}
-
-/* Le "−" reste discret (plus petit, un peu transparent) : à la même taille que le chiffre, il
-   dominait le bouton et donnait l'impression de lire "moins" avant de lire la quantité. */
-.stock-quick-subtract .soustraction-signe {
-  font-size: 0.7em;
-  opacity: 0.6;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .stock-quick-subtract .suggestion:hover {
     border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(200, 71, 43, 0.06);
+    background: rgba(200, 71, 43, 0.16);
   }
 }
 
 .stock-quick-subtract .suggestion:active {
   transform: scale(0.9);
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(200, 71, 43, 0.1);
+  background: rgba(200, 71, 43, 0.22);
+}
+
+/* Le signe reste discret (plus petit, un peu transparent) : à la même taille que le chiffre, il
+   dominait le bouton et donnait l'impression de lire "plus"/"moins" avant de lire la quantité
+   elle-même. Partagé entre Stock ("−") et Courses ("+", voir .form-quantite .suggestion). */
+.signe-mini {
+  font-size: 0.7em;
+  opacity: 0.65;
 }
 
 /* ---- Barre de remplissage (cl) ---- */
@@ -1911,28 +1945,55 @@ body.mode-magasin .course-item__shop-slot {
 .btn-icone-rond:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  /* Empêche complètement :hover/:active de se déclencher (pas seulement le clic natif du
+     bouton) : sans ça, l'animation d'appui (scale, voir :active plus haut) jouait quand même au
+     tap, donnant l'impression trompeuse que le bouton "répond" alors qu'il ne fait rien. */
+  pointer-events: none;
 }
 
 .btn-acheter-icone {
-  /* Style "coche" façon iOS (Rappels, Santé...) plutôt que l'emoji panier,
-     qui rendait dans une teinte rose/violette peu cohérente avec le reste de l'app */
-  border-color: rgba(52, 199, 89, 0.4);
-  color: #34c759;
+  /* Style "coche" façon iOS (Rappels, Santé...) plutôt que l'emoji panier, qui rendait dans une
+     teinte rose/violette peu cohérente avec le reste de l'app. Même vert "sauge" désaturé que
+     .form-quantite .suggestion (+1/+2/+5) plutôt que le vert vif iOS d'origine, pour que les deux
+     restent cohérents l'un à côté de l'autre. */
+  border-color: rgba(107, 142, 111, 0.45);
+  color: #4a6b4f;
 }
 
 .btn-acheter-icone:hover {
-  background: rgba(52, 199, 89, 0.12);
-  border-color: #34c759;
+  background: rgba(107, 142, 111, 0.14);
+  border-color: #4a6b4f;
 }
 
 .btn-acheter-icone:disabled {
-  /* Toujours le même vert, juste très clair tant que le bouton n'est pas prêt (au lieu de
-     passer au gris, ce qui donnait l'impression de deux boutons différents plutôt que le
-     même bouton dans deux états) : un article "cl" (jamais désactivé) reste vert vif, un
-     article à quantité (désactivé tant qu'aucune quantité n'est saisie) est un vert très pâle. */
+  /* De nouveau visiblement plus pâle qu'actif (contrairement à l'essai "même couleur partout") :
+     avec le tap de confirmation sur la carte désormais requis avant tout (voir .arme plus bas),
+     ce n'est plus le SEUL signal d'état qui compte — on peut se permettre cette différence pour
+     que "prêt à valider" se sente vraiment différent de "pas encore", le "pop" (voir plus bas)
+     marquant le moment exact où l'un devient l'autre. */
   opacity: 1;
-  color: rgba(52, 199, 89, 0.45);
-  border-color: rgba(52, 199, 89, 0.2);
+  color: rgba(74, 107, 79, 0.5);
+  border-color: rgba(107, 142, 111, 0.25);
+}
+
+/* Petit "pop" joué une seule fois, exactement au moment où le bouton passe de désactivé à
+   cliquable (voir activerQuantite dans courses.js) : le seul signal que quelque chose vient de
+   changer, sans avoir besoin de deux couleurs au repos qui ne correspondraient plus entre un
+   article "cl" (toujours actif) et un article à quantité (désactivé par défaut). */
+.vient-de-s-activer {
+  animation: popActivation 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popActivation {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .btn-acheter-icone::before {
