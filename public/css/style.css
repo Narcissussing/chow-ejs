@@ -542,7 +542,7 @@ body {
 
 #selectRecettePlat,
 #selectRecetteFraicheur {
-  flex: 0 1 220px; /* ne grandit pas, peut rétrécir si besoin, taille de base 220px */
+  flex: 0 1 220px;
   min-width: 190px;
   padding-top: 9px;
   padding-bottom: 9px;
@@ -1716,6 +1716,70 @@ body.mode-magasin .course-item__shop-slot {
   outline: none;
 }
 
+/* Ligne du haut en édition (champ + "Ajouter aux courses" côte à côte) : voir ouvrirEdition
+   dans stock.js, qui pose cette ligne à l'intérieur de .stock-editable-zone. */
+.stock-edition-ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Empile la ligne du haut et les boutons de soustraction rapide (voir juste en dessous) l'une
+   sous l'autre, plutôt que la disposition normale en une seule ligne centrée. Retiré à la
+   fermeture de l'édition (voir fermerEditionEtSauvegarder), donc jamais présent hors édition. */
+.stock-editable-zone.stock-edition-colonne {
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Boutons "-1"/-2"/"-5" (voir ajouterBoutonsSoustraction) : assez petits pour tenir tous les
+   trois sur la largeur du champ (.stock-quantite-edit, 95px) sans déborder sur mobile. */
+.stock-quick-subtract {
+  display: flex;
+  gap: 4px;
+}
+
+.stock-quick-subtract .suggestion {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Le "−" reste discret (plus petit, un peu transparent) : à la même taille que le chiffre, il
+   dominait le bouton et donnait l'impression de lire "moins" avant de lire la quantité. */
+.stock-quick-subtract .soustraction-signe {
+  font-size: 0.7em;
+  opacity: 0.6;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .stock-quick-subtract .suggestion:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(200, 71, 43, 0.06);
+  }
+}
+
+.stock-quick-subtract .suggestion:active {
+  transform: scale(0.9);
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(200, 71, 43, 0.1);
+}
+
 /* ---- Barre de remplissage (cl) ---- */
 /* Pour les aliments suivis en "cl" (ex: une bouteille), on affiche une petite barre
    qui se remplit plus ou moins selon le niveau (plein / à moitié / presque vide / vide) */
@@ -2835,6 +2899,10 @@ body.mode-magasin .course-item__shop-slot {
 
 /* ---------- RECETTES : deux grilles séparées (Boissons / Plats) ---------- */
 
+.recette-sort-wrapper {
+  margin-bottom: 20px;
+}
+
 .recette-groupe {
   margin-bottom: 32px;
 }
@@ -3461,7 +3529,7 @@ body.mode-magasin .course-item__shop-slot {
 .sort-wrapper .custom-select,
 .journal-actions-row .custom-select {
   flex: 0 1 220px;
-  min-width: 190px;
+  min-width: 120px;
 }
 
 /* #selectRecettePlat/#selectRecetteFraicheur n'affichent qu'une icône (pas de texte, voir calories.ejs) :
@@ -3502,6 +3570,19 @@ body.mode-magasin .course-item__shop-slot {
   /* Le nom de la recette choisie reste inutile ici : seule l'icône compte, le texte est cité
      pour l'accessibilité mais retiré visuellement */
   font-size: 0;
+}
+
+/* Ces deux menus peuvent contenir beaucoup de recettes : ~5 lignes visibles à la fois puis
+   défilement, même principe que les autres listes de suggestions de l'app (#listeAlimentsCourses
+   etc.) plutôt que de laisser le menu s'étirer indéfiniment vers le bas de l'écran.
+   [data-for-select] plutôt qu'un sélecteur par parenté (ex: "#selectRecettePlat + .custom-select
+   .custom-select__list") : cette liste est déplacée sur <body> pendant qu'elle est ouverte (voir
+   open() dans custom-selects.js), donc plus du tout descendante de son wrapper d'origine à ce
+   moment précis — un sélecteur par parenté ne l'aurait alors plus jamais matchée. */
+.custom-select__list[data-for-select="selectRecettePlat"],
+.custom-select__list[data-for-select="selectRecetteFraicheur"] {
+  max-height: 215px;
+  overflow-y: auto;
 }
 
 .stock-editable-zone .custom-select {

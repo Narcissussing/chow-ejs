@@ -38,6 +38,11 @@ function enhanceSelect(select) {
   list.className = "custom-select__list";
   list.setAttribute("role", "listbox");
   list.hidden = true;
+  // Le <select> d'origine reste identifiable même une fois cette liste déplacée sur <body>
+  // pendant qu'elle est ouverte (voir open() plus bas) : un CSS scopé par relation de parenté
+  // (ex: "#selectRecettePlat + .custom-select .custom-select__list") ne matcherait plus du tout
+  // à ce moment-là, puisque la liste n'est alors plus un descendant du wrapper d'origine.
+  if (select.id) list.dataset.forSelect = select.id;
 
   button.appendChild(label);
   wrapper.appendChild(button);
@@ -248,7 +253,12 @@ document.addEventListener("click", function () {
 // simplement dans ce cas, plutôt que de recalculer sa position à chaque pixel défilé.
 window.addEventListener(
   "scroll",
-  function () {
+  function (event) {
+    // Exception : une liste peut maintenant défiler elle-même quand elle contient beaucoup
+    // d'options (voir max-height/overflow-y sur .custom-select__list dans style.css, ex: les
+    // recettes sur Calories) — ce défilement INTERNE ne doit pas la refermer, contrairement au
+    // défilement de la page (ou d'une zone scrollable ANCÊTRE) qui, lui, doit bien la refermer.
+    if (event.target instanceof Element && event.target.closest(".custom-select__list")) return;
     closeAllCustomSelects();
   },
   true // phase de "capture" : détecte aussi le défilement à l'intérieur d'une zone scrollable, pas juste toute la page

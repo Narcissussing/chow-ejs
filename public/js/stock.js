@@ -576,25 +576,75 @@ function ouvrirEdition(item, zone, trackingType) {
     // décimale ici, qui casserait silencieusement l'addition la prochaine fois que cet
     // aliment est acheté depuis Courses (voir le repli sur 0 dans la requête SQL).
     input.step = "1";
+
+    // Ligne du haut : le champ + "Ajouter aux courses" côte à côte, comme avant. Les boutons de
+    // soustraction rapide (voir ajouterBoutonsSoustraction) vont EN DESSOUS, sur leur propre
+    // ligne : d'où .stock-edition-colonne sur la zone, qui empile ces deux lignes verticalement
+    // (retiré à la fermeture, voir fermerEditionEtSauvegarder, sinon l'affichage normal — hors
+    // édition — se retrouverait aussi empilé au lieu de rester centré sur une seule ligne).
+    const ligneInput = document.createElement("div");
+    ligneInput.className = "stock-edition-ligne";
+    ligneInput.appendChild(input);
+
     zone.innerHTML = "";
-    zone.appendChild(input);
+    zone.classList.add("stock-edition-colonne");
+    zone.appendChild(ligneInput);
     input.focus(); // le curseur se place directement dans le champ
     input.select(); // et le texte existant est sélectionné, pour pouvoir le remplacer facilement
-    ajouterBoutonCoursesSiBas(item, zone, valeurActuelle, trackingType);
+    ajouterBoutonCoursesSiBas(item, ligneInput, valeurActuelle, trackingType);
+    ajouterBoutonsSoustraction(item, zone, input, valeurActuelle, trackingType);
   }
 }
 
 // "Ajouter aux courses" n'apparaît qu'ici, en mode édition (jamais dans l'affichage normal) :
 // seulement si la quantité est basse et que l'article n'y est pas déjà (voir data-deja-en-courses,
 // posé au chargement puis mis à jour par activerBoutonAjouterCourses une fois ajouté).
-function ajouterBoutonCoursesSiBas(item, zone, valeurActuelle, trackingType) {
+// "conteneur" est la ligne du haut avec le champ (pas forcément "zone" elle-même, voir plus haut).
+function ajouterBoutonCoursesSiBas(item, conteneur, valeurActuelle, trackingType) {
   if (!estQuantiteBasse(valeurActuelle, trackingType) || item.dataset.dejaEnCourses === "true") return;
-  zone.insertAdjacentHTML("beforeend", htmlBoutonAjouterCourses(item.dataset.foodId));
+  conteneur.insertAdjacentHTML("beforeend", htmlBoutonAjouterCourses(item.dataset.foodId));
   activerBoutonAjouterCourses(item);
+}
+
+// Boutons "-1"/"-2"/"-5" (unité/pack seulement, jamais "cl") : soustraient directement de la
+// quantité actuelle, enregistrent et referment l'édition en un seul geste — pas besoin de taper
+// à la main pour le cas courant "j'en ai utilisé N". Un bouton n'apparaît que si sa valeur ne
+// ferait pas passer la quantité sous zéro (ex: pas de "-5" s'il n'en reste que 3).
+function ajouterBoutonsSoustraction(item, zone, input, valeurActuelle, trackingType) {
+  const actuel = Number(valeurActuelle);
+  if (!actuel) return; // déjà à 0 (ou valeur non numérique) : rien à soustraire
+
+  const valeursDisponibles = [1, 2, 5].filter(function (v) { return v <= actuel; });
+  if (valeursDisponibles.length === 0) return;
+
+  const rangee = document.createElement("div");
+  rangee.className = "stock-quick-subtract";
+  valeursDisponibles.forEach(function (valeur) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "suggestion";
+    // Le signe "−" dans son propre span (plus petit, voir CSS) : à la même taille que le chiffre,
+    // il dominait visuellement le bouton et le rendait plus dur à lire qu'un simple chiffre.
+    bouton.innerHTML = '<span class="soustraction-signe">−</span>' + valeur;
+    bouton.addEventListener("click", function (e) {
+      // Empêche ce clic de rouvrir l'édition juste après l'avoir fermée (même raison que
+      // .btn-ajouter-courses : toute la carte est cliquable, voir activerEditionInline)
+      e.stopPropagation();
+      input.value = actuel - valeur;
+      fermerEditionEtSauvegarder(item, zone, trackingType);
+    });
+    rangee.appendChild(bouton);
+  });
+  zone.appendChild(rangee);
 }
 
 // Referme le mode édition d'un article : si la valeur a changé, on l'enregistre côté serveur
 function fermerEditionEtSauvegarder(item, zone, trackingType) {
+  // Retiré ici (plutôt que dans chaque branche ci-dessous) pour être sûr qu'il disparaît dans
+  // tous les cas : sans ça, l'affichage normal (hors édition) se retrouvait empilé en colonne
+  // au lieu de rester centré sur une seule ligne (voir ajouterBoutonsSoustraction).
+  zone.classList.remove("stock-edition-colonne");
+
   const champ = zone.querySelector(".stock-quantite-edit, .stock-cl-edit");
   const nouvelleValeur = champ ? champ.value : zone.dataset.valeurActuelle;
   const valeurActuelle = zone.dataset.valeurActuelle;

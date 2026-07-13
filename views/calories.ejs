@@ -79,7 +79,7 @@
              glaces) a son propre menu juste à côté (voir #selectRecetteFraicheur) : celui-ci ne
              liste donc que les plats. Une seule option désactivée sert de message "vide" quand
              la catégorie n'a encore aucune recette (voir aussi custom-select__option--disabled). -->
-        <% const recettesPlat = recettes.filter(function(r) { return r.categorie === 'plat'; }); %>
+        <% const recettesPlat = recettes.filter(function(r) { return r.categorie === 'plat'; }).sort(function(a, b) { return a.nom.localeCompare(b.nom); }); %>
         <select id="selectRecettePlat" aria-label="Remplacer le journal du jour avec une recette" <%= recettesPlat.length === 0 ? 'disabled title="Aucune recette de plat pour le moment"' : '' %>>
           <option value=""><%= recettesPlat.length === 0 ? 'Aucune recette de plat' : '' %></option>
           <% recettesPlat.forEach(function(recette) { %>
@@ -89,7 +89,7 @@
 
         <!-- Même principe que #selectRecettePlat juste à gauche, mais pour "Fraîcheur" (boissons
              et glaces confondues, icône dédiée public/images/svg/glacon.svg, voir style.css) -->
-        <% const recettesFraicheur = recettes.filter(function(r) { return r.categorie === 'fraicheur'; }); %>
+        <% const recettesFraicheur = recettes.filter(function(r) { return r.categorie === 'fraicheur'; }).sort(function(a, b) { return a.nom.localeCompare(b.nom); }); %>
         <select id="selectRecetteFraicheur" aria-label="Remplacer le journal du jour avec une recette de fraîcheur" <%= recettesFraicheur.length === 0 ? 'disabled title="Aucune recette de fraîcheur pour le moment"' : '' %>>
           <option value=""><%= recettesFraicheur.length === 0 ? 'Aucune recette de fraîcheur' : '' %></option>
           <% recettesFraicheur.forEach(function(recette) { %>
@@ -163,6 +163,20 @@
     <!-- ============================================ -->
     <div class="calories-tab-panel" data-panel="recettes">
 
+      <!-- Un seul tri, appliqué séparément à l'intérieur de chaque grille (Plat/Fraîcheur) sans
+           jamais les mélanger — voir trierRecettes dans calories.js -->
+      <div class="sort-wrapper recette-sort-wrapper">
+        <label for="sortSelectRecettes">Trier par :</label>
+        <select id="sortSelectRecettes">
+          <option value="nom-asc">Nom ↗</option>
+          <option value="nom-desc">Nom ↘</option>
+          <option value="kcal-asc">Calories ↗</option>
+          <option value="kcal-desc">Calories ↘</option>
+          <option value="ingr-asc">Ingrédients ↗</option>
+          <option value="ingr-desc">Ingrédients ↘</option>
+        </select>
+      </div>
+
       <!-- Deux blocs bien séparés (pas un simple filtre) : les boissons et les plats ne se
            mélangent jamais visuellement, même dans la vue par défaut -->
       <% CATEGORIES_RECETTE.forEach(function(cat) { %>
@@ -170,7 +184,7 @@
         <h3 class="recette-groupe-titre"><span class="icone-categorie-recette icone-categorie-recette--<%= cat.valeur %>"></span> <%= cat.label %></h3>
         <div class="recette-grid" data-grid-cat="<%= cat.valeur %>">
           <% recettes.filter(function(r) { return r.categorie === cat.valeur; }).forEach(function(recette) { %>
-          <div class="recette-card" data-id="<%= recette.id %>" data-cat="<%= recette.categorie %>">
+          <div class="recette-card" data-id="<%= recette.id %>" data-cat="<%= recette.categorie %>" data-nom="<%= recette.nom.toLowerCase() %>" data-kcal="<%= recette.kcal_total %>" data-ingr="<%= recette.nb_ingredients %>">
             <!-- Pas de bouton "éditer" NI "supprimer" sur la carte : toucher la carte ouvre le
                  panneau de détail, et c'est SEULEMENT depuis ce panneau qu'on peut supprimer la
                  recette (bouton poubelle à côté du "✕" fermer, voir plus bas) -->

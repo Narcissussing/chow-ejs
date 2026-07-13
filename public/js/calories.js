@@ -22,6 +22,19 @@ function selectRecettePourCategorie(categorie) {
   return categorie === "fraicheur" ? selectRecetteFraicheur : selectRecettePlat;
 }
 
+// Insère une <option> à sa place alphabétique dans le menu (au lieu de toujours l'ajouter à la
+// fin) : les options sont triées côté serveur au chargement (voir calories.ejs), un ajout/renommage
+// en direct doit garder ce même ordre plutôt que de coller la nouvelle recette tout en bas.
+function inserrerOptionTriee(select, option) {
+  const existantes = Array.from(select.querySelectorAll("option")).filter(function (o) { return o.value !== ""; });
+  const suivante = existantes.find(function (o) { return o.textContent.localeCompare(option.textContent) > 0; });
+  if (suivante) {
+    select.insertBefore(option, suivante);
+  } else {
+    select.appendChild(option);
+  }
+}
+
 // Ajoute la classe "entree" (petite animation d'apparition, voir @keyframes popIn) puis la
 // retire une fois l'animation terminée. Important : "animation: ... both" (voir style.css) fait
 // tenir la valeur de fin indéfiniment tant que la classe reste posée — si on ne la retirait
@@ -700,12 +713,49 @@ function grilleDeCategorie(categorie) {
   return document.querySelector('.recette-grid[data-grid-cat="' + categorie + '"]');
 }
 
+// Trie chaque grille de recettes séparément (jamais les deux ensemble : Plat et Fraîcheur ne se
+// mélangent jamais, même triés) selon le critère choisi. "+ Nouvelle recette" reste toujours en
+// dernier, quel que soit le tri : ce n'est pas une carte de recette, ce serait bizarre de la voir
+// se déplacer au milieu de la grille selon le nom/calories/ingrédients.
+function trierRecettes(critere) {
+  const [cle, direction] = critere.split("-");
+
+  document.querySelectorAll(".recette-grid").forEach(function (grille) {
+    const cartes = Array.from(grille.querySelectorAll(".recette-card:not(.recette-new-card)"));
+
+    cartes.sort(function (a, b) {
+      if (cle === "nom") {
+        return direction === "asc"
+          ? a.dataset.nom.localeCompare(b.dataset.nom)
+          : b.dataset.nom.localeCompare(a.dataset.nom);
+      }
+      const valeurA = Number(a.dataset[cle === "kcal" ? "kcal" : "ingr"]);
+      const valeurB = Number(b.dataset[cle === "kcal" ? "kcal" : "ingr"]);
+      return direction === "asc" ? valeurA - valeurB : valeurB - valeurA;
+    });
+
+    const btnNouvelle = grille.querySelector(".recette-new-card");
+    cartes.forEach(function (carte) {
+      grille.insertBefore(carte, btnNouvelle);
+    });
+  });
+}
+
+const sortSelectRecettes = document.getElementById("sortSelectRecettes");
+sortSelectRecettes.addEventListener("change", function () {
+  trierRecettes(this.value);
+});
+trierRecettes(sortSelectRecettes.value);
+
 // Construit une carte de recette pour la grille (utilisé après création/édition, sans recharger la page)
 function construireRecetteCardDOM(recette) {
   const div = document.createElement("div");
   div.className = "recette-card";
   div.dataset.id = recette.id;
   div.dataset.cat = recette.categorie;
+  div.dataset.nom = recette.nom.toLowerCase();
+  div.dataset.kcal = recette.kcal_total;
+  div.dataset.ingr = recette.nb_ingredients;
 
   // L'icône combine les 3 premiers émojis d'ingrédients (ex: 🍜🫑🥕), plus parlant qu'une icône
   // générique de catégorie ; repli sur l'icône SVG de catégorie si jamais aucun émoji n'est connu
@@ -1212,7 +1262,7 @@ formRecette.addEventListener("submit", function (event) {
         const nouvelleOption = document.createElement("option");
         nouvelleOption.value = idRecette;
         nouvelleOption.textContent = nom;
-        bonSelect.appendChild(nouvelleOption);
+        inserrerOptionTriee(bonSelect, nouvelleOption);
 
         window.RECETTES = window.RECETTES.map(function (r) {
           return String(r.id) === String(idRecette) ? recetteMaj : r;
@@ -1221,7 +1271,7 @@ formRecette.addEventListener("submit", function (event) {
         const option = document.createElement("option");
         option.value = recetteMaj.id;
         option.textContent = nom;
-        bonSelect.appendChild(option);
+        inserrerOptionTriee(bonSelect, option);
 
         window.RECETTES.push(recetteMaj);
       }
@@ -1238,6 +1288,9 @@ formRecette.addEventListener("submit", function (event) {
       }
 
       grille.insertBefore(construireRecetteCardDOM(recetteMaj), grille.querySelector(".btn-nouvelle-recette"));
+      // Remet la carte tout juste ajoutée/modifiée à sa vraie place plutôt que de la laisser
+      // coller à la fin, quel que soit le tri actuellement choisi
+      trierRecettes(sortSelectRecettes.value);
 
       selectRecettePlat.dispatchEvent(new Event("custom-select:update"));
       selectRecetteFraicheur.dispatchEvent(new Event("custom-select:update"));
