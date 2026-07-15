@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+
+<main>
+  <div class="page-header">
+    <h1>Content de te <span>revoir.</span></h1>
+    <p class="page-header__description">Connecte-toi pour accéder à Chow.</p>
+
+    <% if (typeof erreur !== 'undefined' && erreur) { %>
+    <p class="erreur">Email ou mot de passe incorrect.</p>
+    <% } %>
+  </div>
+
+  <div class="login-carte">
+    <form action="/login" method="post" class="login-form">
+      <label for="email">Email</label>
+      <input type="email" name="email" id="email" autocomplete="email" required />
+
+      <label for="password">Mot de passe</label>
+      <input type="password" name="password" id="password" autocomplete="current-password" required />
+
+      <button type="submit" class="btn-connexion">Se connecter</button>
+    </form>
+  </div>
+</main>
+
+<%- include('partials/footer') %>

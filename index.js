@@ -5,6 +5,11 @@
 import express from "express";
 import pg from "pg";
 import "dotenv/config";
+import bcrypt from "bcrypt";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
 
 // On crée notre application Express (le "serveur")
 const app = express();
@@ -90,6 +95,103 @@ app.use(function (req, res, next) {
     res.locals.currentPath = req.path;
     next();
 });
+
+// ============================================
+// AUTHENTIFICATION (accès limité aux 2 personnes du foyer, voir table "users")
+// ============================================
+// Pas de route "/register" : les comptes sont créés une fois pour toutes via
+// scripts/creer-utilisateur.js, jamais depuis une page publique.
+
+// Sessions stockées en base (table "session", auto-créée) plutôt qu'en mémoire : les machines
+// Fly s'arrêtent automatiquement quand l'app est inactive (voir fly.toml, auto_stop_machines),
+// ce qui effacerait toutes les sessions en mémoire à chaque redémarrage et déconnecterait tout
+// le monde, peu importe la durée de vie du cookie ci-dessous.
+const PgSession = connectPgSimple(session);
+
+app.use(session({
+    store: new PgSession({
+        conObject: process.env.DATABASE_URL
+            ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+            : {
+                user: process.env.DB_USER,
+                host: process.env.DB_HOST,
+                database: process.env.DB_NAME,
+                password: process.env.DB_PASSWORD,
+                port: process.env.DB_PORT,
+            },
+        createTableIfMissing: true,
+    }),
+    secret: process.env.SECRET_KEY,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24 * 30 * 12, // 1 an
+    },
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(new LocalStrategy(
+    { usernameField: "email" },
+    async function verify(email, motDePasse, cb) {
+        try {
+            const result = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+            if (result.rows.length === 0) {
+                return cb(null, false);
+            }
+            const utilisateur = result.rows[0];
+            const motDePasseValide = await bcrypt.compare(motDePasse, utilisateur.password);
+            if (!motDePasseValide) {
+                return cb(null, false);
+            }
+            return cb(null, utilisateur);
+        } catch (err) {
+            return cb(err);
+        }
+    }
+));
+
+// On ne garde que l'id en session (pas tout l'utilisateur, ex: le hash du mot de passe) :
+// deserializeUser va rechercher le reste depuis la base à chaque requête.
+passport.serializeUser(function (utilisateur, cb) {
+    cb(null, utilisateur.id);
+});
+
+passport.deserializeUser(async function (id, cb) {
+    try {
+        const result = await db.query("SELECT * FROM users WHERE id = $1", [id]);
+        cb(null, result.rows[0]);
+    } catch (err) {
+        cb(err);
+    }
+});
+
+// Bloque toute page tant qu'on n'est pas connecté, sauf /login elle-même (voir les routes
+// juste en dessous, déclarées AVANT ce middleware pour rester accessibles sans être connecté).
+function requireAuth(req, res, next) {
+    if (req.isAuthenticated()) {
+        return next();
+    }
+    res.redirect("/login");
+}
+
+app.get("/login", function (req, res) {
+    res.render("login.ejs", { title: "Connexion", erreur: req.query.erreur === "1" });
+});
+
+app.post("/login", passport.authenticate("local", {
+    successRedirect: "/",
+    failureRedirect: "/login?erreur=1",
+}));
+
+app.post("/logout", function (req, res) {
+    req.logout(function () {
+        res.redirect("/login");
+    });
+});
+
+// Tout ce qui est déclaré APRÈS cette ligne exige d'être connecté.
+app.use(requireAuth);
 
 // Petit dictionnaire qui donne le nom d'unité à afficher selon le type de suivi d'un aliment
 // (par exemple : "unite" -> "unités", "pack" -> "packs", "cl" -> "cl")

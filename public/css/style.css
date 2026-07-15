@@ -1343,6 +1343,68 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   margin-bottom: 20px;
 }
 
+/* ---- Connexion ---- */
+
+.login-carte {
+  max-width: 380px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-form label {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 12px;
+}
+
+.login-form input {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.login-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn-connexion {
+  margin-top: 22px;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn-connexion:hover {
+  opacity: 0.9;
+}
+
+.btn-connexion:active {
+  transform: scale(0.98);
+}
+
 /* ---- Notes / commentaires ---- */
 
 .note-affichee {
@@ -3205,6 +3267,13 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   color: var(--text-muted);
 }
 
+/* Même couleur/poids qu'en vue liste (voir .vue-liste .recette-kcal plus bas) : les calories
+   doivent se reconnaître au premier coup d'œil peu importe la vue, pas seulement en liste. */
+.recette-kcal {
+  font-weight: 700;
+  color: var(--accent);
+}
+
 /* ---- Vue liste (mêmes cartes, même HTML, voir #listeStock.vue-liste plus haut) ----
    Seulement 2 colonnes : nom + émoji empilés à gauche (l'émoji remplace le nombre d'ingrédients,
    pas besoin des deux), calories à droite — la donnée la plus scannée en parcourant la liste.
@@ -3262,8 +3331,6 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   grid-area: kcal;
   justify-self: end;
   white-space: nowrap;
-  font-weight: 700;
-  color: var(--accent);
 }
 
 .vue-liste .recette-new-card {
