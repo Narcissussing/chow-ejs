@@ -3226,7 +3226,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
     "emoji kcal";
   align-items: center;
   column-gap: 12px;
-  padding: 12px 16px;
+  padding: 10px;
 }
 
 .vue-liste .recette-corps,
@@ -3241,6 +3241,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   background: none;
   border-radius: 0;
   font-size: 1rem;
+  /* Annule le margin-bottom:8px hérité de la vue grille (voir .recette-emoji plus haut) :
+     sinon le bas de la carte respirait plus que le haut, malgré un padding identique. */
+  margin-bottom: 0;
 }
 
 .vue-liste .recette-nom {
