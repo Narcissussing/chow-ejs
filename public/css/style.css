@@ -2297,14 +2297,54 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
     font-size: 0.82rem;
   }
 
+  /* Vraie grille sur mobile (plutôt que le flex row/column du bureau) : titre et badge se
+     partagent la première ligne, le paragraphe prend toute la largeur en dessous — sinon le
+     paragraphe restait coincé dans la même colonne que le titre, à côté du badge, au lieu de
+     profiter de toute la largeur de l'écran. */
   .hero {
-    padding: 40px 20px 30px;
-    flex-direction: column; /* le texte et le badge s'empilent au lieu d'être côte à côte */
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "titre badge"
+      "texte texte";
+    column-gap: 16px;
+    row-gap: 10px;
+    /* Peu de marge au-dessus : le H1 doit se sentir comme un vrai titre de page (juste sous le
+       header), pas précédé d'un grand vide, contrairement au bureau qui a la place d'"respirer". */
+    padding: 16px 20px 24px;
+  }
+
+  .hero__text {
+    display: contents; /* "dissout" ce conteneur : h1 et p deviennent des cases directes de la grille */
+  }
+
+  .hero__text h1 {
+    grid-area: titre;
+    /* Plus petit qu'en base (2.6rem) : sur mobile, cette taille prenait 2 lignes complètes et
+       dominait toute la hero, alors qu'un H1 doit rester un titre, pas une affiche. */
+    font-size: 1.9rem;
+    margin-bottom: 0;
+  }
+
+  .hero__text p {
+    grid-area: texte;
+    font-size: 0.92rem;
   }
 
   .hero__badge {
-    display: none; /* le badge décoratif est masqué pour gagner de la place sur mobile */
+    grid-area: badge;
+    align-self: start;
+    /* Réduit à l'échelle du H1 raccourci, sinon le badge dominait une hero devenue plus compacte */
+    width: 78px;
+    height: 78px;
+  }
+
+  .hero__badge span {
+    font-size: 1.5rem;
+  }
+
+  .hero__badge small {
+    font-size: 0.55rem;
   }
 
   .filters {
