@@ -182,8 +182,8 @@
           <!-- Nom de la catégorie centré -->
           <span class="recette-groupe-nom"><span class="icone-categorie-recette icone-categorie-recette--<%= cat.valeur %>"></span> <%= cat.label %></span>
           <!-- Grille/Liste à droite : même bascule que Stock (#btnVueGrille/#btnVueListe dans
-               stock.js), UN SEUL choix pour les deux sections à la fois (mode d'affichage, pas une
-               donnée propre à Plats ou Fraîcheur) — dupliqué ici juste pour l'agencement visuel. -->
+               stock.js), mais propre à CETTE section, comme le tri — basculer Plats en liste ne
+               change rien pour Fraîcheur (voir appliquerVueGroupe dans calories.js). -->
           <div class="recette-vue-icones">
             <button type="button" class="recette-vue-icone active" data-vue="grille" title="Vue grille"></button>
             <button type="button" class="recette-vue-icone" data-vue="liste" title="Vue liste"></button>

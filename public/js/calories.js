@@ -784,28 +784,31 @@ document.querySelectorAll(".recette-groupe").forEach(function (groupe) {
 
 // ============================================
 // BASCULE VUE GRILLE / VUE LISTE (voir appliquerVueStock dans stock.js, même principe) : même
-// HTML pour les deux vues, seule la classe "vue-liste" change sur chaque grille, un seul choix
-// pour Plats ET Fraîcheur à la fois (mode d'affichage, pas une donnée propre à une section).
-// Le bouton est dupliqué dans chaque section (voir calories.ejs, à droite du titre) pour
-// l'agencement visuel, mais les deux paires agissent sur le même état partagé.
+// HTML pour les deux vues, seule la classe "vue-liste" change sur chaque grille. Propre à
+// CHAQUE section (Plats/Fraîcheur ont chacune leur propre vue), comme le tri (voir
+// appliquerTriGroupe plus haut) — basculer Plats en liste ne touche pas Fraîcheur.
 // ============================================
 
-function appliquerVueRecettes(vue) {
-  document.querySelectorAll(".recette-grid").forEach(function (grille) {
-    grille.classList.toggle("vue-liste", vue === "liste");
-  });
-  document.querySelectorAll(".recette-vue-icone").forEach(function (bouton) {
+function appliquerVueGroupe(groupe) {
+  const vue = groupe.dataset.vue;
+  const grille = groupe.querySelector(".recette-grid");
+  grille.classList.toggle("vue-liste", vue === "liste");
+  groupe.querySelectorAll(".recette-vue-icone").forEach(function (bouton) {
     bouton.classList.toggle("active", bouton.dataset.vue === vue);
   });
 }
 
-const vueRecettesSauvegardee = localStorage.getItem("vueRecettes") === "liste" ? "liste" : "grille";
-appliquerVueRecettes(vueRecettesSauvegardee);
+document.querySelectorAll(".recette-groupe").forEach(function (groupe) {
+  const cle = "vueRecettes-" + groupe.querySelector(".recette-grid").dataset.gridCat;
+  groupe.dataset.vue = localStorage.getItem(cle) === "liste" ? "liste" : "grille";
+  appliquerVueGroupe(groupe);
 
-document.querySelectorAll(".recette-vue-icone").forEach(function (bouton) {
-  bouton.addEventListener("click", function () {
-    appliquerVueRecettes(bouton.dataset.vue);
-    localStorage.setItem("vueRecettes", bouton.dataset.vue);
+  groupe.querySelectorAll(".recette-vue-icone").forEach(function (bouton) {
+    bouton.addEventListener("click", function () {
+      groupe.dataset.vue = bouton.dataset.vue;
+      appliquerVueGroupe(groupe);
+      localStorage.setItem(cle, bouton.dataset.vue);
+    });
   });
 });
 
