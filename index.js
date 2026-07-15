@@ -95,40 +95,6 @@ app.use(function (req, res, next) {
 // (par exemple : "unite" -> "unités", "pack" -> "packs", "cl" -> "cl")
 const uniteParType = { unite: 'unités', pack: 'packs', cl: 'cl' };
 
-// Liste fixe des courses habituelles de la semaine (bouton "preset" sur la page Courses).
-// Chaque entrée a soit un food_id (aliment connu dans la table "foods"), soit un nom_libre
-// (texte libre, pour "Lait PPC Vanille" qui n'existe pas encore comme aliment).
-const PRESET_COURSES_HEBDO = [
-    { food_id: "yaourt-grec" },
-    { food_id: "carotte" },
-    { food_id: "tomate" },
-    { food_id: "banane" },
-    { food_id: "yaourt" },
-    { food_id: "pomme-de-terre" },
-    { food_id: "patate-douce" },
-    { food_id: "corne-verte" },
-    { food_id: "corne-rouge" },
-    { food_id: "mozzarella" },
-    { food_id: "feta" },
-    { food_id: "roquette" },
-    { food_id: "mache" },
-    { nom_libre: "Lait PPC Vanille" },
-    { food_id: "chips" },
-];
-
-// Ensemencement unique de courses_preset à partir de la liste figée ci-dessus, seulement si la
-// table est encore vide (jamais rejoué ensuite, même après un redémarrage : sinon "enregistrer"
-// serait aussitôt écrasé par cette liste au prochain déploiement).
-const presetExistant = await db.query("SELECT 1 FROM courses_preset LIMIT 1");
-if (presetExistant.rows.length === 0) {
-    for (const article of PRESET_COURSES_HEBDO) {
-        await db.query(
-            "INSERT INTO courses_preset (food_id, nom_libre) VALUES ($1, $2)",
-            [article.food_id || null, article.food_id ? null : article.nom_libre]
-        );
-    }
-}
-
 //Function
 
 // Récupère la liste de tous les aliments connus dans la table "foods"

@@ -541,9 +541,16 @@ function fermerItemOuvert() {
   itemOuvertActuellement = null;
 }
 
-// Cliquer en dehors de tous les items ferme et sauvegarde celui qui est ouvert
+// Cliquer en dehors de tous les items ferme et sauvegarde celui qui est ouvert.
+// e.composedPath() plutôt que e.target.closest(".stock-item") : ouvrirEdition() remplace le
+// contenu de la zone cliquée (zone.innerHTML = "") DANS LA MÊME frappe de clic, donc si on a
+// justement tapé sur le nombre/la barre (l'élément qui vient d'être détaché du DOM), e.target
+// n'a alors plus aucun parent — "e.target.closest(...)" retombe toujours à null, laissant croire
+// que le clic était "en dehors" de la carte et refermant l'édition à l'instant où elle s'ouvre.
+// composedPath() capture le chemin AVANT toute mutation, donc reste correct même une fois la
+// cible détachée.
 document.addEventListener("click", function (e) {
-  if (itemOuvertActuellement && !e.target.closest(".stock-item")) {
+  if (itemOuvertActuellement && !e.composedPath().some(function (el) { return el.classList && el.classList.contains("stock-item"); })) {
     fermerItemOuvert();
   }
 });

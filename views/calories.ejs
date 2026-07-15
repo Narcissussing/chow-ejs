@@ -163,25 +163,32 @@
     <!-- ============================================ -->
     <div class="calories-tab-panel" data-panel="recettes">
 
-      <!-- Un seul tri, appliqué séparément à l'intérieur de chaque grille (Plat/Fraîcheur) sans
-           jamais les mélanger — voir trierRecettes dans calories.js -->
-      <div class="sort-wrapper recette-sort-wrapper">
-        <label for="sortSelectRecettes">Trier par :</label>
-        <select id="sortSelectRecettes">
-          <option value="nom-asc">Nom ↗</option>
-          <option value="nom-desc">Nom ↘</option>
-          <option value="kcal-asc">Calories ↗</option>
-          <option value="kcal-desc">Calories ↘</option>
-          <option value="ingr-asc">Ingrédients ↗</option>
-          <option value="ingr-desc">Ingrédients ↘</option>
-        </select>
-      </div>
-
       <!-- Deux blocs bien séparés (pas un simple filtre) : les boissons et les plats ne se
            mélangent jamais visuellement, même dans la vue par défaut -->
       <% CATEGORIES_RECETTE.forEach(function(cat) { %>
       <section class="recette-groupe">
-        <h3 class="recette-groupe-titre"><span class="icone-categorie-recette icone-categorie-recette--<%= cat.valeur %>"></span> <%= cat.label %></h3>
+        <h3 class="recette-groupe-titre">
+          <!-- Tri à gauche : propre à CETTE section (voir appliquerTriGroupe dans calories.js),
+               Plats et Fraîcheur ont chacun leur propre tri. Clic direct sur l'icône pour
+               changer/inverser, plutôt qu'un menu déroulant. Alpha ascendant par défaut. -->
+          <div class="recette-tri-icones">
+            <button type="button" class="recette-tri-icone" data-critere="nom" title="Trier par nom">
+              <img src="/images/svg/tri-alpha-asc.svg" alt="Trier par nom" />
+            </button>
+            <button type="button" class="recette-tri-icone" data-critere="kcal" title="Trier par calories">
+              <img src="/images/svg/calorie-asc.svg" alt="Trier par calories" />
+            </button>
+          </div>
+          <!-- Nom de la catégorie centré -->
+          <span class="recette-groupe-nom"><span class="icone-categorie-recette icone-categorie-recette--<%= cat.valeur %>"></span> <%= cat.label %></span>
+          <!-- Grille/Liste à droite : même bascule que Stock (#btnVueGrille/#btnVueListe dans
+               stock.js), UN SEUL choix pour les deux sections à la fois (mode d'affichage, pas une
+               donnée propre à Plats ou Fraîcheur) — dupliqué ici juste pour l'agencement visuel. -->
+          <div class="recette-vue-icones">
+            <button type="button" class="recette-vue-icone active" data-vue="grille" title="Vue grille"></button>
+            <button type="button" class="recette-vue-icone" data-vue="liste" title="Vue liste"></button>
+          </div>
+        </h3>
         <div class="recette-grid" data-grid-cat="<%= cat.valeur %>">
           <% recettes.filter(function(r) { return r.categorie === cat.valeur; }).forEach(function(recette) { %>
           <div class="recette-card" data-id="<%= recette.id %>" data-cat="<%= recette.categorie %>" data-nom="<%= recette.nom.toLowerCase() %>" data-kcal="<%= recette.kcal_total %>" data-ingr="<%= recette.nb_ingredients %>">
@@ -193,8 +200,10 @@
                  catégorie ; repli sur l'icône de catégorie si jamais aucun ingrédient n'a d'émoji -->
             <% const emojisRecette = recette.emojis_ingredients.slice(0, 3).join(''); %>
             <span class="recette-emoji"><% if (emojisRecette) { %><%= emojisRecette %><% } else { %><span class="icone-categorie-recette icone-categorie-recette--<%= cat.valeur %>"></span><% } %></span>
-            <p class="recette-nom"><%= recette.nom %></p>
-            <div class="recette-sub"><span><%= recette.nb_ingredients %> ingr.</span><span><%= recette.kcal_total %> kcal</span></div>
+            <div class="recette-corps">
+              <p class="recette-nom"><%= recette.nom %></p>
+              <div class="recette-sub"><span class="recette-ingr"><%= recette.nb_ingredients %> ingr.</span><span class="recette-kcal"><%= recette.kcal_total %> kcal</span></div>
+            </div>
           </div>
           <% }) %>
           <div class="recette-card recette-new-card btn-nouvelle-recette" data-nouvelle-cat="<%= cat.valeur %>">

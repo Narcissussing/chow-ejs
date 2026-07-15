@@ -1225,12 +1225,24 @@ body.mode-magasin .course-item__shop-slot {
 /* Tant que la carte n'a pas été tapée une première fois (voir activerArmement dans courses.js),
    seul le panier ("Acheté") reste inerte — "+1/+2/+5" restent cliquables tout de suite, sans
    armer la carte d'abord, pas besoin de confirmation en plus pour ceux-là. Un tap accidentel sur
-   le panier d'un article "cl" (toujours actif autrement, jamais de saisie à faire) ne peut plus
-   valider un achat tout seul — il faut d'abord "armer" la carte, comme confirmation. */
-body.mode-magasin .course-item:not(.arme) .course-item__shop-slot {
-  pointer-events: none;
+   le panier d'un article "cl" OU "libre" (toujours actif, sans quantité à saisir) ne peut plus
+   valider un achat tout seul — il faut d'abord "armer" la carte, comme confirmation.
+   ":not(.form-quantite)" exclut les articles à quantité : taper un nombre est déjà, en soi, un
+   geste volontaire (un tap accidentel ne tape pas "3" tout seul) — cette carte-là n'a donc pas
+   besoin d'un armement en plus, et son panier doit refléter tout de suite (sans le voile de
+   ce fondu) qu'une quantité valide vient d'être saisie. */
+body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .course-item__shop-slot {
   opacity: 0.4;
   transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+}
+
+/* pointer-events:none va sur le BOUTON, pas sur .course-item__shop-slot lui-même : sinon un tap
+   dessus devient "transparent" au hit-test et retombe directement sur .course-item en dessous,
+   ce qui armait la carte par effet de bord au lieu de ne rien faire du tout (voir le clic exclu
+   sur .course-item__shop-slot dans le gestionnaire global de courses.js — qui ne peut jouer son
+   rôle que si le clic atteint bien cette zone). */
+body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .course-item__shop-slot .btn-acheter-icone {
+  pointer-events: none;
 }
 
 /* Repère visuel que la carte est "armée" (comme .stock-item.en-edition sur Stock) */
@@ -1953,27 +1965,26 @@ body.mode-magasin .course-item:not(.arme) .course-item__shop-slot {
 
 .btn-acheter-icone {
   /* Style "coche" façon iOS (Rappels, Santé...) plutôt que l'emoji panier, qui rendait dans une
-     teinte rose/violette peu cohérente avec le reste de l'app. Même vert "sauge" désaturé que
-     .form-quantite .suggestion (+1/+2/+5) plutôt que le vert vif iOS d'origine, pour que les deux
-     restent cohérents l'un à côté de l'autre. */
+     teinte rose/violette peu cohérente avec le reste de l'app. Vert "sauge" un peu plus saturé
+     que .form-quantite .suggestion (+1/+2/+5) pour que l'état "prêt" se voie davantage : un fond
+     léger dès le repos, pas seulement un contour, sinon le bouton se noyait à côté du reste. */
+  background: rgba(58, 122, 69, 0.12);
   border-color: rgba(107, 142, 111, 0.45);
-  color: #4a6b4f;
+  color: #35be4a;
 }
 
 .btn-acheter-icone:hover {
-  background: rgba(107, 142, 111, 0.14);
-  border-color: #4a6b4f;
+  background: rgba(58, 122, 69, 0.2);
+  border-color: #35be4a;
 }
 
 .btn-acheter-icone:disabled {
-  /* De nouveau visiblement plus pâle qu'actif (contrairement à l'essai "même couleur partout") :
-     avec le tap de confirmation sur la carte désormais requis avant tout (voir .arme plus bas),
-     ce n'est plus le SEUL signal d'état qui compte — on peut se permettre cette différence pour
-     que "prêt à valider" se sente vraiment différent de "pas encore", le "pop" (voir plus bas)
-     marquant le moment exact où l'un devient l'autre. */
-  opacity: 1;
-  color: rgba(74, 107, 79, 0.5);
-  border-color: rgba(107, 142, 111, 0.25);
+  /* Même couleur qu'actif, juste estompée par opacité : exactement comme le bouton "cl" avant
+     armement de la carte (voir .arme plus bas), plutôt qu'une teinte recolorée à part. */
+  opacity: 0.4;
+  background: rgba(58, 122, 69, 0.12);
+  color: #35be4a;
+  border-color: rgba(107, 142, 111, 0.45);
 }
 
 /* Petit "pop" joué une seule fois, exactement au moment où le bouton passe de désactivé à
@@ -2960,10 +2971,6 @@ body.mode-magasin .course-item:not(.arme) .course-item__shop-slot {
 
 /* ---------- RECETTES : deux grilles séparées (Boissons / Plats) ---------- */
 
-.recette-sort-wrapper {
-  margin-bottom: 20px;
-}
-
 .recette-groupe {
   margin-bottom: 32px;
 }
@@ -2972,10 +2979,13 @@ body.mode-magasin .course-item:not(.arme) .course-item__shop-slot {
   margin-bottom: 0;
 }
 
+/* 3 colonnes égales (1fr auto 1fr) : le tri à gauche, le nom de la section vraiment centré (pas
+   juste "poussé" par un margin-left:auto sur l'élément de droite, qui ne centre rien du tout dès
+   que gauche et droite n'ont pas la même largeur), la bascule grille/liste à droite. */
 .recette-groupe-titre {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 8px;
   font-family: var(--font-display);
   font-weight: 900;
   font-size: 1.1rem;
@@ -2983,6 +2993,110 @@ body.mode-magasin .course-item:not(.arme) .course-item__shop-slot {
   margin: 0 0 14px;
   padding-bottom: 8px;
   border-bottom: 1.5px solid var(--border);
+}
+
+.recette-groupe-nom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  justify-self: center;
+  white-space: nowrap;
+}
+
+/* Petites icônes de tri (nom / calories) : remplace l'ancien menu déroulant, trop imposant à
+   côté d'un simple titre de groupe. Clic direct pour basculer, pas de liste à ouvrir. */
+.recette-tri-icones {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+}
+
+/* Bascule grille/liste, symétrique au tri mais à droite (voir recette-vue-icone plus bas) */
+.recette-vue-icones {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: end;
+}
+
+.recette-vue-icone {
+  width: 26px;
+  height: 26px;
+  padding: 5px;
+  border: none;
+  background: none;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.recette-vue-icone::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.recette-vue-icone[data-vue="grille"]::before {
+  -webkit-mask-image: url("/images/svg/grille-verticale.svg");
+  mask-image: url("/images/svg/grille-verticale.svg");
+}
+
+.recette-vue-icone[data-vue="liste"]::before {
+  -webkit-mask-image: url("/images/svg/liste.svg");
+  mask-image: url("/images/svg/liste.svg");
+}
+
+.recette-vue-icone:hover {
+  opacity: 0.6;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.recette-vue-icone.active {
+  opacity: 1;
+  color: var(--accent);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.recette-tri-icone {
+  width: 26px;
+  height: 26px;
+  padding: 4px;
+  border: none;
+  background: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.recette-tri-icone img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.recette-tri-icone:hover {
+  opacity: 0.6;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.recette-tri-icone.actif {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .recette-groupe-titre .icone-categorie-recette {
@@ -3089,6 +3203,70 @@ body.mode-magasin .course-item:not(.arme) .course-item__shop-slot {
   justify-content: space-between;
   font-size: 0.72rem;
   color: var(--text-muted);
+}
+
+/* ---- Vue liste (mêmes cartes, même HTML, voir #listeStock.vue-liste plus haut) ----
+   Seulement 2 colonnes : nom + émoji empilés à gauche (l'émoji remplace le nombre d'ingrédients,
+   pas besoin des deux), calories à droite — la donnée la plus scannée en parcourant la liste.
+   ".recette-corps"/".recette-sub" passent en display:contents pour que leurs enfants (nom, émoji,
+   kcal) deviennent des cases directes de la grille du haut, sans avoir à dupliquer le HTML entre
+   vue grille et vue liste. */
+
+.recette-grid.vue-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vue-liste .recette-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "nom   kcal"
+    "emoji kcal";
+  align-items: center;
+  column-gap: 12px;
+  padding: 12px 16px;
+}
+
+.vue-liste .recette-corps,
+.vue-liste .recette-sub {
+  display: contents;
+}
+
+.vue-liste .recette-emoji {
+  grid-area: emoji;
+  width: auto;
+  justify-content: flex-start;
+  background: none;
+  border-radius: 0;
+  font-size: 1rem;
+}
+
+.vue-liste .recette-nom {
+  grid-area: nom;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vue-liste .recette-ingr {
+  display: none;
+}
+
+.vue-liste .recette-kcal {
+  grid-area: kcal;
+  justify-self: end;
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.vue-liste .recette-new-card {
+  flex-direction: row;
+  min-height: 64px;
+  gap: 10px;
 }
 
 /* Même bouton/position que .form-supprimer-journal + .btn-supprimer-dash (Journal) : rond

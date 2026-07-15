@@ -713,39 +713,101 @@ function grilleDeCategorie(categorie) {
   return document.querySelector('.recette-grid[data-grid-cat="' + categorie + '"]');
 }
 
-// Trie chaque grille de recettes séparément (jamais les deux ensemble : Plat et Fraîcheur ne se
-// mélangent jamais, même triés) selon le critère choisi. "+ Nouvelle recette" reste toujours en
-// dernier, quel que soit le tri : ce n'est pas une carte de recette, ce serait bizarre de la voir
-// se déplacer au milieu de la grille selon le nom/calories/ingrédients.
-function trierRecettes(critere) {
-  const [cle, direction] = critere.split("-");
+// Trie une seule grille de recettes selon le critère choisi. "+ Nouvelle recette" reste toujours
+// en dernier, quel que soit le tri : ce n'est pas une carte de recette, ce serait bizarre de la
+// voir se déplacer au milieu de la grille selon le nom/calories.
+function trierGrilleRecettes(grille, critere, direction) {
+  const cartes = Array.from(grille.querySelectorAll(".recette-card:not(.recette-new-card)"));
 
-  document.querySelectorAll(".recette-grid").forEach(function (grille) {
-    const cartes = Array.from(grille.querySelectorAll(".recette-card:not(.recette-new-card)"));
+  cartes.sort(function (a, b) {
+    if (critere === "nom") {
+      return direction === "asc"
+        ? a.dataset.nom.localeCompare(b.dataset.nom)
+        : b.dataset.nom.localeCompare(a.dataset.nom);
+    }
+    const valeurA = Number(a.dataset.kcal);
+    const valeurB = Number(b.dataset.kcal);
+    return direction === "asc" ? valeurA - valeurB : valeurB - valeurA;
+  });
 
-    cartes.sort(function (a, b) {
-      if (cle === "nom") {
-        return direction === "asc"
-          ? a.dataset.nom.localeCompare(b.dataset.nom)
-          : b.dataset.nom.localeCompare(a.dataset.nom);
-      }
-      const valeurA = Number(a.dataset[cle === "kcal" ? "kcal" : "ingr"]);
-      const valeurB = Number(b.dataset[cle === "kcal" ? "kcal" : "ingr"]);
-      return direction === "asc" ? valeurA - valeurB : valeurB - valeurA;
-    });
-
-    const btnNouvelle = grille.querySelector(".recette-new-card");
-    cartes.forEach(function (carte) {
-      grille.insertBefore(carte, btnNouvelle);
-    });
+  const btnNouvelle = grille.querySelector(".recette-new-card");
+  cartes.forEach(function (carte) {
+    grille.insertBefore(carte, btnNouvelle);
   });
 }
 
-const sortSelectRecettes = document.getElementById("sortSelectRecettes");
-sortSelectRecettes.addEventListener("change", function () {
-  trierRecettes(this.value);
+// Chaque section (Plats / Fraîcheur) a son propre tri, indépendant de l'autre : cliquer les
+// icônes d'une section ne trie QUE sa propre grille (voir calories.ejs, une paire d'icônes par
+// section). Cliquer l'icône déjà active inverse la direction (et affiche l'icône asc/desc
+// correspondante) ; cliquer l'autre icône bascule dessus, toujours en ascendant au premier clic.
+// Alpha ascendant par défaut.
+const ICONES_TRI = {
+  nom: { asc: "/images/svg/tri-alpha-asc.svg", desc: "/images/svg/tri-alpha-desc.svg" },
+  kcal: { asc: "/images/svg/calorie-asc.svg", desc: "/images/svg/calorie-desc.svg" },
+};
+
+function appliquerTriGroupe(groupe) {
+  const grille = groupe.querySelector(".recette-grid");
+  const critereActuel = groupe.dataset.triCritere;
+  const directionActuelle = groupe.dataset.triDirection;
+
+  groupe.querySelectorAll(".recette-tri-icone").forEach(function (bouton) {
+    const critere = bouton.dataset.critere;
+    const estActif = critere === critereActuel;
+    bouton.classList.toggle("actif", estActif);
+    const direction = estActif ? directionActuelle : "asc";
+    bouton.querySelector("img").src = ICONES_TRI[critere][direction];
+  });
+
+  trierGrilleRecettes(grille, critereActuel, directionActuelle);
+}
+
+document.querySelectorAll(".recette-groupe").forEach(function (groupe) {
+  groupe.dataset.triCritere = "nom";
+  groupe.dataset.triDirection = "asc";
+
+  groupe.querySelectorAll(".recette-tri-icone").forEach(function (bouton) {
+    bouton.addEventListener("click", function () {
+      const critere = bouton.dataset.critere;
+      if (critere === groupe.dataset.triCritere) {
+        groupe.dataset.triDirection = groupe.dataset.triDirection === "asc" ? "desc" : "asc";
+      } else {
+        groupe.dataset.triCritere = critere;
+        groupe.dataset.triDirection = "asc";
+      }
+      appliquerTriGroupe(groupe);
+    });
+  });
+
+  appliquerTriGroupe(groupe);
 });
-trierRecettes(sortSelectRecettes.value);
+
+// ============================================
+// BASCULE VUE GRILLE / VUE LISTE (voir appliquerVueStock dans stock.js, même principe) : même
+// HTML pour les deux vues, seule la classe "vue-liste" change sur chaque grille, un seul choix
+// pour Plats ET Fraîcheur à la fois (mode d'affichage, pas une donnée propre à une section).
+// Le bouton est dupliqué dans chaque section (voir calories.ejs, à droite du titre) pour
+// l'agencement visuel, mais les deux paires agissent sur le même état partagé.
+// ============================================
+
+function appliquerVueRecettes(vue) {
+  document.querySelectorAll(".recette-grid").forEach(function (grille) {
+    grille.classList.toggle("vue-liste", vue === "liste");
+  });
+  document.querySelectorAll(".recette-vue-icone").forEach(function (bouton) {
+    bouton.classList.toggle("active", bouton.dataset.vue === vue);
+  });
+}
+
+const vueRecettesSauvegardee = localStorage.getItem("vueRecettes") === "liste" ? "liste" : "grille";
+appliquerVueRecettes(vueRecettesSauvegardee);
+
+document.querySelectorAll(".recette-vue-icone").forEach(function (bouton) {
+  bouton.addEventListener("click", function () {
+    appliquerVueRecettes(bouton.dataset.vue);
+    localStorage.setItem("vueRecettes", bouton.dataset.vue);
+  });
+});
 
 // Construit une carte de recette pour la grille (utilisé après création/édition, sans recharger la page)
 function construireRecetteCardDOM(recette) {
@@ -763,8 +825,10 @@ function construireRecetteCardDOM(recette) {
 
   div.innerHTML = `
     <span class="recette-emoji">${icone}</span>
-    <p class="recette-nom">${escapeHtml(recette.nom)}</p>
-    <div class="recette-sub"><span>${recette.nb_ingredients} ingr.</span><span>${recette.kcal_total} kcal</span></div>
+    <div class="recette-corps">
+      <p class="recette-nom">${escapeHtml(recette.nom)}</p>
+      <div class="recette-sub"><span class="recette-ingr">${recette.nb_ingredients} ingr.</span><span class="recette-kcal">${recette.kcal_total} kcal</span></div>
+    </div>
   `;
 
   activerCarteRecette(div);
@@ -1289,8 +1353,8 @@ formRecette.addEventListener("submit", function (event) {
 
       grille.insertBefore(construireRecetteCardDOM(recetteMaj), grille.querySelector(".btn-nouvelle-recette"));
       // Remet la carte tout juste ajoutée/modifiée à sa vraie place plutôt que de la laisser
-      // coller à la fin, quel que soit le tri actuellement choisi
-      trierRecettes(sortSelectRecettes.value);
+      // coller à la fin, selon le tri propre à cette section (Plats/Fraîcheur ont chacun le leur)
+      appliquerTriGroupe(grille.closest(".recette-groupe"));
 
       selectRecettePlat.dispatchEvent(new Event("custom-select:update"));
       selectRecetteFraicheur.dispatchEvent(new Event("custom-select:update"));

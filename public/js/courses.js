@@ -610,6 +610,18 @@ document.addEventListener("click", function (e) {
         desarmerCarteActuelle();
         carte.classList.add("arme");
         itemArmeActuellement = carte;
+
+        // Même "pop" que le panier non-cl à l'instant où la quantité devient valide : ici, c'est
+        // l'armement de la carte qui joue le rôle de "vient de devenir cliquable".
+        const btnPanier = carte.querySelector(".btn-acheter-icone");
+        if (btnPanier) {
+            btnPanier.classList.remove("vient-de-s-activer");
+            void btnPanier.offsetWidth;
+            btnPanier.classList.add("vient-de-s-activer");
+            setTimeout(function () {
+                btnPanier.classList.remove("vient-de-s-activer");
+            }, 350);
+        }
     }
 });
 
