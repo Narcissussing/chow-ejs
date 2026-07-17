@@ -45,7 +45,10 @@
           <input type="hidden" name="idAliment" id="idAlimentCacheCourses" />
 
           <div id="autocompleteCourses">
-            <input type="text" id="rechercheAlimentCourses" name="rechercheAliment" placeholder="Recherche un article..." autocomplete="off" />
+            <div class="champ-recherche-wrapper">
+              <input type="text" id="rechercheAlimentCourses" name="rechercheAliment" placeholder="Recherche un article..." autocomplete="off" />
+              <button type="button" class="btn-effacer-recherche" data-cible="rechercheAlimentCourses" aria-label="Effacer la recherche"></button>
+            </div>
             <ul id="listeAlimentsCourses">
               <% aliments.forEach(function(aliment) { %>
               <li data-id="<%= aliment.id %>">
@@ -97,8 +100,9 @@
         %>
         <span class="course-stock-indicator course-stock-dot <%= classeNiveauCourse %>" title="En stock : <%= item.quantite_stock %>"></span>
         <% } %>
-        <!-- Cliquer sur le nom ouvre le champ pour ajouter/modifier une note (voir courses.js) -->
-        <span class="course-nom" data-id="<%= item.id %>"><%= item.emoji %> <%= item.nom %></span>
+        <!-- Seul l'émoji ouvre le champ de note (voir courses.js) : le reste du nom ne fait
+             qu'armer/désarmer la carte comme le reste, plutôt que de rivaliser avec ce geste-là -->
+        <span class="course-nom"><span class="course-nom-emoji" data-id="<%= item.id %>"><%= item.emoji %></span> <%= item.nom %></span>
 
         <!-- Formulaire de suppression, intercepté par courses.js pour l'envoyer sans recharger la page -->
         <form action="/courses/supprimer" method="post" class="form-supprimer">
@@ -153,6 +157,10 @@
       </div>
       <% }) %>
     </div>
+
+    <!-- Même pattern que Stock/Journal (voir #noResultsStock/#noResultsJournal) : affiché
+         seulement quand la liste de courses est vide, géré par courses.js -->
+    <p class="no-results hidden" id="noResultsCourses">Aucun article dans la liste de courses.</p>
 
     <script>
       // Utilisé par courses.js pour comparer en direct la liste actuelle au preset enregistré

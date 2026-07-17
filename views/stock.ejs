@@ -47,6 +47,7 @@
       <button type="button" id="btnToggleAjout" class="btn-ajout-icone" title="Ajouter un aliment">Ajouter un aliment</button>
       <div class="search-wrapper" id="rechercheStockWrapper">
         <input type="text" id="searchInput" placeholder="Rechercher dans le stock..." autocomplete="off" />
+        <button type="button" class="btn-effacer-recherche" data-cible="searchInput" aria-label="Effacer la recherche"></button>
       </div>
       <!-- Toucher une suggestion l'ajoute directement au stock (comme Courses/Calories),
            avec une quantité de départ par défaut (1 unité/pack, ou "Plein" pour un aliment
@@ -54,7 +55,10 @@
            quantité exacte se corrige ensuite directement sur la carte (édition en place déjà
            possible, voir activerEditionInline dans stock.js) -->
       <div id="autocomplete" hidden>
-        <input type="text" id="rechercheAliment" placeholder="Rechercher un aliment..." autocomplete="off" />
+        <div class="champ-recherche-wrapper">
+          <input type="text" id="rechercheAliment" placeholder="Rechercher un aliment..." autocomplete="off" />
+          <button type="button" class="btn-effacer-recherche" data-cible="rechercheAliment" aria-label="Effacer la recherche"></button>
+        </div>
         <!-- La liste complète des aliments est générée ici côté serveur (avec EJS),
              puis filtrée dynamiquement par le JavaScript selon ce que l'utilisateur tape -->
         <ul id="listeAliments">

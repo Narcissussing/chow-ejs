@@ -102,6 +102,7 @@ rechercheAlimentCalories.addEventListener("input", function () {
 
   if (recherche === "") {
     listeAlimentsCalories.hidden = true;
+    rechercheAlimentCalories.classList.remove("recherche-invalide");
     return;
   }
 
@@ -110,9 +111,14 @@ rechercheAlimentCalories.addEventListener("input", function () {
   // On affiche tous les aliments qui contiennent le texte tapé. Aucune limite de nombre :
   // si la liste est longue, elle défile (voir max-height dans style.css). normaliserTexte des
   // deux côtés : taper "e" doit aussi trouver "Café" (accents ignorés).
+  let visibles = 0;
   itemsAutocomplete.forEach(function (item) {
     item.hidden = !normaliserTexte(item.textContent.toLowerCase()).includes(recherche);
+    if (!item.hidden) visibles++;
   });
+
+  // Rouge seulement si rien ne correspond, jamais au simple focus.
+  rechercheAlimentCalories.classList.toggle("recherche-invalide", visibles === 0);
 });
 
 // Renvoie l'entrée du journal DU JOUR déjà présente pour un aliment donné, s'il y en a une
@@ -1183,14 +1189,20 @@ rechercheIngredient.addEventListener("input", function () {
 
   if (recherche === "") {
     listeIngredientsRecherche.hidden = true;
+    rechercheIngredient.classList.remove("recherche-invalide");
     return;
   }
 
   listeIngredientsRecherche.hidden = false;
 
+  let visibles = 0;
   itemsIngredientsRecherche.forEach(function (item) {
     item.hidden = !normaliserTexte(item.textContent.toLowerCase()).includes(recherche);
+    if (!item.hidden) visibles++;
   });
+
+  // Rouge seulement si rien ne correspond, jamais au simple focus.
+  rechercheIngredient.classList.toggle("recherche-invalide", visibles === 0);
 });
 
 // Referme complètement la recherche (pas juste la liste de suggestions) : remet le "+" dans son
@@ -1370,4 +1382,24 @@ formRecette.addEventListener("submit", function (event) {
       btnEnregistrerSheet.disabled = false;
       btnEnregistrerSheet.textContent = texteBoutonInitial;
     });
+});
+
+// ============================================
+// BOUTON "✕" POUR VIDER UN CHAMP DE RECHERCHE (mobile uniquement, voir style.css)
+// ============================================
+document.querySelectorAll(".btn-effacer-recherche").forEach(function (bouton) {
+  const input = document.getElementById(bouton.dataset.cible);
+  if (!input) return;
+
+  function majVisibiliteBoutonEffacer() {
+    bouton.classList.toggle("visible", input.value.length > 0);
+  }
+  input.addEventListener("input", majVisibiliteBoutonEffacer);
+  majVisibiliteBoutonEffacer();
+
+  bouton.addEventListener("click", function () {
+    input.value = "";
+    input.dispatchEvent(new Event("input"));
+    input.focus();
+  });
 });

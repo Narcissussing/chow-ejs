@@ -71,6 +71,10 @@ function appliquerFiltres() {
 
   // Si aucune carte n'est visible après filtrage, on affiche le message "aucun résultat"
   noResults.classList.toggle("hidden", visibles > 0);
+  // Le champ ne devient rouge que si une recherche tapée ne trouve vraiment rien : jamais au
+  // simple focus (voir #searchInput:focus en CSS, qui reste neutre), et jamais tant que le champ
+  // est vide (pas encore de recherche à juger valide ou non).
+  searchInput.classList.toggle("recherche-invalide", recherche !== "" && visibles === 0);
 }
 
 // ============================================
@@ -115,3 +119,23 @@ function trierGrille(critere) {
 
 // Trie la grille selon la valeur par défaut du select au chargement
 trierGrille(sortSelect.value);
+
+// ============================================
+// BOUTON "✕" POUR VIDER UN CHAMP DE RECHERCHE (mobile uniquement, voir style.css)
+// ============================================
+document.querySelectorAll(".btn-effacer-recherche").forEach(function (bouton) {
+  const input = document.getElementById(bouton.dataset.cible);
+  if (!input) return;
+
+  function majVisibiliteBoutonEffacer() {
+    bouton.classList.toggle("visible", input.value.length > 0);
+  }
+  input.addEventListener("input", majVisibiliteBoutonEffacer);
+  majVisibiliteBoutonEffacer();
+
+  bouton.addEventListener("click", function () {
+    input.value = "";
+    input.dispatchEvent(new Event("input"));
+    input.focus();
+  });
+});

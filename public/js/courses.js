@@ -3,6 +3,7 @@
 // ============================================
 
 const listeCourses = document.getElementById("listeCourses"); // conteneur de tous les articles de la liste de courses
+const noResultsCourses = document.getElementById("noResultsCourses"); // message affiché quand la liste est vide
 const sortSelectCourses = document.getElementById("sortSelectCourses"); // menu de tri (Nom/Catégorie), même select que sur Aliments/Stock
 const toggleMagasin = document.getElementById("toggleMagasin"); // bouton pour activer/désactiver le "mode magasin"
 const btnPresetHebdo = document.getElementById("btnPresetHebdo"); // bouton "Courses de la semaine" (ajout groupé)
@@ -60,6 +61,62 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+}
+
+// Petit bandeau discret en bas de l'écran, plutôt qu'une alert() bloquante à fermer soi-même :
+// au magasin, une popup qui interrompt à chaque coupure wifi est plus pénible qu'utile. Se
+// referme tout seul après quelques secondes.
+function afficherToast(message) {
+    let toast = document.getElementById("toastReseau");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "toastReseau";
+        toast.className = "toast-reseau";
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    // Retire puis reposer la classe "visible" (avec un reflow forcé entre les deux) : sans ça,
+    // deux échecs rapprochés ne rejoueraient jamais l'animation d'apparition la 2e fois, puisque
+    // la classe serait déjà posée depuis le premier message.
+    toast.classList.remove("visible");
+    void toast.offsetWidth;
+    toast.classList.add("visible");
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(function () {
+        toast.classList.remove("visible");
+    }, 3500);
+}
+
+// Aucun des appels fetch() de ce fichier n'avait de .catch() à l'origine : sur une connexion
+// instable (ex: au magasin, en wifi ou 4G faible), une requête qui échoue ou qui répond avec
+// autre chose que du JSON valide (page d'erreur du proxy, portail captif...) faisait planter la
+// promesse en silence — aucune alerte, aucun message, le tap semblait juste "ne rien faire".
+function gererErreurReseau(err) {
+    console.error("Erreur réseau :", err);
+    afficherToast("Connexion instable : réessaie dans un instant.");
+}
+
+// Réessaie automatiquement une fois, après un court délai, avant d'abandonner pour de bon : au
+// magasin, la plupart des échecs sont un raté ponctuel (pas une vraie coupure), et ce seul essai
+// supplémentaire rattrape silencieusement la majorité des cas sans que l'utilisateur s'en rende
+// compte — pas besoin de retaper soi-même à chaque petit accroc de connexion.
+function fetchAvecRetry(url, options, tentativesRestantes) {
+    if (tentativesRestantes === undefined) tentativesRestantes = 1;
+    return fetch(url, options)
+        .then(function (response) {
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            return response.json();
+        })
+        .catch(function (err) {
+            if (tentativesRestantes > 0) {
+                return new Promise(function (resolve) {
+                    setTimeout(resolve, 800);
+                }).then(function () {
+                    return fetchAvecRetry(url, options, tentativesRestantes - 1);
+                });
+            }
+            throw err;
+        });
 }
 
 // ============================================
@@ -162,6 +219,15 @@ function trierPar(cle) {
     // Chaque appendChild ci-dessus recolle les articles/en-têtes en fin de liste : sans ce
     // rappel, le panneau d'ajout (déplacé là au chargement) se retrouverait repoussé avant eux
     repositionnerPanneauAjout();
+    mettreAJourMessageVideCourses();
+}
+
+// Affiche "Aucun article dans la liste de courses" seulement quand la liste est réellement
+// vide (même pattern que Stock/Journal, voir noResultsStock/noResultsJournal) : appelé après
+// chaque tri, qui se produit lui-même après chaque ajout/suppression (voir trierPar).
+function mettreAJourMessageVideCourses() {
+    const visibles = listeCourses.querySelectorAll(".course-item").length;
+    noResultsCourses.classList.toggle("hidden", visibles > 0);
 }
 
 // Construit un en-tête de catégorie ("FRUITS", "AUTRES"...), inséré juste avant le premier
@@ -211,6 +277,8 @@ function inserrerSelonTri(nouvelItem) {
         // en permanence tout en bas de la liste, voir plus haut), pas après lui
         listeCourses.insertBefore(nouvelItem, panneauAjoutCourse);
     }
+
+    mettreAJourMessageVideCourses();
 }
 
 // ============================================
@@ -261,11 +329,10 @@ btnEnregistrerPresetHebdo.addEventListener("click", function () {
     // donc on confirme avant (même principe que "Tout effacer"/"Supprimer cette recette")
     if (!confirm("Remplacer \"Courses de la semaine\" par la liste actuelle ?")) return;
 
-    fetch("/courses/preset-hebdo/enregistrer", { method: "POST" })
-        .then(function (response) { return response.json(); })
+    fetchAvecRetry("/courses/preset-hebdo/enregistrer", { method: "POST" })
         .then(function (data) {
             if (data.erreur) {
-                alert(data.erreur);
+                afficherToast(data.erreur);
                 return;
             }
 
@@ -284,7 +351,8 @@ btnEnregistrerPresetHebdo.addEventListener("click", function () {
             setTimeout(function () {
                 btnEnregistrerPresetHebdo.classList.remove("confirme");
             }, 1500);
-        });
+        })
+        .catch(gererErreurReseau);
 });
 
 // ============================================
@@ -315,12 +383,11 @@ toggleMagasin.addEventListener("click", function () {
 // ============================================
 
 btnPresetHebdo.addEventListener("click", function () {
-    fetch("/courses/preset-hebdo", {
+    fetchAvecRetry("/courses/preset-hebdo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({})
     })
-        .then(function (response) { return response.json(); })
         .then(function (data) {
             if (data.erreur) {
                 alert(data.erreur);
@@ -342,7 +409,8 @@ btnPresetHebdo.addEventListener("click", function () {
                 ajouterAnimationEntree(nouvelItem);
             });
             mettreAJourBoutonPresetHebdo();
-        });
+        })
+        .catch(gererErreurReseau);
 });
 
 // ============================================
@@ -369,14 +437,15 @@ function afficherInput(idCourse) {
 
 // Active le comportement "cliquer pour ajouter/modifier une note" sur un article donné
 function activerNote(item) {
-    const nom = item.querySelector(".course-nom");
+    const emoji = item.querySelector(".course-nom-emoji");
     const input = item.querySelector(".input-commentaire");
 
     // On mémorise la valeur d'origine (celle rendue par le serveur au chargement de la page)
     input.dataset.original = input.value.trim();
 
-    // Cliquer sur le nom de l'article ouvre le champ de saisie de commentaire
-    nom.addEventListener("click", function () {
+    // Seul un tap sur l'émoji ouvre le champ de saisie de commentaire (pas tout le nom, trop
+    // facile à toucher par accident) — le reste du nom se comporte comme le reste de la carte.
+    emoji.addEventListener("click", function () {
         afficherInput(this.dataset.id);
     });
 
@@ -413,11 +482,11 @@ function activerNote(item) {
 
         // Champ vidé volontairement (il y avait un texte avant) → suppression
         if (commentaire === "") {
-            fetch("/courses/commentaire", {
+            fetchAvecRetry("/courses/commentaire", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ idCourse: idCourse, commentaire: "" })
-            });
+            }).catch(gererErreurReseau);
 
             if (note) {
                 note.remove();
@@ -427,11 +496,11 @@ function activerNote(item) {
         }
 
         // Texte nouveau ou modifié → sauvegarde côté serveur
-        fetch("/courses/commentaire", {
+        fetchAvecRetry("/courses/commentaire", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ idCourse: idCourse, commentaire: commentaire })
-        });
+        }).catch(gererErreurReseau);
 
         // Si aucune note n'existait encore à l'écran, on en crée une nouvelle
         if (!note) {
@@ -501,24 +570,39 @@ function envoyerFormulaireAjax(form, callback) {
     form.addEventListener("submit", function (event) {
         event.preventDefault();
 
+        // Le bouton reste désactivé tant que CET envoi est en cours : sans ça, retaper "Acheté"
+        // par inquiétude ("est-ce que ça a marché ?") pendant un aller-retour lent envoyait
+        // silencieusement une 2e requête pour le même article — exactement la peur du "j'ai
+        // peut-être envoyé plusieurs fois" au magasin. Un seul tap ne peut plus jamais en
+        // déclencher deux.
+        const boutonSubmit = form.querySelector('button[type="submit"]');
+        if (boutonSubmit && boutonSubmit.disabled) return;
+        if (boutonSubmit) boutonSubmit.disabled = true;
+
         const donnees = new FormData(form);
         const objet = {};
         donnees.forEach(function (valeur, cle) {
             objet[cle] = valeur;
         });
 
-        fetch(form.action, {
+        fetchAvecRetry(form.action, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(objet)
         })
-            .then(function (response) { return response.json(); })
             .then(function (data) {
                 if (data.erreur) {
-                    alert(data.erreur);
+                    afficherToast(data.erreur);
+                    if (boutonSubmit) boutonSubmit.disabled = false;
                     return;
                 }
+                // Pas besoin de réactiver le bouton ici : callback() retire la carte entière
+                // de la liste (achat ou suppression), il n'y a plus de bouton à réactiver.
                 callback(form);
+            })
+            .catch(function (err) {
+                gererErreurReseau(err);
+                if (boutonSubmit) boutonSubmit.disabled = false; // on peut retaper pour réessayer
             });
     });
 }
@@ -532,6 +616,7 @@ function retirerItem(form, classeAnim) {
     setTimeout(function () {
         item.remove();
         mettreAJourBoutonPresetHebdo();
+        mettreAJourMessageVideCourses();
     }, 300);
 }
 
@@ -599,7 +684,7 @@ document.addEventListener("click", function (e) {
     // Zones à comportement propre (note, suppression, "+1/+2/+5", panier) : ne réarment/ne
     // redésarment jamais la carte cliquée elle-même, mais désarment quand même une AUTRE carte
     // qui serait restée armée (ex: on ouvre la note d'une carte pendant qu'une autre est armée)
-    if (e.target.closest(".course-nom, .input-commentaire, .note-affichee, .form-supprimer, .course-item__quantite-groupe, .course-item__shop-slot")) {
+    if (e.target.closest(".course-nom-emoji, .input-commentaire, .note-affichee, .form-supprimer, .course-item__quantite-groupe, .course-item__shop-slot")) {
         if (carte !== itemArmeActuellement) desarmerCarteActuelle();
         return;
     }
@@ -698,7 +783,7 @@ function construireItemDOM(item) {
 
     div.innerHTML = `
     ${badgeStock}
-    <span class="course-nom" data-id="${id}">${emoji} ${nom}</span>
+    <span class="course-nom"><span class="course-nom-emoji" data-id="${id}">${emoji}</span> ${nom}</span>
     <form action="/courses/supprimer" method="post" class="form-supprimer">
       <input type="hidden" name="idCourse" value="${id}" />
       <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
@@ -728,6 +813,7 @@ rechercheAlimentCourses.addEventListener("input", function () {
         listeAlimentsCourses.hidden = true;
         // Rien de tapé : ni suggestion ni ajout en texte libre n'ont de sens
         btnAjouterCourse.classList.add("hidden");
+        rechercheAlimentCourses.classList.remove("recherche-invalide");
         return;
     }
 
@@ -746,6 +832,9 @@ rechercheAlimentCourses.addEventListener("input", function () {
     // Le bouton "Ajouter" (texte libre) n'apparaît que si aucun aliment connu ne correspond :
     // s'il y a des suggestions, on veut qu'on clique dessus plutôt que de dupliquer l'article
     btnAjouterCourse.classList.toggle("hidden", aUneCorrespondance);
+    // Rouge seulement si aucun aliment connu ne correspond (le texte libre prend le relais dans
+    // ce cas précis, donc "invalide" ici veut vraiment dire "pas dans la base connue").
+    rechercheAlimentCourses.classList.toggle("recherche-invalide", !aUneCorrespondance);
 });
 
 // Renvoie l'article de la liste de courses déjà en attente pour un aliment donné, s'il y en a un
@@ -818,15 +907,14 @@ function tenterAjoutArticle() {
 // Envoie l'ajout d'un article de courses au serveur (soit via son id, soit en texte libre),
 // puis insère le nouvel article à l'écran au bon endroit selon le tri actif
 function ajouterArticle(idAliment, texteLibre) {
-    fetch("/courses/ajouter", {
+    fetchAvecRetry("/courses/ajouter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idAliment: idAliment, rechercheAliment: texteLibre })
     })
-        .then(function (response) { return response.json(); })
         .then(function (data) {
             if (data.erreur) {
-                alert(data.erreur);
+                afficherToast(data.erreur);
                 return;
             }
 
@@ -838,5 +926,26 @@ function ajouterArticle(idAliment, texteLibre) {
 
             // On referme le panneau d'ajout automatiquement après un ajout réussi, comme sur Stock
             fermerPanneauAjoutCourse();
-        });
+        })
+        .catch(gererErreurReseau);
 }
+
+// ============================================
+// BOUTON "✕" POUR VIDER UN CHAMP DE RECHERCHE (mobile uniquement, voir style.css)
+// ============================================
+document.querySelectorAll(".btn-effacer-recherche").forEach(function (bouton) {
+  const input = document.getElementById(bouton.dataset.cible);
+  if (!input) return;
+
+  function majVisibiliteBoutonEffacer() {
+    bouton.classList.toggle("visible", input.value.length > 0);
+  }
+  input.addEventListener("input", majVisibiliteBoutonEffacer);
+  majVisibiliteBoutonEffacer();
+
+  bouton.addEventListener("click", function () {
+    input.value = "";
+    input.dispatchEvent(new Event("input"));
+    input.focus();
+  });
+});

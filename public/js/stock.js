@@ -198,6 +198,7 @@ rechercheAliment.addEventListener("input", function () {
   // Si le champ est vide, on cache la liste de suggestions et on s'arrête là
   if (recherche === "") {
     listeAliments.hidden = true;
+    rechercheAliment.classList.remove("recherche-invalide");
     return;
   }
 
@@ -206,9 +207,16 @@ rechercheAliment.addEventListener("input", function () {
   // On parcourt tous les aliments disponibles et on affiche tous ceux qui contiennent le texte tapé.
   // Aucune limite de nombre : si la liste est longue, elle défile (voir max-height dans style.css).
   // normaliserTexte des deux côtés : taper "e" doit aussi trouver "Café" (accents ignorés).
+  let visibles = 0;
   items.forEach(function (item) {
     item.hidden = !normaliserTexte(item.textContent.toLowerCase()).includes(recherche);
+    if (!item.hidden) visibles++;
   });
+
+  // Rouge seulement si rien ne correspond (voir appliquerFiltresStock pour la même règle) :
+  // ici, ça veut aussi dire "aucun aliment connu à ce nom" — la piste étant que le champ "libre"
+  // en dessous prend le relais dans ce cas précis (voir plus bas).
+  rechercheAliment.classList.toggle("recherche-invalide", visibles === 0);
 });
 
 // Toucher une suggestion ajoute directement l'aliment au stock, avec une quantité de départ
@@ -335,6 +343,9 @@ function appliquerFiltresStock() {
 
   // Si aucun article n'est visible après filtrage, on affiche le message "Aucun article ne correspond"
   noResultsStock.classList.toggle("hidden", visibles > 0);
+  // Même règle que sur Aliments (voir appliquerFiltres) : rouge seulement si une recherche tapée
+  // ne trouve rien, jamais au simple focus ni quand le champ est vide.
+  searchInput.classList.toggle("recherche-invalide", recherche !== "" && visibles === 0);
 }
 
 // ============================================
@@ -796,4 +807,24 @@ btnVueGrille.addEventListener("click", function () {
 btnVueListe.addEventListener("click", function () {
   appliquerVueStock("liste");
   localStorage.setItem("vueStock", "liste");
+});
+
+// ============================================
+// BOUTON "✕" POUR VIDER UN CHAMP DE RECHERCHE (mobile uniquement, voir style.css)
+// ============================================
+document.querySelectorAll(".btn-effacer-recherche").forEach(function (bouton) {
+  const input = document.getElementById(bouton.dataset.cible);
+  if (!input) return;
+
+  function majVisibiliteBoutonEffacer() {
+    bouton.classList.toggle("visible", input.value.length > 0);
+  }
+  input.addEventListener("input", majVisibiliteBoutonEffacer);
+  majVisibiliteBoutonEffacer();
+
+  bouton.addEventListener("click", function () {
+    input.value = "";
+    input.dispatchEvent(new Event("input"));
+    input.focus();
+  });
 });

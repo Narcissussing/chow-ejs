@@ -35,6 +35,9 @@
     <div class="search-sort-wrapper">
       <div class="search-wrapper">
         <input type="text" id="searchInput" placeholder="Rechercher un aliment..." autocomplete="off" />
+        <!-- Bouton "✕" pour vider le champ d'un tap, mobile uniquement (voir style.css) : n'apparaît
+             que si le champ contient du texte (géré par activerEffacementRecherche dans ce fichier) -->
+        <button type="button" class="btn-effacer-recherche" data-cible="searchInput" aria-label="Effacer la recherche"></button>
       </div>
       <div class="sort-wrapper">
         <label for="sortSelect">Trier par :</label>

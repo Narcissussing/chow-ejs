@@ -347,7 +347,7 @@ body {
 }
 
 .filter-btn:hover {
-  border-color: var(--accent);
+  border-color: #d77a4291;
   color: var(--accent);
 }
 
@@ -472,6 +472,23 @@ body {
 .search-wrapper {
   flex: 1; /* prend tout l'espace restant disponible dans la ligne */
   min-width: 220px;
+  position: relative; /* ancre le bouton "✕" mobile (voir .btn-effacer-recherche) */
+}
+
+/* Même rôle que .search-wrapper, pour les champs de recherche qui n'avaient pas encore de
+   conteneur dédié (Stock "ajouter un aliment", Courses, Journal, Recettes) : juste de quoi
+   ancrer le bouton "✕" mobile en position absolute, sans changer la mise en page existante. */
+.champ-recherche-wrapper {
+  position: relative;
+}
+
+/* Bouton "✕" pour vider un champ de recherche d'un tap : mobile uniquement (voir @media plus
+   bas, où il devient réellement visible/positionné) — sur desktop on a déjà la souris pour
+   sélectionner et effacer, ce bouton n'y ajoute rien. Caché par défaut ici, affiché seulement
+   une fois du texte tapé (voir la classe "visible", posée par JS dans chaque fichier
+   correspondant : aliments.js, stock.js, courses.js, calories.js). */
+.btn-effacer-recherche {
+  display: none;
 }
 
 #searchInput {
@@ -497,7 +514,22 @@ body {
 
 #searchInput:focus {
   outline: none; /* enlève le contour bleu par défaut du navigateur quand on clique dans le champ */
-  border-color: var(--accent); /* et on le remplace par notre propre indication visuelle (la bordure colorée) */
+  border-color: #d77a4291; /* focus neutre (terracotta adouci) : le rouge est réservé à .recherche-invalide */
+}
+
+/* Règle partagée par tous les champs de recherche de l'app (Aliments, Stock, Courses, Journal,
+   Recettes — voir appliquerFiltres, appliquerFiltresStock et les écouteurs "input" sur
+   rechercheAliment, rechercheAlimentCourses, rechercheAlimentCalories, rechercheIngredient
+   dans leurs fichiers JS respectifs) : rouge UNIQUEMENT quand une recherche tapée ne trouve
+   vraiment rien, jamais au simple focus. Sélecteur générique (par classe, pas par id) pour
+   s'appliquer à tous ces champs sans dupliquer la règle six fois. Le plus grand nombre de
+   classes+id le fait gagner sur la règle ":focus" ci-dessus sans avoir besoin de !important. */
+input.recherche-invalide,
+input.recherche-invalide:focus {
+  /* !important nécessaire : plusieurs champs de recherche sont ciblés par leur id ailleurs
+     (#searchInput, #rechercheIngredient...), qui l'emporterait sinon sur ce sélecteur générique
+     malgré l'ordre — un id bat toujours une classe en spécificité CSS, peu importe le nombre. */
+  border-color: var(--accent) !important;
 }
 
 .sort-wrapper {
@@ -554,7 +586,7 @@ body {
 #selectRecettePlat:focus,
 #selectRecetteFraicheur:hover,
 #selectRecetteFraicheur:focus {
-  border-color: var(--accent);
+  border-color: #d77a4291;
   outline: none;
 }
 
@@ -822,7 +854,7 @@ body {
 
 .detail-equivalences__champs input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: #d77a4291;
 }
 
 .detail-equivalences__statut {
@@ -1108,6 +1140,11 @@ body.mode-magasin .preset-hebdo-row {
   font-size: 1.05rem;
   font-weight: 400;
   color: var(--text);
+}
+
+.course-nom-emoji {
+  /* Seule cette partie ouvre la note (voir courses.js) : curseur pointer réservé à l'émoji,
+     pas à tout le nom, pour ne pas laisser croire que le texte entier est cliquable. */
   cursor: pointer;
 }
 
@@ -1245,9 +1282,13 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   pointer-events: none;
 }
 
-/* Repère visuel que la carte est "armée" (comme .stock-item.en-edition sur Stock) */
+/* Repère visuel que la carte est "armée" (comme .stock-item.en-edition sur Stock) : terracotta
+   adouci (même famille que le thème de l'app), pas rouge plein — un tap pour accéder à une
+   action n'est ni invalide ni négatif, et un contour rouge pour ça se lit à tort comme une
+   erreur (convention QA/accessibilité : le rouge est réservé aux états invalides, voir aussi
+   .en-edition, .custom-select--open et .mise-en-avant). */
 .course-item.arme {
-  border-color: var(--accent);
+  border-color: #d77a4291;
 }
 
 .suggestions-quantite {
@@ -1307,7 +1348,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 
 .champ-quantite-achat:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: #d77a4291;
 }
 
 /* ---- Formulaire ajout courses ---- */
@@ -1341,6 +1382,35 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   border-radius: 10px;
   font-size: 0.9rem;
   margin-bottom: 20px;
+}
+
+/* ---- Toast réseau (voir afficherToast/gererErreurReseau dans courses.js) ----
+   Bandeau discret en bas de l'écran plutôt qu'une alert() bloquante : au magasin, une popup à
+   fermer à chaque coupure wifi est plus pénible qu'utile. Se referme tout seul. Couleur neutre
+   (texte foncé), pas rouge : c'est une notice ("réessaie"), pas une accusation d'erreur grave. */
+.toast-reseau {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(20px);
+  max-width: calc(100% - 40px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1000;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast-reseau.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* ---- Connexion ---- */
@@ -1380,7 +1450,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 
 .login-form input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: #d77a4291;
 }
 
 .btn-connexion {
@@ -1434,7 +1504,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 
 .input-commentaire:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: #d77a4291;
 }
 
 /* ---------- EN-TÊTE PARTAGÉ (Stock / Courses) ---------- */
@@ -1773,8 +1843,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 }
 
 .stock-item.en-edition {
-  /* Classe ajoutée par JavaScript quand un article de stock est en train d'être modifié */
-  border-color: var(--accent);
+  /* Classe ajoutée par JavaScript quand un article de stock est en train d'être modifié.
+     Terracotta adouci, pas rouge — éditer n'est pas une erreur (voir .course-item.arme plus haut). */
+  border-color: #d77a4291;
 }
 
 @keyframes stockFondu {
@@ -1800,9 +1871,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 
 .stock-quantite-edit,
 .stock-cl-edit {
-  /* Champs affichés uniquement quand on clique pour modifier la quantité/niveau d'un article */
+  /* Champs affichés uniquement quand on clique pour modifier la quantité/niveau d'un article.
+     Terracotta adouci, pas rouge — même raison que .stock-item.en-edition juste au-dessus. */
   background: var(--bg);
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid #d77a4291;
   border-radius: 999px;
   padding: 6px 14px;
   font-family: var(--font-body);
@@ -2009,7 +2081,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 }
 
 .btn-icone-rond:hover {
-  border-color: var(--accent);
+  border-color: #d77a4291;
 }
 
 .btn-icone-rond:active {
@@ -2136,21 +2208,22 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   }
 }
 
-/* Bref halo accent : attire l'œil sur la carte qu'on vient d'ajouter au stock, une fois amenée
-   à l'écran par scrollIntoView (voir ajouterAuStock dans stock.js), puis s'efface tout seul */
+/* Bref halo terracotta : attire l'œil sur la carte qu'on vient d'ajouter/retrouver, une fois
+   amenée à l'écran par scrollIntoView (voir ajouterAuStock dans stock.js), puis s'efface tout
+   seul. Pas rouge — "voici l'article" n'est ni invalide ni négatif. */
 .mise-en-avant {
   animation: pulseMiseEnAvant 1.5s ease;
 }
 
 @keyframes pulseMiseEnAvant {
   0% {
-    box-shadow: 0 0 0 0 rgba(200, 71, 43, 0.45);
+    box-shadow: 0 0 0 0 rgba(215, 122, 66, 0.45);
   }
   60% {
-    box-shadow: 0 0 0 10px rgba(200, 71, 43, 0);
+    box-shadow: 0 0 0 10px rgba(215, 122, 66, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(200, 71, 43, 0);
+    box-shadow: 0 0 0 0 rgba(215, 122, 66, 0);
   }
 }
 
@@ -2279,6 +2352,63 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   select,
   textarea {
     font-size: 16px !important;
+  }
+
+  /* Bouton "✕" pour vider un champ de recherche d'un tap, mobile uniquement (voir la classe de
+     base plus haut, cachée par défaut) : la visibilité réelle ("visible") est posée par JS dès
+     qu'il y a du texte dans le champ, jamais avant. */
+  .btn-effacer-recherche {
+    display: flex;
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+
+  .btn-effacer-recherche.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .btn-effacer-recherche::before {
+    /* effacer-x.svg : juste deux traits fins qui se croisent, pas fermer.svg (une forme plate
+       épaisse) qui rendait lourd/brouillé à cette petite taille */
+    content: "";
+    display: block;
+    width: 12px;
+    height: 12px;
+    /* Même famille que la bordure terracotta de ces champs (#d77a4291), pas --text-muted (gris
+       neutre) ni --accent (rouge plein, réservé aux vraies erreurs) : lié au thème sans s'y
+       confondre. */
+    background-color: #d77a42;
+    -webkit-mask-image: url("/images/svg/effacer-x.svg");
+    mask-image: url("/images/svg/effacer-x.svg");
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+
+  /* De la place pour que le texte tapé ne passe jamais sous le bouton "✕" */
+  #searchInput,
+  #rechercheAliment,
+  #rechercheAlimentCourses,
+  #rechercheAlimentCalories,
+  #rechercheIngredient {
+    padding-right: 34px;
   }
 
   .header {
@@ -2637,7 +2767,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 
 .journal-grammes-input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: #d77a4291;
 }
 
 .journal-quantite-groupe {
@@ -3230,7 +3360,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 }
 
 .cat-pill:hover {
-  border-color: var(--accent);
+  border-color: #d77a4291;
   color: var(--accent);
 }
 
@@ -3402,7 +3532,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 }
 
 .recette-new-card:hover {
-  border-color: var(--accent);
+  border-color: #d77a4291;
   color: var(--accent);
 }
 
@@ -3509,7 +3639,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 
 .detail-nom-edit:focus {
   outline: none;
-  border-bottom-color: var(--accent);
+  border-bottom-color: #d77a4291;
 }
 
 .detail-header-actions {
@@ -3703,7 +3833,7 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 
 .ingredient-quantite-recette:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: #d77a4291;
 }
 
 /* Sélecteur d'unité (g / tsp / tbsp) : toujours affiché, voir ajouterLigneIngredient dans calories.js */
@@ -3787,13 +3917,13 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
    "actifs" en même temps dès qu'on tapait l'un puis l'autre. */
 .custom-select__button:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: #d77a4291;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .custom-select__button:hover {
     outline: none;
-    border-color: var(--accent);
+    border-color: #d77a4291;
   }
 }
 
@@ -3802,8 +3932,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 }
 
 .custom-select--open .custom-select__button {
-  /* Classe ajoutée par custom-selects.js quand la liste déroulante est actuellement ouverte */
-  border-color: var(--accent);
+  /* Classe ajoutée par custom-selects.js quand la liste déroulante est actuellement ouverte.
+     Terracotta adouci, pas rouge — un menu ouvert n'est pas une erreur (voir .course-item.arme
+     plus haut). */
+  border-color: #d77a4291;
 }
 
 .custom-select__label {
@@ -3961,7 +4093,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 #champQuantite:focus,
 #champCL:focus {
   outline: none;
-  border-color: var(--accent);
+  /* Terracotta adouci, pas rouge : le focus n'est pas une erreur (voir .recherche-invalide,
+     seul cas où ces champs de recherche redeviennent vraiment rouges). */
+  border-color: #d77a4291;
 }
 
 #listeAlimentsCourses,
