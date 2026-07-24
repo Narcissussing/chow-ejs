@@ -538,6 +538,11 @@ function activerQuantite(item) {
     suggestions.forEach(function (bouton) {
         bouton.addEventListener("click", function () {
             champ.value = this.dataset.valeur;
+            // Poser .value directement en JS ne déclenche jamais l'événement "input" tout seul :
+            // sans cette ligne, le bouton "Acheté" restait désactivé (voir l'écouteur "input"
+            // juste en dessous) et requestSubmit() ne soumettait donc rien du tout — le champ se
+            // remplissait, mais l'achat n'était jamais réellement envoyé.
+            champ.dispatchEvent(new Event("input"));
             form.requestSubmit();
         });
     });
