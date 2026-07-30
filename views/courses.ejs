@@ -119,12 +119,21 @@
           <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
         </form>
 
-        <!-- La note n'est affichée que si un commentaire existe déjà pour cet article -->
+        <!-- La note n'est affichée que si un commentaire existe déjà pour cet article. Icône
+             note.svg à la place du "📝" : cohérent avec les autres icônes de l'app (silhouette
+             en accent, pas d'emoji coloré qui jurerait avec ceux des aliments). -->
         <% if (item.commentaire) { %>
-        <p class="note-affichee" data-id="<%= item.id %>">📝 <%= item.commentaire %></p>
+        <p class="note-affichee" data-id="<%= item.id %>"><span class="icone-note"></span> <%= item.commentaire %></p>
         <% } %>
-        <!-- Champ de saisie de la note, cadré par défaut (affiché seulement au clic, voir courses.js) -->
-        <input type="text" class="input-commentaire hidden" placeholder="Ajouter une note" value="<%= item.commentaire || '' %>" data-id="<%= item.id %>" />
+        <!-- Champ de saisie de la note + bouton photo (à droite du champ), caché par défaut,
+             affiché seulement au clic sur l'émoji/la note (voir plus haut). Une fois une photo
+             posée, courses.js déplace ce même bouton hors de cette ligne pour le rendre visible
+             en permanence en haut à droite de la carte (voir placerBoutonPhotoEnHaut) : pas
+             besoin de rouvrir la note à chaque fois pour la reconsulter. -->
+        <div class="ligne-commentaire hidden">
+          <input type="text" class="input-commentaire" placeholder="Ajouter une note" value="<%= item.commentaire || '' %>" data-id="<%= item.id %>" />
+          <button type="button" class="btn-photo-course" data-id="<%= item.id %>" data-a-photo="<%= item.has_photo ? 'true' : 'false' %>" title="Photo de référence"></button>
+        </div>
 
         <!--
           Le bloc "Acheté" est différent selon le type de l'article :
@@ -170,6 +179,23 @@
     <!-- Même pattern que Stock/Journal (voir #noResultsStock/#noResultsJournal) : affiché
          seulement quand la liste de courses est vide, géré par courses.js -->
     <p class="no-results hidden" id="noResultsCourses">Aucun article dans la liste de courses.</p>
+
+    <!-- Champ fichier caché, réutilisé pour n'importe quel article (voir courses.js) : un clic
+         sur ".btn-photo-course" sans photo l'ouvre, "accept" limite au choix à des images. -->
+    <input type="file" id="inputPhotoCourse" accept="image/*" hidden />
+
+    <!-- Aperçu plein écran de la photo de référence (voir courses.js), sur le même principe que
+         le panneau détail de recette : fond assombri + contenu, fermé au tap en dehors ou sur "✕" -->
+    <div class="photo-backdrop" id="photoBackdrop">
+      <div class="photo-apercu">
+        <button type="button" class="btn-fermer-photo" id="btnFermerPhoto" aria-label="Fermer">✕</button>
+        <img id="imgApercuPhoto" alt="Photo de référence" />
+        <div class="photo-apercu__actions">
+          <button type="button" class="btn-remplacer-photo" id="btnRemplacerPhoto">Remplacer la photo</button>
+          <button type="button" class="btn-supprimer-photo" id="btnSupprimerPhoto">Supprimer la photo</button>
+        </div>
+      </div>
+    </div>
 
     <script>
       // Utilisé par courses.js pour comparer en direct la liste actuelle au preset enregistré

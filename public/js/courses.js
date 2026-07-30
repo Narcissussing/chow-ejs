@@ -438,9 +438,12 @@ btnPresetHebdo.addEventListener("click", function () {
 // COMMENTAIRES / NOTES
 // ============================================
 
-// Affiche le champ de saisie de commentaire pour un article donné (et cache la note affichée à la place)
+// Affiche le champ de saisie de commentaire (+ bouton photo) pour un article donné, et cache
+// la note affichée à la place. "ligne" (pas juste l'input) est ce qui s'affiche/se cache
+// maintenant : elle contient le champ ET le bouton photo côte à côte (voir courses.ejs).
 function afficherInput(idCourse) {
     const input = document.querySelector(`.input-commentaire[data-id="${idCourse}"]`);
+    const ligne = input.closest(".ligne-commentaire");
     const note = document.querySelector(`.note-affichee[data-id="${idCourse}"]`);
 
     if (note && !note.classList.contains("hidden")) {
@@ -452,7 +455,7 @@ function afficherInput(idCourse) {
         }, 150);
     }
 
-    input.classList.remove("hidden");
+    ligne.classList.remove("hidden");
     input.focus();
 }
 
@@ -460,6 +463,7 @@ function afficherInput(idCourse) {
 function activerNote(item) {
     const emoji = item.querySelector(".course-nom-emoji");
     const input = item.querySelector(".input-commentaire");
+    const ligne = input.closest(".ligne-commentaire");
 
     // On mémorise la valeur d'origine (celle rendue par le serveur au chargement de la page)
     input.dataset.original = input.value.trim();
@@ -489,11 +493,11 @@ function activerNote(item) {
         const original = this.dataset.original || "";
         let note = item.querySelector(".note-affichee");
 
-        // Petite animation de disparition du champ de saisie
-        this.classList.add("masquage-input");
+        // Petite animation de disparition de la ligne (champ + bouton photo)
+        ligne.classList.add("masquage-input");
         setTimeout(() => {
-            this.classList.add("hidden");
-            this.classList.remove("masquage-input");
+            ligne.classList.add("hidden");
+            ligne.classList.remove("masquage-input");
         }, 150);
         // Rien n'a changé → on annule, on réaffiche la note telle quelle
         if (commentaire === original) {
@@ -531,12 +535,301 @@ function activerNote(item) {
             note.addEventListener("click", function () {
                 afficherInput(this.dataset.id);
             });
-            this.insertAdjacentElement("beforebegin", note);
+            ligne.insertAdjacentElement("beforebegin", note);
         }
 
-        note.textContent = `📝 ${commentaire}`;
+        note.innerHTML = `<span class="icone-note"></span> ${escapeHtml(commentaire)}`;
         note.classList.remove("hidden");
         this.dataset.original = commentaire;
+    });
+}
+
+// ============================================
+// PHOTO DE RÉFÉRENCE
+// ============================================
+
+const inputPhotoCourse = document.getElementById("inputPhotoCourse");
+const photoBackdrop = document.getElementById("photoBackdrop");
+const photoApercu = document.querySelector(".photo-apercu");
+const imgApercuPhoto = document.getElementById("imgApercuPhoto");
+const btnFermerPhoto = document.getElementById("btnFermerPhoto");
+const btnRemplacerPhoto = document.getElementById("btnRemplacerPhoto");
+const btnSupprimerPhoto = document.getElementById("btnSupprimerPhoto");
+
+// Article concerné par le sélecteur de fichier ou l'aperçu actuellement ouverts (un seul à la
+// fois, comme le "input file" lui-même qui est partagé entre toutes les cartes)
+let idCoursePhotoActuelle = null;
+
+// Réduit et recompresse une image côté client, AVANT de l'envoyer : une photo de téléphone fait
+// souvent plusieurs Mo, bien plus que nécessaire pour reconnaître un emballage au supermarché.
+// Redimensionnée sur son plus grand côté + réencodée en JPEG, elle tient en général entre 300
+// et 800 Ko à 1600px/qualité 0.9 (assez pour relire du texte fin sur un emballage), toujours
+// raisonnable à envoyer même en wifi faible (voir la résilience réseau ajoutée par ailleurs) et
+// à stocker (voir la colonne "photo" en base, BYTEA — voir index.js).
+const PHOTO_TAILLE_MAX = 1600; // px, sur le plus grand côté
+const PHOTO_QUALITE = 0.9;
+
+function compresserImage(fichier) {
+    return new Promise(function (resolve, reject) {
+        const lecteur = new FileReader();
+        lecteur.onload = function () {
+            const image = new Image();
+            image.onload = function () {
+                let largeur = image.width;
+                let hauteur = image.height;
+                if (largeur > hauteur && largeur > PHOTO_TAILLE_MAX) {
+                    hauteur = Math.round((hauteur * PHOTO_TAILLE_MAX) / largeur);
+                    largeur = PHOTO_TAILLE_MAX;
+                } else if (hauteur > PHOTO_TAILLE_MAX) {
+                    largeur = Math.round((largeur * PHOTO_TAILLE_MAX) / hauteur);
+                    hauteur = PHOTO_TAILLE_MAX;
+                }
+
+                const canvas = document.createElement("canvas");
+                canvas.width = largeur;
+                canvas.height = hauteur;
+                canvas.getContext("2d").drawImage(image, 0, 0, largeur, hauteur);
+
+                const dataUrl = canvas.toDataURL("image/jpeg", PHOTO_QUALITE);
+                resolve(dataUrl.split(",")[1]); // juste la partie base64, sans le préfixe "data:image/jpeg;base64,"
+            };
+            image.onerror = reject;
+            image.src = lecteur.result;
+        };
+        lecteur.onerror = reject;
+        lecteur.readAsDataURL(fichier);
+    });
+}
+
+// Le même bouton photo vit à deux endroits différents selon qu'une photo existe déjà :
+// - PAS de photo : dans .ligne-commentaire, à droite du champ de note (caché tant que la note
+//   n'est pas ouverte, voir .ligne-commentaire.hidden dans style.css) ;
+// - UNE photo existe : sorti de .ligne-commentaire et déplacé en enfant direct de .course-item
+//   (élément de grille à part entière, toujours visible en haut à droite, voir style.css) —
+//   pas besoin de rouvrir la note à chaque fois pour la reconsulter avant d'acheter.
+// On déplace donc le VRAI noeud DOM (pas de clone) d'un parent à l'autre selon les événements.
+function placerBoutonPhotoEnHaut(item, bouton) {
+    item.appendChild(bouton);
+}
+
+function placerBoutonPhotoDansNote(item, bouton) {
+    const ligne = item.querySelector(".ligne-commentaire");
+    ligne.appendChild(bouton);
+}
+
+// Active le bouton photo (ajouter/revoir) d'un article donné : même bouton pour les deux cas,
+// son état "data-a-photo" (posé côté serveur, mis à jour ensuite en JS) décide de l'action.
+function activerPhoto(item) {
+    const bouton = item.querySelector(".btn-photo-course");
+
+    // Au chargement de la page, un article qui a déjà une photo doit l'afficher tout de suite
+    // en haut à droite, sans attendre un clic (voir placerBoutonPhotoEnHaut ci-dessus).
+    if (bouton.dataset.aPhoto === "true") {
+        placerBoutonPhotoEnHaut(item, bouton);
+    }
+
+    bouton.addEventListener("click", function () {
+        // Petit rebond à chaque tap (même animation que l'ajout réussi, voir style.css) : un
+        // retour visuel immédiat, qu'on ouvre l'aperçu ou le sélecteur de fichier juste après.
+        this.classList.remove("photo-pop");
+        void this.offsetWidth;
+        this.classList.add("photo-pop");
+
+        idCoursePhotoActuelle = this.dataset.id;
+        if (this.dataset.aPhoto === "true") {
+            ouvrirApercuPhoto(idCoursePhotoActuelle);
+        } else {
+            inputPhotoCourse.value = ""; // sinon rechoisir EXACTEMENT le même fichier ne redéclenche pas "change"
+            inputPhotoCourse.click();
+        }
+    });
+}
+
+// ---- Cache local (localStorage) : voir/ajouter une photo doit marcher SANS réseau au magasin.
+// Un fetch() en direct à chaque ouverture ne suffirait pas (aucun réseau là-bas) : la photo,
+// déjà compressée à quelques dizaines de Ko, est donc aussi gardée sur l'appareil dès qu'on
+// l'ajoute, et relue depuis là en priorité — le réseau ne sert plus qu'à la synchroniser une
+// fois, au chargement de la page, tant qu'il y a une vraie connexion (voir synchroniserPhotosLocales).
+function clePhotoLocale(idCourse) {
+    return "chow-photo-course-" + idCourse;
+}
+
+function sauvegarderPhotoLocale(idCourse, base64) {
+    try {
+        localStorage.setItem(clePhotoLocale(idCourse), base64);
+    } catch (err) {
+        // Quota dépassé ou stockage désactivé (navigation privée...) : tant pis, la photo reste
+        // consultable en ligne seulement, pas la peine de bloquer le reste pour ça.
+        console.warn("Impossible de garder la photo en cache locale :", err);
+    }
+}
+
+function lirePhotoLocale(idCourse) {
+    return localStorage.getItem(clePhotoLocale(idCourse));
+}
+
+function supprimerPhotoLocale(idCourse) {
+    localStorage.removeItem(clePhotoLocale(idCourse));
+}
+
+// Choix d'un fichier dans le sélecteur (déclenché par le bouton ci-dessus, un seul input partagé)
+inputPhotoCourse.addEventListener("change", function () {
+    const fichier = this.files[0];
+    if (!fichier || !idCoursePhotoActuelle) return;
+
+    const idCourse = idCoursePhotoActuelle;
+    let base64Compressee = null;
+
+    compresserImage(fichier)
+        .then(function (base64) {
+            base64Compressee = base64;
+            return fetchAvecRetry("/courses/photo", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ idCourse: idCourse, photo: base64 })
+            });
+        })
+        .then(function (data) {
+            if (data.erreur) {
+                afficherToast(data.erreur);
+                return;
+            }
+            const bouton = document.querySelector(`.btn-photo-course[data-id="${idCourse}"]`);
+            if (bouton) {
+                const item = bouton.closest(".course-item");
+                bouton.dataset.aPhoto = "true";
+                if (item) placerBoutonPhotoEnHaut(item, bouton); // no-op si déjà en haut (remplacement d'une photo existante)
+                bouton.classList.remove("photo-pop");
+                void bouton.offsetWidth; // force le navigateur à "oublier" l'animation précédente
+                bouton.classList.add("photo-pop");
+            }
+            // On la garde déjà en local ici : pas la peine d'attendre une resynchro pour pouvoir
+            // la revoir hors-ligne, elle est disponible tout de suite après cet ajout.
+            sauvegarderPhotoLocale(idCourse, base64Compressee);
+            // Remplacement depuis l'aperçu déjà ouvert (voir btnRemplacerPhoto) : on rafraîchit
+            // l'image affichée tout de suite, sinon l'ancienne photo reste visible à l'écran.
+            if (photoBackdrop.classList.contains("ouvert") && idCoursePhotoActuelle === idCourse) {
+                imgApercuPhoto.src = "data:image/jpeg;base64," + base64Compressee;
+            }
+        })
+        .catch(gererErreurReseau);
+});
+
+// Ouvre l'aperçu plein écran d'une photo. Le cache local (localStorage) est TOUJOURS tenté en
+// premier : c'est ce qui permet de la revoir sans réseau au magasin. Le réseau n'est utilisé que
+// si jamais cette photo n'a pas encore été synchronisée sur cet appareil précis.
+function ouvrirApercuPhoto(idCourse) {
+    idCoursePhotoActuelle = idCourse;
+    const local = lirePhotoLocale(idCourse);
+    if (local) {
+        imgApercuPhoto.src = "data:image/jpeg;base64," + local;
+    } else {
+        imgApercuPhoto.src = `/courses/${idCourse}/photo?t=${Date.now()}`;
+    }
+    photoBackdrop.classList.add("ouvert");
+}
+
+// Ferme l'aperçu en "aspirant" visuellement la photo vers l'oeil qui l'a ouverte (plutôt qu'une
+// simple disparition) : on calcule la distance réelle entre le centre de la photo affichée et le
+// centre du bouton oeil de cet article, puis on laisse le keyframe CSS (voir style.css) animer
+// vers ce point avant de vraiment cacher le fond assombri.
+function fermerApercuPhoto() {
+    const bouton = document.querySelector(`.btn-photo-course[data-id="${idCoursePhotoActuelle}"]`);
+
+    if (bouton && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const cibleRect = bouton.getBoundingClientRect();
+        const apercuRect = photoApercu.getBoundingClientRect();
+        const versX = cibleRect.left + cibleRect.width / 2 - (apercuRect.left + apercuRect.width / 2);
+        const versY = cibleRect.top + cibleRect.height / 2 - (apercuRect.top + apercuRect.height / 2);
+        photoApercu.style.setProperty("--vers-x", versX + "px");
+        photoApercu.style.setProperty("--vers-y", versY + "px");
+        photoApercu.classList.add("fermeture");
+        photoBackdrop.classList.remove("ouvert");
+        setTimeout(function () {
+            photoApercu.classList.remove("fermeture");
+        }, 350);
+    } else {
+        photoBackdrop.classList.remove("ouvert");
+    }
+}
+
+btnFermerPhoto.addEventListener("click", fermerApercuPhoto);
+
+// Remplace la photo existante : réutilise le même sélecteur de fichier partagé que l'ajout
+// initial — l'upload écrase déjà l'ancienne photo côté serveur (UPDATE, pas INSERT, voir
+// index.js), donc aucune route séparée n'est nécessaire ici.
+btnRemplacerPhoto.addEventListener("click", function () {
+    if (!idCoursePhotoActuelle) return;
+    inputPhotoCourse.value = "";
+    inputPhotoCourse.click();
+});
+
+photoBackdrop.addEventListener("click", function (e) {
+    if (e.target === photoBackdrop) fermerApercuPhoto();
+});
+
+btnSupprimerPhoto.addEventListener("click", function () {
+    if (!idCoursePhotoActuelle) return;
+    const idCourse = idCoursePhotoActuelle;
+    fetchAvecRetry("/courses/photo/supprimer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idCourse: idCourse })
+    })
+        .then(function (data) {
+            if (data.erreur) {
+                afficherToast(data.erreur);
+                return;
+            }
+            // Fermer AVANT de déplacer le bouton dans la note : l'animation "vers l'oeil" a
+            // besoin de sa position actuelle (en haut à droite), pas de sa future position une
+            // fois relogé dans .ligne-commentaire (caché) juste après.
+            fermerApercuPhoto();
+            supprimerPhotoLocale(idCourse);
+
+            const bouton = document.querySelector(`.btn-photo-course[data-id="${idCourse}"]`);
+            if (bouton) {
+                const item = bouton.closest(".course-item");
+                // Petite pause pour laisser la photo finir d'arriver visuellement dans l'oeil
+                // (voir aspirePhotoVersOeil), puis l'oeil se ferme et s'efface avant de reloger
+                // le bouton (avec l'icône "télécharger") dans la note.
+                setTimeout(function () {
+                    bouton.classList.add("oeil-fermeture");
+                    setTimeout(function () {
+                        bouton.classList.remove("oeil-fermeture");
+                        bouton.dataset.aPhoto = "false";
+                        if (item) placerBoutonPhotoDansNote(item, bouton);
+                    }, 300);
+                }, 300);
+            }
+        })
+        .catch(gererErreurReseau);
+});
+
+// Récupère et met en cache local toute photo déjà enregistrée mais pas encore vue sur cet
+// appareil (ex: ajoutée depuis le téléphone de l'autre, ou avant l'installation de ce cache) —
+// tenté une fois au chargement de la page, tant qu'il y a du réseau. Échoue en silence si aucun
+// réseau : on retentera simplement au prochain chargement de page avec une vraie connexion.
+function synchroniserPhotosLocales() {
+    document.querySelectorAll('.btn-photo-course[data-a-photo="true"]').forEach(function (bouton) {
+        const idCourse = bouton.dataset.id;
+        if (lirePhotoLocale(idCourse)) return; // déjà en cache, rien à refaire
+
+        fetch(`/courses/${idCourse}/photo`)
+            .then(function (reponse) {
+                if (!reponse.ok) throw new Error("photo introuvable");
+                return reponse.blob();
+            })
+            .then(function (blob) {
+                const lecteur = new FileReader();
+                lecteur.onload = function () {
+                    sauvegarderPhotoLocale(idCourse, lecteur.result.split(",")[1]);
+                };
+                lecteur.readAsDataURL(blob);
+            })
+            .catch(function () {
+                // Pas grave : on retentera au prochain chargement de page avec du réseau
+            });
     });
 }
 
@@ -638,6 +931,12 @@ function retirerItem(form, classeAnim) {
     const item = form.closest(".course-item");
     if (!item) return;
 
+    // Achat ou suppression : la photo de référence n'a plus lieu d'être (le serveur l'efface
+    // aussi de son côté, voir /courses/acheter et /courses/supprimer dans index.js) — sans ça,
+    // elle resterait orpheline dans le cache local de l'appareil pour rien.
+    const bouton = item.querySelector(".btn-photo-course");
+    if (bouton) supprimerPhotoLocale(bouton.dataset.id);
+
     item.classList.add(classeAnim);
     setTimeout(function () {
         item.remove();
@@ -671,6 +970,7 @@ function activerActions(item) {
 // Regroupe l'activation de tous les comportements interactifs d'un article de la liste de courses
 function activerItem(item) {
     activerNote(item);
+    activerPhoto(item);
     activerQuantite(item);
     activerActions(item);
     // Pas d'appel à un "activerArmement(item)" ici : un seul écouteur global s'en charge pour
@@ -711,7 +1011,7 @@ document.addEventListener("click", function (e) {
     // Zones à comportement propre (note, suppression, "+1/+2/+5", panier) : ne réarment/ne
     // redésarment jamais la carte cliquée elle-même, mais désarment quand même une AUTRE carte
     // qui serait restée armée (ex: on ouvre la note d'une carte pendant qu'une autre est armée)
-    if (e.target.closest(".course-nom-emoji, .input-commentaire, .note-affichee, .form-supprimer, .course-item__quantite-groupe, .course-item__shop-slot")) {
+    if (e.target.closest(".course-nom-emoji, .input-commentaire, .note-affichee, .form-supprimer, .course-item__quantite-groupe, .course-item__shop-slot, .btn-photo-course")) {
         if (carte !== itemArmeActuellement) desarmerCarteActuelle();
         return;
     }
@@ -739,6 +1039,9 @@ document.addEventListener("click", function (e) {
 
 // Au chargement de la page, on active tous les articles déjà présents dans le HTML
 document.querySelectorAll(".course-item").forEach(activerItem);
+// Tant qu'il y a du réseau maintenant (ex: à la maison, avant de partir), on rapatrie en local
+// toute photo pas encore en cache sur cet appareil — voir synchroniserPhotosLocales plus haut.
+synchroniserPhotosLocales();
 
 // ============================================
 // CONSTRUCTION D'UN NOUVEL ITEM (ajout sans rechargement)
@@ -815,7 +1118,10 @@ function construireItemDOM(item) {
       <input type="hidden" name="idCourse" value="${id}" />
       <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
     </form>
-    <input type="text" class="input-commentaire hidden" placeholder="Ajouter une note" value="" data-id="${id}" />
+    <div class="ligne-commentaire hidden">
+      <input type="text" class="input-commentaire" placeholder="Ajouter une note" value="" data-id="${id}" />
+      <button type="button" class="btn-photo-course" data-id="${id}" data-a-photo="false" title="Photo de référence"></button>
+    </div>
     ${formAchat}
   `;
 

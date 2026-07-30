@@ -1322,10 +1322,33 @@ body.mode-magasin .preset-hebdo-row {
 }
 
 .note-affichee,
-.input-commentaire {
-  /* Ligne 2 de la grille : sous le nom de l'article */
+.ligne-commentaire {
+  /* Ligne 2 de la grille : sous le nom de l'article. La ligne (champ + bouton photo) est
+     maintenant le vrai élément de grille, l'input lui-même n'en est plus un directement. */
   grid-column: 1;
   grid-row: 2;
+}
+
+.ligne-commentaire {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icone-note {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  vertical-align: -2px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/note.svg");
+  mask-image: url("/images/svg/note.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 /* Les formulaires d'achat sont transparents pour la grille : leurs enfants
@@ -1624,7 +1647,8 @@ body.mode-magasin
 }
 
 .input-commentaire {
-  flex-basis: 100%;
+  flex: 1;
+  min-width: 0;
   background: var(--bg);
   border: 1.5px solid var(--border);
   border-radius: 999px;
@@ -1632,7 +1656,116 @@ body.mode-magasin
   font-family: var(--font-body);
   font-size: 0.85rem;
   color: var(--text);
+}
+
+.ligne-commentaire {
   margin-top: 4px;
+}
+
+/* Bouton photo de référence : ce même bouton vit à deux endroits différents selon "data-a-photo"
+   (voir placerBoutonPhotoEnHaut/placerBoutonPhotoDansNote dans courses.js, qui déplacent le vrai
+   noeud DOM d'un parent à l'autre) :
+   - sans photo = icône "télécharger", reste un enfant de .ligne-commentaire (à droite du champ de
+     note), donc caché tant que la note n'est pas ouverte (clic sur l'émoji), exactement comme le
+     champ lui-même — pas la peine de montrer une invite à ajouter une photo en permanence ;
+   - avec photo = icône "oeil", déplacé en enfant direct de .course-item (colonne 2 / ligne 1,
+     même ligne horizontale que le nom de l'article, au-dessus du bouton "Acheté" en ligne 3) :
+     toujours visible sans rouvrir la note, pour la consulter avant d'acheter. */
+.btn-photo-course {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  align-self: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.btn-photo-course::before {
+  content: "";
+  display: block;
+  width: 15px;
+  height: 15px;
+  background-color: currentColor;
+  -webkit-mask-image: url("/images/svg/telecharger.svg");
+  mask-image: url("/images/svg/telecharger.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+/* Une fois la photo posée : juste l'oeil, sans le cercle/bordure du bouton "ajouter" (ce n'est
+   plus une invite à agir mais une simple consultation) — couleur d'accent de l'app (terracotta,
+   même teinte que le logo "Chow"), légèrement transparente pour l'adoucir un peu. Largeur/hauteur
+   alignées sur .btn-icone-rond (le bouton "Acheté" juste en dessous, voir ligne 3 / colonne 2)
+   pour que les deux colonnes s'alignent. */
+.btn-photo-course[data-a-photo="true"] {
+  width: 25px;
+  height: 25px;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.btn-photo-course[data-a-photo="true"]::before {
+  width: 25px;
+  height: 25px;
+  -webkit-mask-image: url("/images/svg/oeil.svg");
+  mask-image: url("/images/svg/oeil.svg");
+}
+
+.btn-photo-course:active {
+  transform: scale(0.92);
+}
+
+/* Rebond joyeux à l'ajout réussi d'une photo (voir courses.js, déclenché après confirmation du
+   serveur) : même animation que le badge sac de courses, pour rester cohérent avec le seul autre
+   "succès" animé de la page plutôt que d'inventer un nouveau rebond. */
+.btn-photo-course.photo-pop {
+  animation: badgeSacPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Suppression d'une photo : l'oeil se ferme (paupière = aplatissement vertical) puis s'efface,
+   plutôt que de disparaître d'un coup — joué juste avant de reloger le bouton dans la note (voir
+   btnSupprimerPhoto dans courses.js), qui remet ensuite l'icône "télécharger" propre pour la
+   prochaine fois. */
+.btn-photo-course.oeil-fermeture {
+  animation: oeilSeFerme 0.3s ease-in forwards;
+}
+
+@keyframes oeilSeFerme {
+  0% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  60% {
+    transform: scaleY(0.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(0.08);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-photo-course.oeil-fermeture {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 .input-commentaire:focus {
@@ -2467,12 +2600,12 @@ body.mode-magasin
 }
 
 .note-affichee:not(.hidden),
-.input-commentaire:not(.hidden) {
+.ligne-commentaire:not(.hidden) {
   animation: slideDownNote 0.18s ease both;
 }
 
 .note-affichee.masquage,
-.input-commentaire.masquage-input {
+.ligne-commentaire.masquage-input {
   animation: fadeOutNote 0.15s ease forwards;
 }
 
@@ -2803,12 +2936,6 @@ body.mode-magasin
     flex-shrink: 0;
   }
 
-  /* Boutons icônes un peu plus grands pour le tactile, mais toujours compacts */
-  .btn-icone-rond {
-    width: 34px;
-    height: 34px;
-    flex-shrink: 0;
-  }
 
   #formAjouterCourse,
   #formAjouterStock {
@@ -4408,4 +4535,102 @@ body.mode-magasin
      conflit de spécificité) ; la corriger les a fait passer en pleine largeur "un par ligne",
      empilant Journal/Fraîcheur/Tout-effacer sur 3 rangs séparés au lieu de rester groupés à côté
      de la recherche. Ils restent donc compacts sur mobile aussi, comme sur desktop. */
+}
+
+/* ---------- PHOTO DE RÉFÉRENCE (Courses) ---------- */
+/* Même principe que .sheet-backdrop (panneau détail recette) : fond assombri + contenu, ouvert/
+   fermé via la classe "ouvert" posée par courses.js. */
+
+.photo-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-backdrop.ouvert {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.photo-apercu {
+  position: relative;
+  max-width: min(500px, 92vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* À la fermeture, la photo est "aspirée" vers l'oeil qui l'a ouverte plutôt que de juste
+   disparaître : --vers-x/--vers-y sont posées en JS juste avant (voir fermerApercuPhoto dans
+   courses.js), calculées à partir de la position réelle du bouton oeil sur la carte. */
+.photo-apercu.fermeture {
+  animation: aspirePhotoVersOeil 0.35s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+@keyframes aspirePhotoVersOeil {
+  to {
+    transform: translate(var(--vers-x, 0), var(--vers-y, 0)) scale(0.04);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-apercu.fermeture {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.photo-apercu img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: var(--radius);
+  object-fit: contain;
+  background: var(--surface);
+}
+
+.btn-fermer-photo {
+  position: absolute;
+  top: -44px;
+  right: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.photo-apercu__actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.btn-remplacer-photo,
+.btn-supprimer-photo {
+  border: none;
+  background: none;
+  color: white;
+  text-decoration: underline;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.btn-remplacer-photo:hover,
+.btn-supprimer-photo:hover {
+  opacity: 1;
 }

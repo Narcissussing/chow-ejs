@@ -54,6 +54,13 @@ await db.query("ALTER TABLE foods ADD COLUMN IF NOT EXISTS grammes_par_cuil_a_so
 // supprimés/réinsérés à chaque enregistrement (voir /recettes/:id/modifier), donc l'ordre
 // d'insertion (déjà utilisé par ARRAY_AGG ... ORDER BY id dans chercherRecettes) suffit.
 await db.query("ALTER TABLE journal_repas ADD COLUMN IF NOT EXISTS ordre INTEGER");
+
+// Photo de référence sur un article de courses (voir /courses/:id/photo) : stockée directement
+// en base (BYTEA), pas comme fichier sur disque — les machines Fly s'arrêtent/redémarrent
+// automatiquement (auto_stop_machines, voir fly.toml) avec un disque éphémère, donc un fichier
+// écrit là serait silencieusement perdu au prochain redémarrage. La photo est déjà compressée
+// còté client avant l'envoi (voir courses.js), donc ça reste léger même stocké en base.
+await db.query("ALTER TABLE courses ADD COLUMN IF NOT EXISTS photo BYTEA");
 // Comble l'ordre pour les entrées déjà existantes (jamais réordonnées) : classées par heure
 // d'ajout, comme l'était le tri par défaut avant l'ajout de cette colonne. Ne touche jamais une
 // ligne qui a déjà un ordre réel (mise à jour idempotente, sûre à rejouer à chaque démarrage).
@@ -82,7 +89,10 @@ app.use(express.urlencoded({ extended: true }));
 // On dit à Express de servir les fichiers du dossier "public" tels quels (CSS, JS, images...)
 app.use(express.static("public"));
 // On dit à Express de comprendre les données envoyées en JSON (utilisé par nos appels fetch())
-app.use(express.json());
+// Limite par défaut (100kb) trop juste pour une photo compressée en base64 (voir
+// /courses/:id/photo) : le base64 gonfle déjà la taille d'environ 33%, plus la marge JSON.
+// 4mb (plutôt que 2mb) laisse de la marge maintenant que la compression vise 1600px/qualité 0.9.
+app.use(express.json({ limit: "4mb" }));
 
 
 // On indique à Express qu'on utilise le moteur de templates "EJS" pour générer les pages HTML
@@ -232,8 +242,15 @@ async function chercherStock() {
 async function chercherCourses() {
     // Le LEFT JOIN sur stock permet d'afficher, sur chaque article de la liste de courses,
     // la quantité déjà présente à la maison (quantite_stock vaut NULL si l'aliment n'est pas en stock)
+    // "courses.*" est volontairement évité ici : ça aurait inclus la colonne "photo" (BYTEA), donc
+    // chargé la photo ENTIÈRE de chaque article à chaque affichage de la page — juste un booléen
+    // suffit pour savoir s'il faut afficher l'icône d'alerte ; la vraie photo n'est récupérée qu'à
+    // la demande (voir /courses/:id/photo).
     const result = await db.query(
-        `SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji,
+        `SELECT courses.id, courses.food_id, courses.nom_libre, courses.commentaire, courses.achete,
+                courses.quantite, courses.date_ajout, courses.unite, courses.magasin,
+                (courses.photo IS NOT NULL) AS has_photo,
+                COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji,
                 foods.unite AS food_unite, foods.tracking_type, foods.categorie, stock.quantite AS quantite_stock
          FROM courses
          LEFT JOIN foods ON courses.food_id = foods.id
@@ -674,6 +691,59 @@ app.post("/courses/commentaire", async (req, res) => {
     }
 });
 
+// Enregistre (ou remplace) la photo de référence d'un article de courses. Envoyée en base64
+// JSON (comme le reste des routes AJAX de l'app), déjà compressée côté client (voir courses.js) :
+// le serveur ne fait que décoder et stocker, aucun retraitement d'image ici.
+app.post("/courses/photo", async (req, res) => {
+    try {
+        const idCourse = req.body.idCourse;
+        const photoBase64 = req.body.photo;
+
+        if (!idCourse || !photoBase64) {
+            return res.status(400).json({ erreur: "Photo ou article manquant." });
+        }
+
+        const buffer = Buffer.from(photoBase64, "base64");
+        await db.query("UPDATE courses SET photo = $1 WHERE id = $2", [buffer, idCourse]);
+        res.json({ succes: true });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
+// Retire la photo de référence d'un article (sans toucher au reste de l'article)
+app.post("/courses/photo/supprimer", async (req, res) => {
+    try {
+        const idCourse = req.body.idCourse;
+        if (!idCourse) {
+            return res.status(400).json({ erreur: "Aucun article sélectionné." });
+        }
+        await db.query("UPDATE courses SET photo = NULL WHERE id = $1", [idCourse]);
+        res.json({ succes: true });
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).json({ erreur: err.message });
+    }
+});
+
+// Sert l'image elle-même (pas de JSON ici) : appelée uniquement quand on ouvre la photo, jamais
+// au chargement normal de la liste (voir has_photo dans chercherCourses, qui évite justement de
+// charger toutes les photos d'un coup).
+app.get("/courses/:id/photo", async (req, res) => {
+    try {
+        const result = await db.query("SELECT photo FROM courses WHERE id = $1", [req.params.id]);
+        if (result.rows.length === 0 || !result.rows[0].photo) {
+            return res.status(404).send("Aucune photo.");
+        }
+        res.set("Content-Type", "image/jpeg");
+        res.send(result.rows[0].photo);
+    } catch (err) {
+        console.log("ERREUR:", err.message);
+        res.status(500).send("Erreur serveur.");
+    }
+});
+
 // Supprimer un article de la liste de courses
 app.post("/courses/supprimer", async (req, res) => {
     try {
@@ -749,8 +819,11 @@ app.post("/courses/acheter", async (req, res) => {
             }
         }
 
-        // Dans tous les cas, on marque l'article de courses comme acheté
-        await db.query("UPDATE courses SET achete = true WHERE id = $1", [idCourse]);
+        // Dans tous les cas, on marque l'article de courses comme acheté. La photo de référence
+        // n'a plus de raison d'être conservée une fois l'achat fait (elle servait juste à
+        // reconnaître le produit au magasin) : on l'efface pour de bon plutôt que de la laisser
+        // traîner indéfiniment dans la table pour un article qui ne réapparaîtra plus tel quel.
+        await db.query("UPDATE courses SET achete = true, photo = NULL WHERE id = $1", [idCourse]);
         res.json({ succes: true });
     } catch (err) {
         console.log("ERREUR:", err.message);
