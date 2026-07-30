@@ -13,16 +13,18 @@
    si on veut changer la couleur principale du site, on ne la change qu'ici. */
 
 :root {
-  --bg: #f5f0e8;              /* couleur de fond générale du site */
-  --surface: #fffdf8;         /* couleur de fond des "cartes" (blocs blancs/crème) */
-  --text: #1a1a1a;            /* couleur du texte principal (presque noir) */
-  --text-muted: #6b6257;      /* couleur du texte secondaire, plus discret */
-  --accent: #c8472b;          /* couleur d'accent principale (rouge-orangé) */
-  --accent-2: #e8a838;        /* couleur d'accent secondaire (jaune-orangé) */
-  --border: #e0d8cc;          /* couleur des bordures */
-  --radius: 14px;             /* arrondi des coins utilisé sur les grandes cartes */
-  --font-display: "Playfair Display", Georgia, serif; /* police utilisée pour les titres */
-  --font-body: "DM Sans", sans-serif;                 /* police utilisée pour le texte courant */
+  --bg: #f5f0e8; /* couleur de fond générale du site */
+  --surface: #fffdf8; /* couleur de fond des "cartes" (blocs blancs/crème) */
+  --text: #1a1a1a; /* couleur du texte principal (presque noir) */
+  --text-muted: #6b6257; /* couleur du texte secondaire, plus discret */
+  --accent: #c8472b; /* couleur d'accent principale (rouge-orangé) */
+  --accent-2: #e8a838; /* couleur d'accent secondaire (jaune-orangé) */
+  --border: #e0d8cc; /* couleur des bordures */
+  --radius: 14px; /* arrondi des coins utilisé sur les grandes cartes */
+  --font-display:
+    "Playfair Display", Georgia, serif; /* police utilisée pour les titres */
+  --font-body:
+    "DM Sans", sans-serif; /* police utilisée pour le texte courant */
 }
 
 /* ---------- RESET & BASE ---------- */
@@ -162,12 +164,17 @@ body {
   gap: 8px;
   text-decoration: none;
   color: inherit; /* utilise la couleur du texte du parent plutôt que le bleu/violet par défaut des liens */
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
   animation: fadeIn 0.35s ease both; /* petite apparition en fondu à l'affichage (voir @keyframes fadeIn plus bas) */
 }
 
 .home-link-card:hover {
-  transform: translateY(-4px); /* la carte se soulève légèrement au survol de la souris */
+  transform: translateY(
+    -4px
+  ); /* la carte se soulève légèrement au survol de la souris */
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
   border-color: var(--accent-2);
 }
@@ -279,6 +286,96 @@ body {
   font-weight: 400;
   letter-spacing: 1px;
   text-transform: uppercase;
+}
+
+/* ---- Badge Courses (sac de courses, pas un cercle) ----
+   Même conteneur que .hero__badge (mêmes dimensions/position dans la grille mobile), mais pas de
+   cercle plein ni de rotation : le sac (sac-courses.svg) est masqué directement en accent, sans
+   mot dessus — juste sa silhouette et le nombre d'articles, pour rester distinct du badge rond
+   "160 ALIMENTS" d'Aliments. */
+.hero__badge--courses {
+  width: 65px;
+  height: 65px;
+  background: none;
+  border-radius: 0;
+  animation: none;
+  position: relative;
+  justify-content: flex-end;
+  /* En px, pas en % : un padding en pourcentage se calcule TOUJOURS sur la largeur du bloc
+     englobant (ici la ligne .hero, bien plus large que ces 110px), jamais sur la propre hauteur
+     de l'élément — même avec box-sizing:border-box. Ça faisait grossir la boîte du badge à
+     ~179px de haut au lieu des 110px voulus, détachant complètement le nombre du sac.
+     8px ici (pas 14px) : proportionnel à la même échelle que la boîte 65px (14px allait avec
+     110px ; même ratio ≈ 8px pour 65px), sinon le nombre se retrouve collé tout en bas. */
+  padding-bottom: 8px;
+  box-sizing: border-box;
+}
+
+.hero__badge--courses::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--accent);
+  -webkit-mask-image: url("/images/svg/sac-courses.svg");
+  mask-image: url("/images/svg/sac-courses.svg");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.hero__badge--courses span {
+  position: relative;
+  z-index: 1;
+}
+
+/* Petit "pop" joué uniquement quand le nombre change vraiment (voir mettreAJourBadgeCourses dans
+   courses.js) : un rebond ludique plutôt qu'un simple changement silencieux de texte, sans
+   surcharger le geste d'un ajout/achat qui a déjà sa propre animation ailleurs. */
+.badge-pop {
+  animation: badgeSacPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes badgeSacPop {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  40% {
+    transform: scale(1.5) rotate(-8deg);
+  }
+  70% {
+    transform: scale(0.95) rotate(4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* Suppression = pas un achat réussi : petit "shake" horizontal plutôt que le rebond joyeux du
+   pop, pour que retirer un article sans l'acheter se ressente distinctement d'une victoire. */
+.badge-shake {
+  animation: badgeSacShake 0.4s ease;
+}
+
+@keyframes badgeSacShake {
+  0%,
+  100% {
+    transform: translateX(0) scale(1);
+  }
+  20% {
+    transform: translateX(-4px) scale(0.95);
+  }
+  40% {
+    transform: translateX(4px) scale(0.95);
+  }
+  60% {
+    transform: translateX(-3px) scale(0.97);
+  }
+  80% {
+    transform: translateX(3px) scale(0.97);
+  }
 }
 
 /* ---------- FILTRES / RECHERCHE / TRI (page Aliments) ---------- */
@@ -407,7 +504,10 @@ body {
   font-size: 0; /* cache le texte du bouton (gardé pour l'accessibilité), seule l'icône ::before est visible */
   cursor: pointer;
   position: relative;
-  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .btn-ajout-icone::before {
@@ -615,7 +715,10 @@ input.recherche-invalide:focus {
   text-decoration: none;
   color: inherit;
   display: block;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
   animation: fadeIn 0.35s ease both;
 }
 
@@ -757,7 +860,10 @@ input.recherche-invalide:focus {
 
 .detail-macros {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 4 colonnes de taille égale (calories/glucides/protéines/lipides) */
+  grid-template-columns: repeat(
+    4,
+    1fr
+  ); /* 4 colonnes de taille égale (calories/glucides/protéines/lipides) */
   gap: 12px;
 }
 
@@ -793,7 +899,12 @@ input.recherche-invalide:focus {
 }
 
 .macro-card.macro-calories .macro-label {
-  color: rgba(255, 255, 255, 0.85); /* label légèrement transparent, pour rester lisible sur le fond coloré */
+  color: rgba(
+    255,
+    255,
+    255,
+    0.85
+  ); /* label légèrement transparent, pour rester lisible sur le fond coloré */
 }
 
 .not-found {
@@ -1004,7 +1115,10 @@ input.recherche-invalide:focus {
   max-height: 50px;
   opacity: 1;
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s ease,
+    margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* "Au magasin" : on fait ses courses, pas de la gestion de preset — ce bouton n'a rien à faire
@@ -1034,7 +1148,11 @@ body.mode-magasin .preset-hebdo-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.15s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  transition:
+    transform 0.15s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .btn-enregistrer-preset.hidden {
@@ -1229,7 +1347,9 @@ body.mode-magasin .preset-hebdo-row {
   max-height: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+  transition:
+    max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.25s ease;
 }
 
 .course-item__shop-slot {
@@ -1245,7 +1365,9 @@ body.mode-magasin .preset-hebdo-row {
   max-height: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+  transition:
+    max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.25s ease;
 }
 
 /* Quand le body a la classe "mode-magasin" (ajoutée par courses.js), ces deux blocs se déplient */
@@ -1268,9 +1390,14 @@ body.mode-magasin .course-item__shop-slot {
    geste volontaire (un tap accidentel ne tape pas "3" tout seul) — cette carte-là n'a donc pas
    besoin d'un armement en plus, et son panier doit refléter tout de suite (sans le voile de
    ce fondu) qu'une quantité valide vient d'être saisie. */
-body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .course-item__shop-slot {
+body.mode-magasin
+  .course-item:not(.arme)
+  .form-acheter:not(.form-quantite)
+  .course-item__shop-slot {
   opacity: 0.4;
-  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+  transition:
+    max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease;
 }
 
 /* pointer-events:none va sur le BOUTON, pas sur .course-item__shop-slot lui-même : sinon un tap
@@ -1278,7 +1405,11 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
    ce qui armait la carte par effet de bord au lieu de ne rien faire du tout (voir le clic exclu
    sur .course-item__shop-slot dans le gestionnaire global de courses.js — qui ne peut jouer son
    rôle que si le clic atteint bien cette zone). */
-body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .course-item__shop-slot .btn-acheter-icone {
+body.mode-magasin
+  .course-item:not(.arme)
+  .form-acheter:not(.form-quantite)
+  .course-item__shop-slot
+  .btn-acheter-icone {
   pointer-events: none;
 }
 
@@ -1405,7 +1536,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   opacity: 0;
   pointer-events: none;
   z-index: 1000;
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
 }
 
 .toast-reseau.visible {
@@ -1573,8 +1706,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   display: grid;
   grid-template-rows: 0fr;
   margin-bottom: 0;
-  transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-              margin-bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    margin-bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   z-index: 60;
 }
@@ -1629,7 +1763,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
      un overflow:hidden sur la carte entière le couperait et le rendrait invisible. On arrondit
      donc seulement les coins du haut de l'emoji, plus bas, plutôt que de couper toute la carte. */
   cursor: pointer; /* toute la carte est cliquable pour ouvrir l'édition (voir stock.js) */
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .stock-item:hover {
@@ -1803,7 +1940,11 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease, opacity 0.2s ease;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease,
+    opacity 0.2s ease;
 }
 
 .btn-ajouter-courses::before {
@@ -1975,7 +2116,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 .stock-barre-cl-remplissage {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.3s ease, background 0.3s ease; /* le changement de niveau s'anime en douceur */
+  transition:
+    width 0.3s ease,
+    background 0.3s ease; /* le changement de niveau s'anime en douceur */
 }
 
 .stock-barre-cl-remplissage.niveau-plein {
@@ -2469,6 +2612,13 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
     height: 78px;
   }
 
+  .hero__badge--courses {
+    /* Proportionnel au padding-bottom de 14px sur la version 110px (110*0.14 ≈ 78*0.10) */
+    width: 65px;
+    height: 65px;
+    padding-bottom: 10px;
+  }
+
   .hero__badge span {
     font-size: 1.5rem;
   }
@@ -2495,7 +2645,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   }
 
   .food-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* cartes plus petites sur mobile */
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(160px, 1fr)
+    ); /* cartes plus petites sur mobile */
     gap: 16px;
   }
 
@@ -2601,7 +2754,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   }
 
   .detail-macros {
-    grid-template-columns: repeat(2, 1fr); /* 2 colonnes au lieu de 4 sur mobile */
+    grid-template-columns: repeat(
+      2,
+      1fr
+    ); /* 2 colonnes au lieu de 4 sur mobile */
   }
 
   .home-links {
@@ -2820,7 +2976,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
 
 .journal-totaux {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 4 colonnes égales : kcal / glucides / protéines / lipides */
+  grid-template-columns: repeat(
+    4,
+    1fr
+  ); /* 4 colonnes égales : kcal / glucides / protéines / lipides */
   gap: 12px;
   margin-bottom: 30px;
 }
@@ -2883,7 +3042,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   background: transparent;
   cursor: pointer;
   color: var(--text-muted);
-  transition: color 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+  transition:
+    color 0.15s ease,
+    transform 0.1s ease,
+    opacity 0.15s ease;
 }
 
 .btn-reorder::before {
@@ -2980,7 +3142,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s ease, transform 0.12s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.12s ease;
 }
 
 .btn-supprimer-dash::before {
@@ -3116,7 +3280,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease;
 }
 
 .btn-x-rond::before {
@@ -3164,7 +3331,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   font-weight: 600;
   cursor: pointer;
   margin-bottom: 14px;
-  transition: opacity 0.15s ease, transform 0.12s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.12s ease;
 }
 
 /* .hidden (display:none) est définie plus haut dans ce fichier, et perdait contre ce
@@ -3262,7 +3431,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   border-radius: 999px;
   cursor: pointer;
   opacity: 0.35;
-  transition: opacity 0.2s ease, background 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    background 0.2s ease;
 }
 
 .recette-vue-icone::before {
@@ -3312,7 +3483,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   justify-content: center;
   cursor: pointer;
   opacity: 0.35;
-  transition: opacity 0.2s ease, background 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    background 0.2s ease;
 }
 
 .recette-tri-icone img {
@@ -3407,7 +3580,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   border-radius: var(--radius);
   padding: 16px 14px;
   cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .recette-card:hover {
@@ -3678,7 +3853,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 /* Même souci de cascade que .btn-enregistrer-recette.hidden ci-dessus : sans ce filet,
@@ -3770,7 +3947,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   max-height: 60px;
   opacity: 1;
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, margin-bottom 0.3s ease;
+  transition:
+    max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.25s ease,
+    margin-bottom 0.3s ease;
 }
 
 #autocompleteIngredient.replie {
@@ -3907,7 +4087,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c8472b' stroke-width='3'><polyline points='6 9 12 15 18 9'/></svg>");
   background-repeat: no-repeat;
   background-position: right 14px center;
-  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.12s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.12s ease;
 }
 
 /* :hover exclu du tactile (voir @media plus bas) : sur un écran tactile il n'y a pas de vrai
@@ -3969,7 +4152,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   opacity: 0;
   transform: translateY(-6px);
   transform-origin: top;
-  transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition:
+    opacity 0.15s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .custom-select__list--ouverte {
@@ -3982,7 +4167,9 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   font-size: 0.9rem;
   color: var(--text);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .custom-select__option:hover,
@@ -4205,7 +4392,10 @@ body.mode-magasin .course-item:not(.arme) .form-acheter:not(.form-quantite) .cou
   }
 
   .journal-totaux {
-    grid-template-columns: repeat(2, 1fr); /* 2 colonnes au lieu de 4 sur mobile */
+    grid-template-columns: repeat(
+      2,
+      1fr
+    ); /* 2 colonnes au lieu de 4 sur mobile */
   }
   #autocompleteCalories {
     width: 100%;

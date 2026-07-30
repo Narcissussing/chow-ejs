@@ -4,6 +4,7 @@
 
 const listeCourses = document.getElementById("listeCourses"); // conteneur de tous les articles de la liste de courses
 const noResultsCourses = document.getElementById("noResultsCourses"); // message affiché quand la liste est vide
+const badgeNbCourses = document.getElementById("badgeNbCourses"); // nombre affiché sur le badge "sac de courses" du hero
 const sortSelectCourses = document.getElementById("sortSelectCourses"); // menu de tri (Nom/Catégorie), même select que sur Aliments/Stock
 const toggleMagasin = document.getElementById("toggleMagasin"); // bouton pour activer/désactiver le "mode magasin"
 const btnPresetHebdo = document.getElementById("btnPresetHebdo"); // bouton "Courses de la semaine" (ajout groupé)
@@ -220,6 +221,7 @@ function trierPar(cle) {
     // rappel, le panneau d'ajout (déplacé là au chargement) se retrouverait repoussé avant eux
     repositionnerPanneauAjout();
     mettreAJourMessageVideCourses();
+    mettreAJourBadgeCourses();
 }
 
 // Affiche "Aucun article dans la liste de courses" seulement quand la liste est réellement
@@ -228,6 +230,24 @@ function trierPar(cle) {
 function mettreAJourMessageVideCourses() {
     const visibles = listeCourses.querySelectorAll(".course-item").length;
     noResultsCourses.classList.toggle("hidden", visibles > 0);
+}
+
+// Le nombre sur le badge "sac de courses" (voir hero__badge--courses) n'était posé qu'une seule
+// fois au chargement de la page (rendu côté serveur) : il ne bougeait jamais après un ajout ou
+// un achat/suppression en AJAX, sans recharger la page. On le recalcule donc au même moment que
+// le message "liste vide" ci-dessus. Le petit "pop"/"shake" ne joue que si le nombre a vraiment
+// changé (pas à chaque tri), pour rester un vrai signal et pas un tic visuel permanent.
+// "type" distingue l'animation : un achat mérite un rebond joyeux (badge-pop), une suppression
+// n'est pas une victoire à célébrer pareil — juste un petit "shake" (badge-shake). Par défaut
+// (ajout d'un article, tri initial), on garde le rebond.
+function mettreAJourBadgeCourses(type) {
+    const nb = listeCourses.querySelectorAll(".course-item").length;
+    if (String(nb) === badgeNbCourses.textContent) return;
+    badgeNbCourses.textContent = nb;
+    const classeAnim = type === "suppression" ? "badge-shake" : "badge-pop";
+    badgeNbCourses.classList.remove("badge-pop", "badge-shake");
+    void badgeNbCourses.offsetWidth; // force le navigateur à relancer l'animation même répétée coup sur coup
+    badgeNbCourses.classList.add(classeAnim);
 }
 
 // Construit un en-tête de catégorie ("FRUITS", "AUTRES"...), inséré juste avant le premier
@@ -279,6 +299,7 @@ function inserrerSelonTri(nouvelItem) {
     }
 
     mettreAJourMessageVideCourses();
+    mettreAJourBadgeCourses();
 }
 
 // ============================================
@@ -622,6 +643,7 @@ function retirerItem(form, classeAnim) {
         item.remove();
         mettreAJourBoutonPresetHebdo();
         mettreAJourMessageVideCourses();
+        mettreAJourBadgeCourses(classeAnim === "disparait-supprimer" ? "suppression" : "achat");
     }, 300);
 }
 

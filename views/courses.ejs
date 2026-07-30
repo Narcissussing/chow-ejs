@@ -1,15 +1,24 @@
 <%- include('partials/header') %>
 
 <main>
-  <div class="page-header">
-    <h1>La liste qui <span>n'oublie jamais.</span></h1>
-    <p class="page-header__description">Toi si, elle non. Ajoute, coche, fonce au magasin.</p>
+  <!-- Même structure que le hero d'Aliments (voir .hero/.hero__text) : hérite du même
+       comportement responsive (grille mobile titre/badge/texte déjà en place, voir style.css).
+       Le badge lui-même est un sac de courses plutôt qu'un cercle "160 ALIMENTS" : pas de mot
+       dessus, juste le sac et le nombre, pour rester distinct du badge d'Aliments. -->
+  <section class="hero">
+    <div class="hero__text">
+      <h1>La liste qui <span>n'oublie jamais.</span></h1>
+      <p>Toi si, elle non. Ajoute, coche, fonce au magasin.</p>
+    </div>
+    <div class="hero__badge hero__badge--courses">
+      <span id="badgeNbCourses"><%= courses.length %></span>
+    </div>
+  </section>
 
-    <% if (typeof error !== 'undefined') { %>
-    <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
-    <p class="erreur"><%= error %></p>
-    <% } %>
-  </div>
+  <% if (typeof error !== 'undefined') { %>
+  <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
+  <p class="erreur"><%= error %></p>
+  <% } %>
 
   <div class="courses-section">
     <!-- Fond plein écran (voir .courses-controls-row), mais le contenu reste dans la même
