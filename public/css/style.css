@@ -331,6 +331,22 @@ body {
   z-index: 1;
 }
 
+/* Variante compacte, posée par courses.js (deplacerBadgeCourses) une fois le hero scrollé hors
+   champ : même sac/nombre que la version hero (65px), mais réduit à la hauteur RÉELLE de
+   .custom-select__button ("Trier par" juste à côté), mesurée en JS (voir hauteurBoutonTri) plutôt
+   que devinée ici en dur — width/height/padding-bottom sont donc posés en style inline par JS,
+   pas cette classe. Sa position dans la ligne suit le "gap" régulier de
+   .courses-controls-row__inner comme les autres contrôles (pas de margin spéciale ici). La
+   transition entre les deux tailles est gérée en JS via un transform (FLIP), pas ici : cette
+   classe ne fixe que l'état final, une fois l'anim terminée. */
+.badge-courses-toolbar {
+  flex-shrink: 0;
+}
+
+.badge-courses-toolbar span {
+  font-size: 0.95rem;
+}
+
 /* Petit "pop" joué uniquement quand le nombre change vraiment (voir mettreAJourBadgeCourses dans
    courses.js) : un rebond ludique plutôt qu'un simple changement silencieux de texte, sans
    surcharger le geste d'un ajout/achat qui a déjà sa propre animation ailleurs. */
@@ -1031,21 +1047,43 @@ input.recherche-invalide:focus {
 }
 
 .courses-controls-row__inner {
-  /* "Trier par" et "Au magasin" restent groupés avec un espacement normal (ce sont deux
-     réglages liés) ; seul le "+" est poussé tout à droite (margin-left: auto, voir plus bas).
-     "space-between" sur les 3 à la fois créait des vides très inégaux selon la largeur de
-     chaque élément, plutôt qu'un espacement réellement uniforme. */
+  /* "Trier par" à l'extrême gauche, "+" à l'extrême droite, et tout ce qu'il y a entre les deux
+     (Au magasin, et le badge une fois docké ici, voir courses.js) réparti à intervalles ÉGAUX
+     entre ces deux bords — exactement ce que fait justify-content:space-between, plutôt qu'un
+     "gap" fixe + une marge auto sur le "+" (ancienne approche, qui laissait un vide disproportionné
+     entre le groupe de gauche et le "+" sur un écran large). */
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: space-between;
   padding: 14px 40px;
 }
 
-/* Poussé tout à droite de .courses-controls-row__inner, séparé du groupe "Trier/Au magasin" */
-#btnToggleAjoutCourse {
-  margin-left: auto;
+/* Repère utilisé par courses.js (insertAdjacentElement) pour savoir où réinsérer le badge une
+   fois déplacé ici : "display:none" plutôt que caché autrement, pour qu'il ne compte PAS comme
+   enfant flex (sinon il ajouterait un intervalle "space-between" supplémentaire pour rien, même
+   vide, entre "Au magasin" et le badge). */
+#badgeCoursesAncre {
+  display: none;
+}
+
+/* Largeur FIXE (pas flex:0 1 220px comme les autres pages) : sinon la boîte se redimensionnait
+   selon le mot choisi ("Nom" vs "Catégorie"), donnant l'impression que le bouton "respire"/bouge
+   à chaque changement de tri au lieu de rester stable dans la barre d'outils. */
+.courses-controls-row .sort-wrapper .custom-select {
+  flex: 0 0 92px;
+  width: 92px;
+  min-width: 0;
+}
+
+/* Plus compact que le bouton générique (padding/police réduits) pour rester à l'échelle des
+   autres contrôles ronds/étroits de cette barre (badge, interrupteur, "+"), plutôt que la même
+   taille que sur Aliments/Stock/Calories où ce bouton est plus proéminent. */
+.courses-controls-row .sort-wrapper .custom-select__button {
+  padding: 6px 20px 6px 10px;
+  font-size: 0.76rem;
+  background-position: right 7px center;
 }
 
 /* ---- Bascule "Au magasin" façon interrupteur iOS, plus simple qu'un bouton pilule ---- */
@@ -1098,36 +1136,61 @@ input.recherche-invalide:focus {
   transform: translateX(16px);
 }
 
-/* Même colonne que "Enregistrer" (voir .preset-hebdo-row juste en dessous) : la marge qui
-   séparait ce bouton du premier article de la liste vit maintenant sur le conteneur commun. */
+/* Même colonne que "Enregistrer"/les filtres (voir .preset-hebdo-row__normal/__filtres juste en
+   dessous) : la marge qui séparait ce bouton du premier article de la liste vit maintenant sur le
+   conteneur commun. "position:relative" + hauteur fixe : les deux groupes qu'elle contient se
+   superposent en crossfade au même endroit (voir plus bas) plutôt que de s'empiler l'un sous
+   l'autre, donc la rangée elle-même ne bouge/ne collapse plus — seul son CONTENU change. */
 .preset-hebdo-row {
+  position: relative;
+  height: 34px;
+  margin-top: 10px;
+}
+
+/* Les deux groupes remplissent tout l'espace de .preset-hebdo-row et se croisent en fondu : le
+   groupe INACTIF passe en "position:absolute" (sorti du flux, donc sans influence sur la hauteur)
+   pendant que l'ACTIF repasse en "position:static" (flux normal, lui donne sa vraie largeur/hauteur).
+   Basculer ces deux propriétés en même temps que l'opacité, plutôt qu'un simple fondu croisé
+   classique, est ce qui évite que les deux groupes ne se chevauchent visuellement pendant la
+   transition (voir "Au magasin" dans courses.js, qui pose "mode-magasin" sur le body). */
+.preset-hebdo-row__normal,
+.preset-hebdo-row__filtres {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 10px;
-  /* Pas de margin-bottom ici : l'espace avant le premier article vient de #listeCourses
-     (margin-top), pour rester présent même quand cette rangée est masquée (mode magasin) —
-     sinon la pastille de stock d'un article (position: absolute, top:-8px) se retrouvait à
-     chevaucher la barre d'outils sticky juste au-dessus.
-     max-height (plutôt que display:none) rend l'apparition/disparition animable : "Au magasin"
-     bascule juste la classe sur le body (voir toggleMagasin dans courses.js), la transition
-     se joue automatiquement des deux côtés. */
-  max-height: 50px;
-  opacity: 1;
-  overflow: hidden;
-  transition:
-    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.2s ease,
-    margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  transition: opacity 0.25s ease;
 }
 
-/* "Au magasin" : on fait ses courses, pas de la gestion de preset — ce bouton n'a rien à faire
-   là (voir toggleMagasin dans courses.js, qui pose "mode-magasin" sur le body) */
-body.mode-magasin .preset-hebdo-row {
-  max-height: 0;
+.preset-hebdo-row__normal {
+  opacity: 1;
+}
+
+.preset-hebdo-row__filtres {
+  position: absolute;
+  inset: 0;
   opacity: 0;
-  margin-top: 0;
   pointer-events: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.preset-hebdo-row__filtres::-webkit-scrollbar {
+  display: none;
+}
+
+body.mode-magasin .preset-hebdo-row__normal {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.mode-magasin .preset-hebdo-row__filtres {
+  position: static;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .btn-preset-hebdo {
@@ -1509,19 +1572,28 @@ body.mode-magasin
 
 #formAjouterCourse {
   display: flex;
+  width: 100%;
   gap: 10px;
   align-items: center;
+  justify-content: center;
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  /* Pas de margin-bottom ici : .panneau-ajout__interieur centre maintenant ce formulaire
+     verticalement lui-même (display:flex + align-items:center, voir plus haut) dans une hauteur
+     imposée en JS pour matcher un article de la liste — une marge en bas n'aurait plus lieu
+     d'être et grandirait la carte au-delà de cette hauteur voulue. */
 }
 
 #autocompleteCourses {
   position: relative; /* sert de repère pour positionner la liste de suggestions juste en dessous (position: absolute) */
   /* Comme #autocomplete (Stock) : compact plutôt qu'étiré sur toute la largeur du panneau,
      mais un plafond légèrement différent (280px vs 320px) pour ne pas être un simple clone —
-     ce champ partage aussi sa ligne avec "Ajouter" (texte libre), contrairement à Stock. */
+     ce champ partage aussi sa ligne avec "Ajouter" (texte libre), contrairement à Stock.
+     "margin:0 auto" en plus de justify-content:center sur le parent (ceinture et bretelles) :
+     centre le champ même si jamais un futur enfant supplémentaire de #formAjouterCourse
+     redevenait visible et perturbait le calcul de centrage du parent. */
   flex: 0 1 280px;
   min-width: 200px;
+  margin: 0 auto;
 }
 
 /* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
@@ -1869,7 +1941,18 @@ body.mode-magasin
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 12px 20px;
+  /* 90px normalement, 108px "Au magasin" (voir body.mode-magasin ci-dessous) : "display:flex" +
+     "center" garde le formulaire centré verticalement dans cette hauteur fixe plutôt que collé en
+     haut. La transition rend le changement entre les deux hauteurs animé au lieu d'un saut sec. */
+  height: 90px;
+  display: flex;
+  align-items: center;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.mode-magasin .panneau-ajout__interieur {
+  height: 108px;
 }
 
 /* ---- Liste stock (grille de cartes, avec emoji en attendant de vraies photos) ---- */
@@ -2952,6 +3035,16 @@ body.mode-magasin
        réelle, avec la liste de suggestions qui se retrouve poussée loin en dessous. */
     width: 100%;
     flex-basis: auto;
+  }
+
+  /* Courses seulement (pas #autocomplete/Stock, plein écran par choix) : plafonné plutôt que
+     pleine largeur, "margin:0 auto" le centre horizontalement dans la carte même en colonne
+     (align-items:stretch ci-dessus ne force le plein largeur QUE pour les enfants sans largeur
+     propre — un enfant avec une largeur explicite, comme ici, reste maître de sa taille). */
+  #autocompleteCourses {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
   }
 
   #btnAjouter {
@@ -4396,6 +4489,14 @@ body.mode-magasin
   font-family: var(--font-body);
   font-size: 0.9rem;
   color: var(--text);
+}
+
+/* Le champ hérite sinon le line-height:1.6 du body (pensé pour du texte en paragraphe, pas un
+   champ d'une seule ligne) : avec "DM Sans", ça pouvait décaler visuellement le texte/placeholder
+   vers le haut ou le bas de la boîte au lieu de le centrer verticalement pile entre le padding
+   haut et bas. "normal" laisse le champ se centrer sur les vraies métriques de la police. */
+#rechercheAlimentCourses {
+  line-height: normal;
 }
 
 #rechercheAlimentCourses:focus,

@@ -4,13 +4,15 @@
   <!-- Même structure que le hero d'Aliments (voir .hero/.hero__text) : hérite du même
        comportement responsive (grille mobile titre/badge/texte déjà en place, voir style.css).
        Le badge lui-même est un sac de courses plutôt qu'un cercle "160 ALIMENTS" : pas de mot
-       dessus, juste le sac et le nombre, pour rester distinct du badge d'Aliments. -->
-  <section class="hero">
+       dessus, juste le sac et le nombre, pour rester distinct du badge d'Aliments. courses.js le
+       déplace vers la barre d'outils sticky (voir #badgeCoursesAncre plus bas) une fois que le
+       hero sort de l'écran, puis le ramène ici au retour, avec une transition animée. -->
+  <section class="hero" id="heroCourses">
     <div class="hero__text">
       <h1>La liste qui <span>n'oublie jamais.</span></h1>
       <p>Toi si, elle non. Ajoute, coche, fonce au magasin.</p>
     </div>
-    <div class="hero__badge hero__badge--courses">
+    <div class="hero__badge hero__badge--courses" id="badgeCoursesContainer">
       <span id="badgeNbCourses"><%= courses.length %></span>
     </div>
   </section>
@@ -39,6 +41,9 @@
           <span class="toggle-ios__track"><span class="toggle-ios__thumb"></span></span>
           <span class="toggle-ios__label">Au magasin</span>
         </button>
+        <!-- Repère (vide, sans taille propre) marquant où le badge doit s'insérer une fois
+             déplacé ici par courses.js — voir #badgeCoursesContainer dans le hero plus haut. -->
+        <span id="badgeCoursesAncre"></span>
         <button type="button" id="btnToggleAjoutCourse" class="btn-ajout-icone" title="Ajouter un article">Ajouter un article</button>
       </div>
     </div>
@@ -78,14 +83,32 @@
       </div>
     </div>
 
-    <!-- "Enregistrer" (icône seule, à gauche) remplace le preset "Courses de la semaine" (au milieu)
-         par la liste actuelle : voir courses.js pour les règles d'affichage (5+ articles) et
-         d'activation (liste différente du preset). Le preset lui-même ajoute d'un coup les courses
-         habituelles, sans effacer ce qui est déjà dans la liste (contrairement au bouton recette de
-         la page Calories, qui lui remplace tout). -->
+    <!-- Cette rangée affiche DEUX groupes qui se remplacent l'un l'autre au même endroit (voir
+         style.css : .preset-hebdo-row__normal / __filtres, crossfade selon "Au magasin", même
+         esprit que l'accordéon déjà utilisé ailleurs sur cette page) plutôt que d'empiler un
+         nouveau bloc en dessous :
+         - normalement, "Enregistrer" (icône seule, à gauche) qui remplace le preset "Courses de
+           la semaine" par la liste actuelle (voir courses.js pour les règles d'affichage — 5+
+           articles — et d'activation — liste différente du preset) ;
+         - en mode "Au magasin", des filtres par rayon à la place (ex: Fruits + Légumes) — pas
+           besoin de filtrer pendant qu'on compose sa liste, seulement une fois dans le magasin. -->
     <div class="preset-hebdo-row">
-      <button type="button" id="btnEnregistrerPresetHebdo" class="btn-enregistrer-preset hidden" title="Mettre à jour le preset avec la liste actuelle">Enregistrer</button>
-      <button type="button" id="btnPresetHebdo" class="filter-btn btn-preset-hebdo">🧺 Semaine</button>
+      <div class="preset-hebdo-row__normal">
+        <button type="button" id="btnEnregistrerPresetHebdo" class="btn-enregistrer-preset hidden" title="Mettre à jour le preset avec la liste actuelle">Enregistrer</button>
+        <button type="button" id="btnPresetHebdo" class="filter-btn btn-preset-hebdo">🧺 Semaine</button>
+      </div>
+      <!-- Sélection MULTIPLE (pas exclusive comme sur Aliments) : chaque rayon se coche/décoche
+           indépendamment, "Tous" est un raccourci qui coche/décoche tout d'un coup plutôt qu'une
+           vraie catégorie parmi d'autres (voir courses.js). Tout coché par défaut = rien de filtré,
+           mais SEUL "Tous" est marqué actif dans ce cas (pas chaque rayon en plus) — courses.js
+           réaffirme la même règle au chargement (metAJourBoutonsFiltreCourses). -->
+      <% const categoriesCourses = [...new Set(courses.map(function (item) { return item.categorie || 'zzz'; }))].sort(); %>
+      <div class="preset-hebdo-row__filtres filter-buttons" id="courseFiltresMagasin">
+        <button type="button" class="filter-btn active" data-categorie="tous">Tous</button>
+        <% categoriesCourses.forEach(function(cat) { %>
+        <button type="button" class="filter-btn" data-categorie="<%= cat %>"><%= cat === 'zzz' ? 'Autres' : cat %></button>
+        <% }) %>
+      </div>
     </div>
 
     <!-- Liste des articles à acheter, générée côté serveur -->

@@ -250,6 +250,88 @@ function mettreAJourBadgeCourses(type) {
     badgeNbCourses.classList.add(classeAnim);
 }
 
+// ============================================
+// BADGE COURSES : NAVETTE HERO <-> BARRE D'OUTILS SELON LE SCROLL
+// ============================================
+// Le badge vit dans le hero par défaut (grand format). Une fois le hero scrollé sous la barre
+// d'outils sticky (plus de place pour lui en haut de l'écran), on le déplace RÉELLEMENT (même
+// noeud DOM, pas une copie) entre "Au magasin" et "+", en petit format — puis on le ramène dans
+// le hero au retour en haut. Technique FLIP (First/Last/Invert/Play) : on capture sa position
+// avant/après le déplacement, et on anime la DIFFÉRENCE via un transform, plutôt que de faire
+// deviner au navigateur comment interpoler un changement de parent (ce qu'il ne sait pas faire).
+const heroCourses = document.getElementById("heroCourses");
+const badgeCoursesContainer = document.getElementById("badgeCoursesContainer");
+const badgeCoursesAncre = document.getElementById("badgeCoursesAncre");
+const barreOutilsCourses = document.querySelector(".courses-controls-row");
+
+let badgeCoursesDansToolbar = false;
+
+// Hauteur réelle du bouton "Trier par" (menu déroulant personnalisé, voir custom-selects.js) :
+// mesurée en direct plutôt que devinée en dur en CSS, pour vraiment matcher peu importe comment
+// la police/le padding se rendent réellement sur l'appareil.
+function hauteurBoutonTri() {
+    const bouton = document.querySelector(".sort-wrapper .custom-select__button");
+    return bouton ? bouton.offsetHeight : 34;
+}
+
+function deplacerBadgeCourses(versToolbar) {
+    if (versToolbar === badgeCoursesDansToolbar) return;
+
+    const avant = badgeCoursesContainer.getBoundingClientRect();
+
+    if (versToolbar) {
+        badgeCoursesAncre.insertAdjacentElement("afterend", badgeCoursesContainer);
+        badgeCoursesContainer.classList.add("badge-courses-toolbar");
+        // Taille imposée en JS (pas seulement via la classe CSS) : seul ce moment-là (vers le
+        // bas) doit changer la taille — le retour vers le hero (ci-dessous) l'efface pour
+        // retrouver EXACTEMENT la taille d'origine du hero, sans valeur intermédiaire figée.
+        const taille = hauteurBoutonTri();
+        badgeCoursesContainer.style.width = taille + "px";
+        badgeCoursesContainer.style.height = taille + "px";
+        // Même ratio padding-bottom/hauteur que la version hero (8px pour 65px), pour que le
+        // nombre reste centré sur le sac à n'importe quelle taille de bouton "Trier par".
+        badgeCoursesContainer.style.paddingBottom = (taille * (8 / 65)).toFixed(1) + "px";
+    } else {
+        heroCourses.appendChild(badgeCoursesContainer);
+        badgeCoursesContainer.classList.remove("badge-courses-toolbar");
+        badgeCoursesContainer.style.width = "";
+        badgeCoursesContainer.style.height = "";
+        badgeCoursesContainer.style.paddingBottom = "";
+    }
+    badgeCoursesDansToolbar = versToolbar;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const apres = badgeCoursesContainer.getBoundingClientRect();
+    const dx = avant.left - apres.left;
+    const dy = avant.top - apres.top;
+    const echelleX = avant.width / apres.width;
+    const echelleY = avant.height / apres.height;
+
+    badgeCoursesContainer.style.transition = "none";
+    badgeCoursesContainer.style.transform = `translate(${dx}px, ${dy}px) scale(${echelleX}, ${echelleY})`;
+    void badgeCoursesContainer.offsetWidth; // force le navigateur à appliquer l'état de départ avant d'animer
+    badgeCoursesContainer.style.transition = "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+    badgeCoursesContainer.style.transform = "";
+}
+
+if (heroCourses && badgeCoursesContainer && badgeCoursesAncre && barreOutilsCourses) {
+    // rootMargin négatif en haut = zone "cachée" derrière le header fixe + la barre sticky : le
+    // badge ne rejoint la barre d'outils que lorsque le hero n'a VRAIMENT plus de place au-dessus
+    // de cette zone (pas juste dès qu'on scrolle un peu).
+    const styleRacine = getComputedStyle(document.documentElement);
+    const hauteurHeader = parseFloat(styleRacine.getPropertyValue("--header-h")) || 65;
+    const decalage = hauteurHeader + barreOutilsCourses.offsetHeight;
+
+    const observateurHeroCourses = new IntersectionObserver(
+        function (entries) {
+            deplacerBadgeCourses(!entries[0].isIntersecting);
+        },
+        { rootMargin: `-${decalage}px 0px 0px 0px`, threshold: 0 }
+    );
+    observateurHeroCourses.observe(heroCourses);
+}
+
 // Construit un en-tête de catégorie ("FRUITS", "AUTRES"...), inséré juste avant le premier
 // article de chaque groupe quand le tri actif est "categorie"
 function construireEnteteCategorie(categorie) {
@@ -377,6 +459,104 @@ btnEnregistrerPresetHebdo.addEventListener("click", function () {
 });
 
 // ============================================
+// FILTRES PAR RAYON (mode magasin uniquement, voir .preset-hebdo-row__filtres)
+// ============================================
+// Sélection MULTIPLE (contrairement à Aliments, où un seul filtre exclut les autres) : chaque
+// rayon se coche/décoche indépendamment, pour pouvoir combiner par ex. Fruits + Légumes. "Tous"
+// reste EXCLUSIF visuellement : dès que le filtre revient à "tout accepté" (soit en cliquant
+// "Tous", soit en cochant chaque rayon un par un à la main), seul le bouton "Tous" s'allume —
+// jamais "Tous" + chaque rayon en même temps. Un sous-ensemble strict, lui, n'allume que les
+// rayons choisis, jamais "Tous". Déclaré AVANT "MODE MAGASIN" ci-dessous : appliquerModeMagasin()
+// (juste après) peut appeler reinitialiserFiltreCategorieCourses() dès son tout premier appel,
+// donc tout ça doit déjà exister à ce moment-là (sinon erreur "accès avant initialisation").
+const courseFiltresMagasin = document.getElementById("courseFiltresMagasin");
+let categoriesFiltreActives = new Set();
+
+function boutonsCategorieCourses() {
+    return Array.from(courseFiltresMagasin.querySelectorAll('.filter-btn:not([data-categorie="tous"])'));
+}
+
+// Les rayons (chips) sont dérivés UNE FOIS, côté serveur, de la liste au moment du chargement de
+// la page (voir courses.ejs) : un article ajouté ensuite peut très bien appartenir à un rayon qui
+// n'existait pas encore à ce moment-là (aucune chip pour lui). Sans ce garde-fou, un tel article
+// se ferait cacher en permanence par appliquerFiltreCategorie{Item,Courses} ci-dessous — même en
+// dehors du mode magasin — puisque categoriesFiltreActives ne peut par définition pas le connaître.
+function categorieEstConnue(categorie) {
+    return boutonsCategorieCourses().some(function (b) {
+        return b.dataset.categorie === categorie;
+    });
+}
+
+// Reflète categoriesFiltreActives sur les boutons : "Tous" seul si tout est sélectionné, sinon
+// seuls les rayons réellement choisis (jamais les deux en même temps, voir plus haut).
+function metAJourBoutonsFiltreCourses() {
+    const total = boutonsCategorieCourses().length;
+    const toutSelectionne = categoriesFiltreActives.size === total;
+    const boutonTous = courseFiltresMagasin.querySelector('.filter-btn[data-categorie="tous"]');
+    boutonTous.classList.toggle("active", toutSelectionne);
+    boutonsCategorieCourses().forEach(function (b) {
+        b.classList.toggle("active", !toutSelectionne && categoriesFiltreActives.has(b.dataset.categorie));
+    });
+}
+
+function appliquerFiltreCategorieCourses() {
+    document.querySelectorAll("#listeCourses .course-item").forEach(function (item) {
+        if (!categorieEstConnue(item.dataset.categorie)) return; // rayon apparu après coup : jamais filtré
+        item.classList.toggle("hidden", !categoriesFiltreActives.has(item.dataset.categorie));
+    });
+}
+
+// Remet tout à "sélectionné" (donc rien de filtré) : appelé en quittant le mode magasin, pour ne
+// pas laisser des articles invisibles la prochaine fois qu'on compose sa liste normalement.
+function reinitialiserFiltreCategorieCourses() {
+    if (!courseFiltresMagasin) return;
+    categoriesFiltreActives = new Set(boutonsCategorieCourses().map((b) => b.dataset.categorie));
+    metAJourBoutonsFiltreCourses();
+    document.querySelectorAll("#listeCourses .course-item").forEach(function (item) {
+        item.classList.remove("hidden");
+    });
+}
+
+// Applique le filtre actuel à UN article donné (utilisé pour les articles ajoutés après coup,
+// pendant qu'un filtre est déjà en cours — voir activerItem plus bas).
+function appliquerFiltreCategorieItem(item) {
+    if (!courseFiltresMagasin) return;
+    if (!categorieEstConnue(item.dataset.categorie)) return; // rayon apparu après coup : jamais filtré
+    item.classList.toggle("hidden", !categoriesFiltreActives.has(item.dataset.categorie));
+}
+
+if (courseFiltresMagasin) {
+    reinitialiserFiltreCategorieCourses(); // tout coché par défaut au chargement
+
+    courseFiltresMagasin.querySelectorAll(".filter-btn").forEach(function (bouton) {
+        bouton.addEventListener("click", function () {
+            const categorie = this.dataset.categorie;
+
+            const toutEtaitCoche = categoriesFiltreActives.size === boutonsCategorieCourses().length;
+
+            if (categorie === "tous") {
+                // Interrupteur : si tout est déjà sélectionné, "Tous" désélectionne tout ; sinon
+                // il sélectionne tout (même depuis un état partiel).
+                categoriesFiltreActives = toutEtaitCoche ? new Set() : new Set(boutonsCategorieCourses().map((b) => b.dataset.categorie));
+            } else if (toutEtaitCoche) {
+                // On repart d'une sélection unique plutôt que de juste retirer celle-ci du tout :
+                // cliquer un rayon depuis "Tous" doit se sentir comme "je choisis CE rayon-là",
+                // pas comme "je retire ce seul rayon parmi tous les autres encore cochés".
+                // Les clics suivants (branche ci-dessous) pourront ensuite en ajouter d'autres.
+                categoriesFiltreActives = new Set([categorie]);
+            } else if (categoriesFiltreActives.has(categorie)) {
+                categoriesFiltreActives.delete(categorie);
+            } else {
+                categoriesFiltreActives.add(categorie);
+            }
+
+            metAJourBoutonsFiltreCourses();
+            appliquerFiltreCategorieCourses();
+        });
+    });
+}
+
+// ============================================
 // MODE MAGASIN
 // ============================================
 
@@ -385,6 +565,10 @@ btnEnregistrerPresetHebdo.addEventListener("click", function () {
 function appliquerModeMagasin(actif) {
     document.body.classList.toggle("mode-magasin", actif);
     toggleMagasin.classList.toggle("actif", actif);
+    // En quittant le mode magasin, on efface le filtre par rayon (voir plus haut) : sinon des
+    // articles resteraient invisibles la prochaine fois qu'on compose sa liste normalement,
+    // sans le repère visuel du filtre actif pour comprendre pourquoi.
+    if (!actif) reinitialiserFiltreCategorieCourses();
 }
 
 // On se souvient du mode magasin choisi précédemment grâce au localStorage du navigateur
@@ -973,6 +1157,7 @@ function activerItem(item) {
     activerPhoto(item);
     activerQuantite(item);
     activerActions(item);
+    appliquerFiltreCategorieItem(item);
     // Pas d'appel à un "activerArmement(item)" ici : un seul écouteur global s'en charge pour
     // toutes les cartes à la fois (voir plus bas, juste avant le chargement initial des articles).
 }
@@ -1042,6 +1227,7 @@ document.querySelectorAll(".course-item").forEach(activerItem);
 // Tant qu'il y a du réseau maintenant (ex: à la maison, avant de partir), on rapatrie en local
 // toute photo pas encore en cache sur cet appareil — voir synchroniserPhotosLocales plus haut.
 synchroniserPhotosLocales();
+
 
 // ============================================
 // CONSTRUCTION D'UN NOUVEL ITEM (ajout sans rechargement)
