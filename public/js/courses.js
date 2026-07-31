@@ -781,7 +781,6 @@ const photoBackdrop = document.getElementById("photoBackdrop");
 const photoApercu = document.querySelector(".photo-apercu");
 const imgApercuPhoto = document.getElementById("imgApercuPhoto");
 const btnFermerPhoto = document.getElementById("btnFermerPhoto");
-const btnRemplacerPhoto = document.getElementById("btnRemplacerPhoto");
 const btnSupprimerPhoto = document.getElementById("btnSupprimerPhoto");
 
 // Article concerné par le sélecteur de fichier ou l'aperçu actuellement ouverts (un seul à la
@@ -934,11 +933,6 @@ inputPhotoCourse.addEventListener("change", function () {
             // On la garde déjà en local ici : pas la peine d'attendre une resynchro pour pouvoir
             // la revoir hors-ligne, elle est disponible tout de suite après cet ajout.
             sauvegarderPhotoLocale(idCourse, base64Compressee);
-            // Remplacement depuis l'aperçu déjà ouvert (voir btnRemplacerPhoto) : on rafraîchit
-            // l'image affichée tout de suite, sinon l'ancienne photo reste visible à l'écran.
-            if (photoBackdrop.classList.contains("ouvert") && idCoursePhotoActuelle === idCourse) {
-                imgApercuPhoto.src = "data:image/jpeg;base64," + base64Compressee;
-            }
         })
         .catch(gererErreurReseau);
 });
@@ -982,15 +976,6 @@ function fermerApercuPhoto() {
 }
 
 btnFermerPhoto.addEventListener("click", fermerApercuPhoto);
-
-// Remplace la photo existante : réutilise le même sélecteur de fichier partagé que l'ajout
-// initial — l'upload écrase déjà l'ancienne photo côté serveur (UPDATE, pas INSERT, voir
-// index.js), donc aucune route séparée n'est nécessaire ici.
-btnRemplacerPhoto.addEventListener("click", function () {
-    if (!idCoursePhotoActuelle) return;
-    inputPhotoCourse.value = "";
-    inputPhotoCourse.click();
-});
 
 photoBackdrop.addEventListener("click", function (e) {
     if (e.target === photoBackdrop) fermerApercuPhoto();
@@ -1241,10 +1226,14 @@ document.addEventListener("click", function (e) {
         return;
     }
 
-    // Zones à comportement propre (note, suppression, "+1/+2/+5", panier) : ne réarment/ne
-    // redésarment jamais la carte cliquée elle-même, mais désarment quand même une AUTRE carte
-    // qui serait restée armée (ex: on ouvre la note d'une carte pendant qu'une autre est armée)
-    if (e.target.closest(".course-nom-emoji, .input-commentaire, .note-affichee, .form-supprimer, .course-item__quantite-groupe, .course-item__shop-slot, .btn-photo-course")) {
+    // Zones à comportement propre (note, suppression, "+1/+2/+5") : ne réarment/ne redésarment
+    // jamais la carte cliquée elle-même, mais désarment quand même une AUTRE carte qui serait
+    // restée armée (ex: on ouvre la note d'une carte pendant qu'une autre est armée).
+    // ".course-item__shop-slot" (le bouton "Acheté") N'EST PLUS exclu ici : tant que la carte
+    // n'est pas armée, ce bouton est inerte (pointer-events:none, voir style.css) — l'exclure
+    // du geste d'armement faisait qu'un tap dessus ne faisait RIEN DU TOUT (ni armer, ni
+    // acheter), au lieu d'armer la carte comme un tap sur n'importe quelle autre zone neutre.
+    if (e.target.closest(".course-nom-emoji, .input-commentaire, .note-affichee, .form-supprimer, .course-item__quantite-groupe, .btn-photo-course")) {
         if (carte !== itemArmeActuellement) desarmerCarteActuelle();
         return;
     }

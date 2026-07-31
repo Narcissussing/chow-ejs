@@ -4713,25 +4713,3 @@ body.mode-magasin .panneau-ajout__interieur {
   cursor: pointer;
 }
 
-.photo-apercu__actions {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.btn-remplacer-photo,
-.btn-supprimer-photo {
-  border: none;
-  background: none;
-  color: white;
-  text-decoration: underline;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  cursor: pointer;
-  opacity: 0.85;
-}
-
-.btn-remplacer-photo:hover,
-.btn-supprimer-photo:hover {
-  opacity: 1;
-}

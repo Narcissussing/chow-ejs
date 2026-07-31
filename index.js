@@ -84,6 +84,13 @@ await db.query(`
     )
 `);
 
+// "quantite"/"unite"/"magasin" sur "courses" : jamais lues ni écrites nulle part dans l'app
+// (vérifié — aucun SELECT ne les affiche, aucun INSERT/UPDATE ne les remplit), reliquat d'une
+// version antérieure d'avant la répartition cl/quantité/libre actuelle.
+await db.query("ALTER TABLE courses DROP COLUMN IF EXISTS quantite");
+await db.query("ALTER TABLE courses DROP COLUMN IF EXISTS unite");
+await db.query("ALTER TABLE courses DROP COLUMN IF EXISTS magasin");
+
 // On dit à Express de comprendre les données envoyées par les formulaires HTML classiques
 app.use(express.urlencoded({ extended: true }));
 // On dit à Express de servir les fichiers du dossier "public" tels quels (CSS, JS, images...)
@@ -248,7 +255,7 @@ async function chercherCourses() {
     // la demande (voir /courses/:id/photo).
     const result = await db.query(
         `SELECT courses.id, courses.food_id, courses.nom_libre, courses.commentaire, courses.achete,
-                courses.quantite, courses.date_ajout, courses.unite, courses.magasin,
+                courses.date_ajout,
                 (courses.photo IS NOT NULL) AS has_photo,
                 COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji,
                 foods.unite AS food_unite, foods.tracking_type, foods.categorie, stock.quantite AS quantite_stock
