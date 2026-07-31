@@ -525,35 +525,78 @@ function appliquerFiltreCategorieItem(item) {
     item.classList.toggle("hidden", !categoriesFiltreActives.has(item.dataset.categorie));
 }
 
+// Attache le comportement de clic à UNE chip de filtre : extrait à part pour pouvoir l'attacher
+// aussi bien aux chips rendues par le serveur (au chargement) qu'à celles créées en direct par
+// synchroniserChipsFiltreCourses() plus bas (nouveau rayon apparu en cours de route).
+function activerBoutonFiltreCourses(bouton) {
+    bouton.addEventListener("click", function () {
+        const categorie = this.dataset.categorie;
+
+        const toutEtaitCoche = categoriesFiltreActives.size === boutonsCategorieCourses().length;
+
+        if (categorie === "tous") {
+            // Interrupteur : si tout est déjà sélectionné, "Tous" désélectionne tout ; sinon
+            // il sélectionne tout (même depuis un état partiel).
+            categoriesFiltreActives = toutEtaitCoche ? new Set() : new Set(boutonsCategorieCourses().map((b) => b.dataset.categorie));
+        } else if (toutEtaitCoche) {
+            // On repart d'une sélection unique plutôt que de juste retirer celle-ci du tout :
+            // cliquer un rayon depuis "Tous" doit se sentir comme "je choisis CE rayon-là",
+            // pas comme "je retire ce seul rayon parmi tous les autres encore cochés".
+            // Les clics suivants (branche ci-dessous) pourront ensuite en ajouter d'autres.
+            categoriesFiltreActives = new Set([categorie]);
+        } else if (categoriesFiltreActives.has(categorie)) {
+            categoriesFiltreActives.delete(categorie);
+        } else {
+            categoriesFiltreActives.add(categorie);
+        }
+
+        metAJourBoutonsFiltreCourses();
+        appliquerFiltreCategorieCourses();
+    });
+}
+
+// Ajoute/retire des chips selon les rayons RÉELLEMENT présents dans la liste actuelle (pas
+// seulement ceux qui existaient au chargement de la page) : appelé après chaque achat/suppression/
+// ajout (voir retirerItem, ajouterArticle, btnPresetHebdo plus bas), pour que "Au magasin" reste
+// à jour tout seul pendant qu'on avance dans la liste, sans recharger la page.
+function synchroniserChipsFiltreCourses() {
+    if (!courseFiltresMagasin) return;
+
+    const categoriesPresentes = new Set(
+        Array.from(listeCourses.querySelectorAll(".course-item")).map(function (item) {
+            return item.dataset.categorie;
+        })
+    );
+
+    // Un rayon entièrement acheté/supprimé n'a plus lieu de proposer un filtre vide
+    boutonsCategorieCourses().forEach(function (bouton) {
+        if (categoriesPresentes.has(bouton.dataset.categorie)) return;
+        categoriesFiltreActives.delete(bouton.dataset.categorie);
+        bouton.remove();
+    });
+
+    // Un rayon présent mais encore sans chip (nouvel article d'un rayon jamais vu) en reçoit une,
+    // COCHÉE tout de suite : sinon l'article qu'on vient d'ajouter/de voir disparaîtrait comme par
+    // magie au moment même où sa chip apparaît, alors que rien n'a changé de son point de vue.
+    const categoriesConnues = new Set(boutonsCategorieCourses().map((b) => b.dataset.categorie));
+    categoriesPresentes.forEach(function (categorie) {
+        if (categoriesConnues.has(categorie)) return;
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "filter-btn active";
+        bouton.dataset.categorie = categorie;
+        bouton.textContent = categorie === "zzz" ? "Autres" : categorie;
+        activerBoutonFiltreCourses(bouton);
+        courseFiltresMagasin.appendChild(bouton);
+        categoriesFiltreActives.add(categorie);
+    });
+
+    metAJourBoutonsFiltreCourses();
+}
+
 if (courseFiltresMagasin) {
     reinitialiserFiltreCategorieCourses(); // tout coché par défaut au chargement
-
-    courseFiltresMagasin.querySelectorAll(".filter-btn").forEach(function (bouton) {
-        bouton.addEventListener("click", function () {
-            const categorie = this.dataset.categorie;
-
-            const toutEtaitCoche = categoriesFiltreActives.size === boutonsCategorieCourses().length;
-
-            if (categorie === "tous") {
-                // Interrupteur : si tout est déjà sélectionné, "Tous" désélectionne tout ; sinon
-                // il sélectionne tout (même depuis un état partiel).
-                categoriesFiltreActives = toutEtaitCoche ? new Set() : new Set(boutonsCategorieCourses().map((b) => b.dataset.categorie));
-            } else if (toutEtaitCoche) {
-                // On repart d'une sélection unique plutôt que de juste retirer celle-ci du tout :
-                // cliquer un rayon depuis "Tous" doit se sentir comme "je choisis CE rayon-là",
-                // pas comme "je retire ce seul rayon parmi tous les autres encore cochés".
-                // Les clics suivants (branche ci-dessous) pourront ensuite en ajouter d'autres.
-                categoriesFiltreActives = new Set([categorie]);
-            } else if (categoriesFiltreActives.has(categorie)) {
-                categoriesFiltreActives.delete(categorie);
-            } else {
-                categoriesFiltreActives.add(categorie);
-            }
-
-            metAJourBoutonsFiltreCourses();
-            appliquerFiltreCategorieCourses();
-        });
-    });
+    courseFiltresMagasin.querySelectorAll(".filter-btn").forEach(activerBoutonFiltreCourses);
 }
 
 // ============================================
@@ -614,6 +657,7 @@ btnPresetHebdo.addEventListener("click", function () {
                 ajouterAnimationEntree(nouvelItem);
             });
             mettreAJourBoutonPresetHebdo();
+            synchroniserChipsFiltreCourses(); // une seule passe pour tout le lot plutôt qu'une par article
         })
         .catch(gererErreurReseau);
 });
@@ -1127,6 +1171,10 @@ function retirerItem(form, classeAnim) {
         mettreAJourBoutonPresetHebdo();
         mettreAJourMessageVideCourses();
         mettreAJourBadgeCourses(classeAnim === "disparait-supprimer" ? "suppression" : "achat");
+        // Un rayon vidé par cet achat/suppression ne doit plus avoir de chip de filtre (voir
+        // synchroniserChipsFiltreCourses) : appelé APRÈS item.remove() pour que ce rayon ne
+        // compte plus parmi les catégories encore présentes dans la liste.
+        synchroniserChipsFiltreCourses();
     }, 300);
 }
 
@@ -1442,6 +1490,7 @@ function ajouterArticle(idAliment, texteLibre) {
             activerItem(nouvelItem);
             ajouterAnimationEntree(nouvelItem);
             mettreAJourBoutonPresetHebdo();
+            synchroniserChipsFiltreCourses(); // nouvelle chip si ce rayon n'en avait pas encore
 
             // On referme le panneau d'ajout automatiquement après un ajout réussi, comme sur Stock
             fermerPanneauAjoutCourse();
