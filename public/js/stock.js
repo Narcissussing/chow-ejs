@@ -1,8 +1,6 @@
 // ============================================
 // RÉCUPÉRATION DES ÉLÉMENTS HTML DE LA PAGE
 // ============================================
-// On récupère une bonne fois pour toutes tous les éléments HTML dont on aura besoin,
-// pour ne pas avoir à les rechercher à chaque fois dans le code plus bas.
 
 const rechercheAliment = document.getElementById("rechercheAliment"); // champ de recherche pour ajouter un aliment
 const listeAliments = document.getElementById("listeAliments"); // liste déroulante des suggestions d'aliments
@@ -20,23 +18,16 @@ const ajoutBackdropStock = document.getElementById("ajoutBackdropStock"); // fon
 const btnVueGrille = document.getElementById("btnVueGrille"); // bouton "vue grille" (cartes)
 const btnVueListe = document.getElementById("btnVueListe"); // bouton "vue liste" (articles empilés)
 
-// Variables qui gardent en mémoire quel filtre est actuellement actif ("tous" par défaut).
-// Emplacement et type de suivi partagent un seul groupe de boutons à choix unique (voir plus
-// bas) : un seul des deux peut être différent de "tous" à la fois.
+// Emplacement et type de suivi partagent un seul groupe de boutons à choix unique : un seul peut différer de "tous" à la fois.
 let emplacementActif = "tous";
 let typeActif = "tous";
 
-// Retire les accents ("é" -> "e", "à" -> "a"...) pour que la recherche les ignore : taper "e"
-// doit trouver "Café" aussi bien que "Cafe". NFD décompose chaque lettre accentuée en deux
-// caractères (la lettre de base + un accent séparé), qu'on peut ensuite retirer avec la regex
-// (plage Unicode des signes diacritiques combinants).
+// Retire les accents (NFD + strip des diacritiques) pour que "e" trouve aussi "Café".
 function normaliserTexte(str) {
   return str.normalize("NFD").replace(new RegExp("[̀-ͯ]", "g"), "");
 }
 
-// Petit bandeau discret en bas de l'écran (même composant visuel que courses.js/calories.js,
-// voir .toast-reseau dans style.css), pour les messages "déjà dans le stock"/erreurs réseau :
-// pas une alert() bloquante à fermer soi-même.
+// Bandeau discret auto-effaçable (même composant que courses.js/calories.js).
 function afficherToast(message) {
   let toast = document.getElementById("toastReseau");
   if (!toast) {
@@ -70,8 +61,7 @@ function ajouterAnimationEntree(el) {
   );
 }
 
-// Petite fonction de sécurité : transforme les caractères spéciaux (<, >, ", etc.)
-// en leur équivalent HTML pour éviter d'injecter du code HTML/JS dans la page (faille XSS)
+// Échappe le HTML pour éviter une injection XSS.
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -81,8 +71,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-// Liste des niveaux possibles pour les aliments suivis en "cl" (comme une bouteille : pleine, à moitié, etc.)
-// "valeur" = ce qui est stocké en base de données, "texte" = ce qui est affiché à l'utilisateur
+// Niveaux possibles pour un aliment suivi en "cl" ("valeur" = stocké en base, "texte" = affiché).
 const OPTIONS_CL = [
   { valeur: "plein", texte: "Plein" },
   { valeur: "à moitié", texte: "À moitié" },
@@ -90,28 +79,23 @@ const OPTIONS_CL = [
   { valeur: "vide", texte: "Vide" }
 ];
 
-// "Bas" : pour un aliment suivi en "cl" (bouteille), les deux niveaux les plus bas ; pour les
-// autres (unité/pack), moins de 2 restants. Même logique que côté serveur (voir chercherStock/stock.ejs).
+// "Bas" : 2 niveaux les plus bas pour "cl", moins de 2 restants sinon (même logique que le serveur).
 function estQuantiteBasse(valeur, trackingType) {
   if (trackingType === "cl") return valeur === "presque vide" || valeur === "vide";
   return Number(valeur) < 2;
 }
 
-// HTML du bouton "Ajouter aux courses" (icône seule, voir .btn-ajouter-courses dans style.css)
 function htmlBoutonAjouterCourses(foodId) {
   return `<button type="button" class="btn-ajouter-courses" data-food-id="${escapeHtml(foodId)}" title="Ajouter aux courses"></button>`;
 }
 
-// Câble le clic sur le bouton "Ajouter aux courses" d'un article, s'il est présent : l'ajoute à
-// la liste de courses via fetch, puis fait disparaître le bouton (jamais reproposé tant qu'il y
-// reste, voir data-deja-en-courses posé ici après coup).
+// Ajoute à la liste de courses puis fait disparaître le bouton (jamais reproposé, voir data-deja-en-courses).
 function activerBoutonAjouterCourses(item) {
   const bouton = item.querySelector(".btn-ajouter-courses");
   if (!bouton) return;
 
   bouton.addEventListener("click", function (e) {
-    // Empêche ce clic d'ouvrir aussi le mode édition de la quantité (toute la carte est cliquable)
-    e.stopPropagation();
+    e.stopPropagation(); // toute la carte est cliquable, on évite d'ouvrir l'édition en plus
     bouton.disabled = true;
 
     fetch("/courses/ajouter", {
@@ -135,8 +119,7 @@ function activerBoutonAjouterCourses(item) {
   });
 }
 
-// Pour trier les articles "cl" par quantité, on donne un rang numérique à chaque niveau
-// (0 = le moins rempli, 3 = le plus rempli) puisque "plein"/"vide" ne sont pas des nombres
+// Rang numérique par niveau (0 = moins rempli, 3 = plus rempli), pour trier les "cl" par quantité.
 const RANG_NIVEAU_CL = {
   vide: 0,
   "presque vide": 1,
@@ -144,8 +127,6 @@ const RANG_NIVEAU_CL = {
   plein: 3
 };
 
-// Renvoie une valeur numérique comparable pour trier un article par quantité, qu'il soit
-// suivi en nombre (unités/packs) ou en niveau (cl)
 function valeurQuantitePourTri(item) {
   if (item.dataset.trackingType === "cl") {
     return RANG_NIVEAU_CL[item.dataset.quantite] ?? 0;
@@ -157,8 +138,7 @@ function valeurQuantitePourTri(item) {
 // RECHERCHE D'AJOUT (remplace la recherche du stock, jamais les deux ensemble)
 // ============================================
 
-// Les deux barres ne peuvent pas servir en même temps : cliquer sur "+" fait disparaître la
-// recherche du stock et fait apparaître celle d'ajout à sa place (même emplacement dans la ligne).
+// Les deux barres ne servent jamais ensemble : "+" remplace la recherche du stock par celle d'ajout.
 btnToggleAjout.addEventListener("click", function () {
   if (autocompleteWrapper.hidden) {
     ouvrirRechercheAjoutStock();
@@ -175,12 +155,8 @@ function ouvrirRechercheAjoutStock() {
   void autocompleteWrapper.offsetWidth; // force le navigateur à relancer l'animation même si la classe était déjà passée
   autocompleteWrapper.classList.add("entree");
   btnToggleAjout.classList.add("actif");
-  // Assombrit le reste de la page pour concentrer l'attention sur la recherche d'ajout
   ajoutBackdropStock.classList.add("ouvert");
-  // Reprend ce qui était tapé dans la recherche du stock : si elle ne trouvait rien, c'est
-  // probablement que cet aliment n'est pas encore dans le stock — pas la peine de retaper le
-  // même texte ici. "select()" plutôt que juste focus() : un tap sur "+" pour chercher autre
-  // chose doit pouvoir remplacer ce texte d'un coup, pas devoir l'effacer à la main d'abord.
+  // Reprend le texte de la recherche du stock ; select() pour pouvoir le remplacer d'un coup.
   rechercheAliment.value = searchInput.value;
   rechercheAliment.focus();
   rechercheAliment.select();
@@ -200,23 +176,18 @@ function fermerRechercheAjoutStock() {
   ajoutBackdropStock.classList.remove("ouvert");
 }
 
-// Cliquer sur le fond assombri referme aussi (même geste que la fiche recette de Calories)
 ajoutBackdropStock.addEventListener("click", fermerRechercheAjoutStock);
 
 // ============================================
 // AUTOCOMPLETE + AJOUT INSTANTANÉ (comme Courses/Calories)
 // ============================================
 
-// Au départ, la liste de suggestions est cachée
 listeAliments.hidden = true;
-// On récupère tous les éléments <li> (un par aliment) présents dans la liste de suggestions
 const items = listeAliments.querySelectorAll("li");
 
-// Quand l'utilisateur tape dans le champ de recherche d'aliment...
 rechercheAliment.addEventListener("input", function () {
   const recherche = normaliserTexte(this.value.toLowerCase());
 
-  // Si le champ est vide, on cache la liste de suggestions et on s'arrête là
   if (recherche === "") {
     listeAliments.hidden = true;
     rechercheAliment.classList.remove("recherche-invalide");
@@ -225,34 +196,19 @@ rechercheAliment.addEventListener("input", function () {
 
   listeAliments.hidden = false;
 
-  // On parcourt tous les aliments disponibles et on affiche tous ceux qui contiennent le texte tapé.
-  // Aucune limite de nombre : si la liste est longue, elle défile (voir max-height dans style.css).
-  // normaliserTexte des deux côtés : taper "e" doit aussi trouver "Café" (accents ignorés).
   let visibles = 0;
   items.forEach(function (item) {
     item.hidden = !normaliserTexte(item.textContent.toLowerCase()).includes(recherche);
     if (!item.hidden) visibles++;
   });
 
-  // Rouge seulement si rien ne correspond (voir appliquerFiltresStock pour la même règle) :
-  // ici, ça veut aussi dire "aucun aliment connu à ce nom" — la piste étant que le champ "libre"
-  // en dessous prend le relais dans ce cas précis (voir plus bas).
   rechercheAliment.classList.toggle("recherche-invalide", visibles === 0);
 });
 
-// Empêche un aliment d'être ajouté deux fois en double-tapant vite sur la même suggestion : sans
-// ça, "trouverStockItemParNom" juste en dessous ne voit rien tant que la 1ère requête n'a pas
-// fini et que la nouvelle carte n'est pas encore dans le DOM — un tap en plus pendant ce court
-// délai passait donc la vérification et créait une VRAIE 2e ligne en base (visible seulement
-// après un rechargement de la page, jamais tout de suite).
+// Verrou anti double-tap : sans lui, un 2e tap avant la réponse du 1er créait une vraie 2e ligne en base.
 const idsEnCoursAjoutStock = new Set();
 
-// Toucher une suggestion ajoute directement l'aliment au stock, avec une quantité de départ
-// par défaut ("plein" pour un niveau, 1 pour une quantité) : la valeur exacte se corrige
-// ensuite directement sur la carte, pas besoin d'un second champ + bouton "Ajouter" séparés.
-// Si l'aliment choisi est déjà dans le stock (pas de doublon possible), on ne l'ajoute pas :
-// on amène directement l'utilisateur sur la carte déjà existante, avec le même effet visuel
-// (surbrillance + défilement) que pour un ajout réussi.
+// Une suggestion ajoute directement au stock avec une quantité de départ ("plein" ou 1) ; si déjà présent, on met en avant plutôt que dupliquer.
 items.forEach(function (item) {
   item.addEventListener("click", function () {
     const type = this.dataset.type; // le type de suivi de cet aliment ("cl", "unite", "pack"...)
@@ -277,18 +233,14 @@ items.forEach(function (item) {
   });
 });
 
-// Cherche, parmi les articles déjà affichés dans le stock, celui qui correspond à ce nom
 function trouverStockItemParNom(nom) {
   return Array.from(listeStock.querySelectorAll(".stock-item")).find(function (item) {
     return item.dataset.nom === nom;
   });
 }
 
-// Amène l'utilisateur directement sur une carte de stock donnée : on efface d'abord tout filtre
-// ou recherche qui pourrait la cacher, puis on y défile en douceur avec une petite surbrillance
+// Efface tout filtre/recherche qui pourrait cacher la carte, puis scroll + surbrillance.
 function mettreEnAvantStockItem(item) {
-  // On remet le filtre à "Tous" et on vide la recherche du stock, sinon la carte pourrait
-  // rester invisible (cachée par un filtre actif) malgré le défilement
   if (emplacementActif !== "tous" || typeActif !== "tous") {
     tousLesBoutonsFiltres.forEach(function (b) {
       b.classList.remove("active");
@@ -319,10 +271,7 @@ document.addEventListener("click", function (e) {
 // FILTRE EMPLACEMENT + RECHERCHE
 // ============================================
 
-// Tous / Frigo / Congélateur / Réserve / Niveau / Pièces forment un seul groupe à choix
-// unique : cliquer sur n'importe lequel désactive tous les autres, même s'ils ne répondent
-// pas à la même question (emplacement vs type de suivi). Un bouton d'emplacement remet donc
-// le filtre de type à "tous" (et inversement), plutôt que de les combiner.
+// Un seul groupe à choix unique : un bouton d'emplacement remet le type à "tous" (et inversement).
 const tousLesBoutonsFiltres = document.querySelectorAll(".filters .filter-btn");
 
 tousLesBoutonsFiltres.forEach(function (bouton) {
@@ -344,15 +293,11 @@ tousLesBoutonsFiltres.forEach(function (bouton) {
   });
 });
 
-// Quand l'utilisateur tape dans la barre de recherche du stock, on filtre en direct
 searchInput.addEventListener("input", function () {
   appliquerFiltresStock();
 });
 
-// Cette fonction affiche/cache chaque article du stock selon :
-// 1) le filtre d'emplacement actif (tous, frigo, congélateur, réserve)
-// 2) le filtre de type actif (tous types, bouteilles = "cl", pièces = tout le reste)
-// 3) le texte tapé dans la barre de recherche
+// Affiche/cache chaque article selon l'emplacement actif, le type actif et la recherche.
 function appliquerFiltresStock() {
   const recherche = normaliserTexte(searchInput.value.toLowerCase().trim());
   const stockItems = listeStock.querySelectorAll(".stock-item");
@@ -364,8 +309,6 @@ function appliquerFiltresStock() {
     const correspondType =
       typeActif === "tous" ||
       (typeActif === "cl" ? item.dataset.trackingType === "cl" : item.dataset.trackingType !== "cl");
-    // normaliserTexte ignore les accents ("e" trouve aussi "Café") ; dataset.nom est déjà en
-    // minuscules (voir stock.ejs/construireStockItemDOM), il ne reste qu'à retirer les accents
     const correspondRecherche = normaliserTexte(item.dataset.nom).includes(recherche);
 
     if (correspondEmplacement && correspondType && correspondRecherche) {
@@ -376,10 +319,7 @@ function appliquerFiltresStock() {
     }
   });
 
-  // Si aucun article n'est visible après filtrage, on affiche le message "Aucun article ne correspond"
   noResultsStock.classList.toggle("hidden", visibles > 0);
-  // Même règle que sur Aliments (voir appliquerFiltres) : rouge seulement si une recherche tapée
-  // ne trouve rien, jamais au simple focus ni quand le champ est vide.
   searchInput.classList.toggle("recherche-invalide", recherche !== "" && visibles === 0);
 }
 
@@ -387,24 +327,19 @@ function appliquerFiltresStock() {
 // TRI
 // ============================================
 
-// Quand on change la valeur du menu déroulant de tri, on retrie la liste
 sortSelect.addEventListener("change", function () {
   trierStock(this.value);
 });
 
-// Trie les articles du stock selon le critère choisi, puis les réinsère dans le bon ordre dans la page
 function trierStock(critere) {
   const stockItems = Array.from(listeStock.querySelectorAll(".stock-item"));
 
   stockItems.sort(function (a, b) {
     if (critere === "alpha") {
-      // Tri alphabétique par nom
       return a.dataset.nom.localeCompare(b.dataset.nom);
     }
 
     if (critere === "quantite-asc" || critere === "quantite-desc") {
-      // Tri par quantité : les articles "cl" sont convertis en rang 0-3 (voir RANG_NIVEAU_CL)
-      // pour pouvoir être comparés aux articles suivis en nombre (unités/packs)
       const quantiteA = valeurQuantitePourTri(a);
       const quantiteB = valeurQuantitePourTri(b);
       if (quantiteA !== quantiteB) {
@@ -420,8 +355,7 @@ function trierStock(critere) {
     return critere === "ancien" ? joursB - joursA : joursA - joursB;
   });
 
-  // appendChild sur un élément déjà présent dans la page le déplace simplement à la fin :
-  // en le faisant dans l'ordre trié, on réorganise visuellement toute la liste
+  // appendChild déplace un élément déjà présent : dans l'ordre trié, ça réorganise toute la liste.
   stockItems.forEach(function (item) {
     listeStock.appendChild(item);
   });
@@ -431,11 +365,9 @@ function trierStock(critere) {
 // CONSTRUCTION D'UN NOUVEL ITEM STOCK
 // ============================================
 
-// Construit dynamiquement (en JavaScript) le bloc HTML d'un nouvel article de stock,
-// pour pouvoir l'ajouter à la page sans avoir à recharger toute la page
+// Construit le HTML d'un nouvel article de stock, sans recharger la page.
 function construireStockItemDOM(item) {
   const div = document.createElement("div");
-  // On échappe les valeurs texte pour éviter d'insérer du HTML dangereux dans la page
   const id = escapeHtml(item.id);
   const nom = escapeHtml(item.nom);
   const emoji = escapeHtml(item.emoji);
@@ -447,31 +379,23 @@ function construireStockItemDOM(item) {
   div.dataset.nom = item.nom.toLowerCase();
   div.dataset.emplacement = item.emplacement;
   div.dataset.trackingType = item.tracking_type;
-  div.dataset.jours = 0; // un article tout juste ajouté a été mis à jour "aujourd'hui" (0 jour)
-  div.dataset.quantite = item.quantite; // nécessaire pour que le tri par quantité fonctionne tout de suite, sans recharger la page
+  div.dataset.jours = 0; // ajouté aujourd'hui
+  div.dataset.quantite = item.quantite; // pour que le tri par quantité fonctionne sans recharger
   div.dataset.foodId = item.food_id;
-  // Un article qu'on vient d'ajouter n'est presque jamais déjà dans la liste de courses ; pas de
-  // vraie donnée du serveur pour ça ici (voir /stock/ajouter), donc "false" par défaut est sûr.
-  div.dataset.dejaEnCourses = "false";
+  div.dataset.dejaEnCourses = "false"; // pas de vraie donnée serveur pour ça ici, "false" est sûr
 
-  // Selon le type de suivi, on affiche soit une barre de niveau (cl), soit un simple nombre
-  // ("Ajouter aux courses" n'apparaît qu'en mode édition, voir ouvrirEdition)
   const infosHtml =
     item.tracking_type === "cl"
       ? `<div class="stock-barre-cl" title="${quantite}"><div class="stock-barre-cl-remplissage ${niveauCl}"></div></div>`
       : `<span class="stock-quantite">${quantite}</span>`;
 
-  // On affiche la vraie photo si l'aliment en a une, sinon l'emoji comme solution de secours
-  // (même logique que côté serveur dans views/stock.ejs)
   const imageHtml = item.image
     ? `<img src="/${escapeHtml(item.image)}" alt="${nom}" class="stock-item__img" />`
     : `<div class="stock-item__emoji">${emoji}</div>`;
 
-  // Même étiquette d'emplacement que côté serveur (voir views/stock.ejs)
   const emplacementTexte =
     item.emplacement === "fg" ? "Frigo" : item.emplacement === "fz" ? "Congélateur" : "Réserve";
 
-  // Même structure que les cartes générées côté serveur (voir views/stock.ejs)
   div.innerHTML = `
     ${imageHtml}
     <div class="stock-item__body">
@@ -502,10 +426,7 @@ function construireStockItemDOM(item) {
 // AJOUT (fetch, sans rechargement)
 // ============================================
 
-// Ajoute un aliment au stock (appelé au tap sur une suggestion, voir plus haut), avec une
-// quantité de départ déjà décidée (pas de deuxième étape de saisie avant l'ajout).
-// Renvoie la promesse (pas juste "fetch(...).then(...)" en l'air) : l'appelant s'en sert pour
-// savoir quand la requête est vraiment terminée (voir idsEnCoursAjoutStock plus haut).
+// Renvoie la promesse (pas juste lancée en l'air) : sert à savoir quand la requête est vraiment terminée.
 function ajouterAuStock(idAliment, quantiteDepart) {
   return fetch("/stock/ajouter", {
     method: "POST",
@@ -519,23 +440,15 @@ function ajouterAuStock(idAliment, quantiteDepart) {
         return;
       }
 
-      // On construit le nouvel article et on l'ajoute à la liste affichée à l'écran
       const nouvelItem = construireStockItemDOM(data.item);
       listeStock.appendChild(nouvelItem);
-      // On active pour ce nouvel article les mêmes comportements que les autres (édition, suppression)
       activerEditionInline(nouvelItem);
       activerItemSuppression(nouvelItem);
-      // Petite classe CSS pour une animation d'apparition
       ajouterAnimationEntree(nouvelItem);
-      // On retrie toute la liste (avec le nouvel article dedans) selon le tri actuellement choisi,
-      // au lieu de laisser le nouvel article toujours coincé tout en bas
-      trierStock(sortSelect.value);
-      // Et on ré-applique les filtres actifs (emplacement/type/recherche) : si le nouvel article
-      // ne correspond pas au filtre en cours, il doit rester caché comme n'importe quel autre
-      appliquerFiltresStock();
+      trierStock(sortSelect.value); // retrie plutôt que de laisser le nouvel article tout en bas
+      appliquerFiltresStock(); // reste caché si un filtre actif ne le concerne pas
 
-      // Puis on amène l'utilisateur directement sur la carte qu'il vient d'ajouter, là où le
-      // tri/filtre actuel l'a placée, plutôt que de le laisser deviner où elle est passée
+      // Amène l'utilisateur sur la carte, là où le tri/filtre actuel l'a placée.
       if (!nouvelItem.classList.contains("hidden")) {
         nouvelItem.scrollIntoView({ behavior: "smooth", block: "center" });
         nouvelItem.classList.add("mise-en-avant");
@@ -570,12 +483,10 @@ function activerEditionInline(item) {
     if (e.target.closest(".stock-quantite-edit, .stock-cl-edit, .custom-select")) return;
 
     if (!item.classList.contains("en-edition")) {
-      // Si un autre article était déjà ouvert, on le referme (et on sauvegarde) avant d'ouvrir celui-ci
-      fermerItemOuvert();
+      fermerItemOuvert(); // referme (et sauvegarde) l'article déjà ouvert, s'il y en a un
       ouvrirEdition(item, zone, trackingType);
       itemOuvertActuellement = item;
     } else {
-      // Si l'article est déjà ouvert, un second clic referme et sauvegarde
       fermerEditionEtSauvegarder(item, zone, trackingType);
       itemOuvertActuellement = null;
     }
@@ -592,14 +503,8 @@ function fermerItemOuvert() {
   itemOuvertActuellement = null;
 }
 
-// Cliquer en dehors de tous les items ferme et sauvegarde celui qui est ouvert.
-// e.composedPath() plutôt que e.target.closest(".stock-item") : ouvrirEdition() remplace le
-// contenu de la zone cliquée (zone.innerHTML = "") DANS LA MÊME frappe de clic, donc si on a
-// justement tapé sur le nombre/la barre (l'élément qui vient d'être détaché du DOM), e.target
-// n'a alors plus aucun parent — "e.target.closest(...)" retombe toujours à null, laissant croire
-// que le clic était "en dehors" de la carte et refermant l'édition à l'instant où elle s'ouvre.
-// composedPath() capture le chemin AVANT toute mutation, donc reste correct même une fois la
-// cible détachée.
+// composedPath() (pas e.target.closest) : ouvrirEdition() détache e.target du DOM dans le même
+// clic (zone.innerHTML = ""), donc closest() y retomberait toujours à null.
 document.addEventListener("click", function (e) {
   if (itemOuvertActuellement && !e.composedPath().some(function (el) { return el.classList && el.classList.contains("stock-item"); })) {
     fermerItemOuvert();
@@ -612,40 +517,28 @@ function ouvrirEdition(item, zone, trackingType) {
   const valeurActuelle = zone.dataset.valeurActuelle;
 
   if (trackingType === "cl") {
-    // Cas "cl" : on affiche un menu déroulant avec les niveaux possibles
     const select = document.createElement("select");
     select.className = "stock-cl-edit anim-fondu";
-    // Transformé en menu déroulant personnalisé par custom-selects.js (sa liste ouverte est
-    // maintenant posée sur <body>, positionnée par rapport à l'écran : elle ne peut plus se
-    // retrouver cachée sous une carte voisine, voir custom-selects.js et .custom-select__list)
+    // Transformé en menu personnalisé par custom-selects.js (liste posée sur <body>, jamais cachée sous une carte voisine).
     OPTIONS_CL.forEach(function (option) {
       const opt = document.createElement("option");
       opt.value = option.valeur;
       opt.textContent = option.texte;
-      if (option.valeur === valeurActuelle) opt.selected = true; // on présélectionne la valeur actuelle
+      if (option.valeur === valeurActuelle) opt.selected = true;
       select.appendChild(opt);
     });
     zone.innerHTML = "";
     zone.appendChild(select);
     ajouterBoutonCoursesSiBas(item, zone, valeurActuelle, trackingType);
   } else {
-    // Cas "unité"/"pack" : on affiche un simple champ nombre, avec la valeur actuelle déjà remplie
     const input = document.createElement("input");
     input.type = "number";
     input.className = "stock-quantite-edit anim-fondu";
     input.value = valeurActuelle;
     input.min = "0";
-    // Ces quantités (unités/packs) sont toujours des nombres entiers côté serveur (voir
-    // /courses/acheter, qui fait un cast SQL "::integer") : step="1" empêche de taper une
-    // décimale ici, qui casserait silencieusement l'addition la prochaine fois que cet
-    // aliment est acheté depuis Courses (voir le repli sur 0 dans la requête SQL).
-    input.step = "1";
+    input.step = "1"; // toujours un entier côté serveur (cast SQL ::integer dans /courses/acheter)
 
-    // Ligne du haut : le champ + "Ajouter aux courses" côte à côte, comme avant. Les boutons de
-    // soustraction rapide (voir ajouterBoutonsSoustraction) vont EN DESSOUS, sur leur propre
-    // ligne : d'où .stock-edition-colonne sur la zone, qui empile ces deux lignes verticalement
-    // (retiré à la fermeture, voir fermerEditionEtSauvegarder, sinon l'affichage normal — hors
-    // édition — se retrouverait aussi empilé au lieu de rester centré sur une seule ligne).
+    // Les boutons de soustraction rapide vont sur leur propre ligne en dessous (.stock-edition-colonne).
     const ligneInput = document.createElement("div");
     ligneInput.className = "stock-edition-ligne";
     ligneInput.appendChild(input);
@@ -653,30 +546,24 @@ function ouvrirEdition(item, zone, trackingType) {
     zone.innerHTML = "";
     zone.classList.add("stock-edition-colonne");
     zone.appendChild(ligneInput);
-    input.focus(); // le curseur se place directement dans le champ
-    input.select(); // et le texte existant est sélectionné, pour pouvoir le remplacer facilement
+    input.focus();
+    input.select();
     ajouterBoutonCoursesSiBas(item, ligneInput, valeurActuelle, trackingType);
     ajouterBoutonsSoustraction(item, zone, input, valeurActuelle, trackingType);
   }
 }
 
-// "Ajouter aux courses" n'apparaît qu'ici, en mode édition (jamais dans l'affichage normal) :
-// seulement si la quantité est basse et que l'article n'y est pas déjà (voir data-deja-en-courses,
-// posé au chargement puis mis à jour par activerBoutonAjouterCourses une fois ajouté).
-// "conteneur" est la ligne du haut avec le champ (pas forcément "zone" elle-même, voir plus haut).
+// N'apparaît qu'en mode édition, si la quantité est basse et pas déjà dans la liste de courses.
 function ajouterBoutonCoursesSiBas(item, conteneur, valeurActuelle, trackingType) {
   if (!estQuantiteBasse(valeurActuelle, trackingType) || item.dataset.dejaEnCourses === "true") return;
   conteneur.insertAdjacentHTML("beforeend", htmlBoutonAjouterCourses(item.dataset.foodId));
   activerBoutonAjouterCourses(item);
 }
 
-// Boutons "-1"/"-2"/"-5" (unité/pack seulement, jamais "cl") : soustraient directement de la
-// quantité actuelle, enregistrent et referment l'édition en un seul geste — pas besoin de taper
-// à la main pour le cas courant "j'en ai utilisé N". Un bouton n'apparaît que si sa valeur ne
-// ferait pas passer la quantité sous zéro (ex: pas de "-5" s'il n'en reste que 3).
+// "-1/-2/-5" (unité/pack) : soustrait, enregistre et ferme en un geste. N'apparaît que si ça ne passe pas sous zéro.
 function ajouterBoutonsSoustraction(item, zone, input, valeurActuelle, trackingType) {
   const actuel = Number(valeurActuelle);
-  if (!actuel) return; // déjà à 0 (ou valeur non numérique) : rien à soustraire
+  if (!actuel) return;
 
   const valeursDisponibles = [1, 2, 5].filter(function (v) { return v <= actuel; });
   if (valeursDisponibles.length === 0) return;
@@ -702,25 +589,20 @@ function ajouterBoutonsSoustraction(item, zone, input, valeurActuelle, trackingT
   zone.appendChild(rangee);
 }
 
-// Referme le mode édition d'un article : si la valeur a changé, on l'enregistre côté serveur
+// Si la valeur a changé, l'enregistre côté serveur ; sinon revient juste à l'affichage normal.
 function fermerEditionEtSauvegarder(item, zone, trackingType) {
-  // Retiré ici (plutôt que dans chaque branche ci-dessous) pour être sûr qu'il disparaît dans
-  // tous les cas : sans ça, l'affichage normal (hors édition) se retrouvait empilé en colonne
-  // au lieu de rester centré sur une seule ligne (voir ajouterBoutonsSoustraction).
-  zone.classList.remove("stock-edition-colonne");
+  zone.classList.remove("stock-edition-colonne"); // sinon l'affichage normal resterait empilé
 
   const champ = zone.querySelector(".stock-quantite-edit, .stock-cl-edit");
   const nouvelleValeur = champ ? champ.value : zone.dataset.valeurActuelle;
   const valeurActuelle = zone.dataset.valeurActuelle;
 
   if (!nouvelleValeur || nouvelleValeur === valeurActuelle) {
-    // Rien n'a changé : on revient simplement à l'affichage normal, pas besoin d'appeler le serveur
     zone.innerHTML = construireAffichageStatique(valeurActuelle, trackingType);
     item.classList.remove("en-edition");
     return;
   }
 
-  // La valeur a changé : on envoie la nouvelle quantité au serveur pour l'enregistrer en base de données
   fetch("/stock/modifier", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -729,20 +611,17 @@ function fermerEditionEtSauvegarder(item, zone, trackingType) {
     .then(function (response) { return response.json(); })
     .then(function (data) {
       if (data.erreur) {
-        // En cas d'erreur, on revient à l'affichage précédent (on annule visuellement le changement)
-        alert(data.erreur);
+        alert(data.erreur); // annule visuellement le changement
         zone.innerHTML = construireAffichageStatique(valeurActuelle, trackingType);
         item.classList.remove("en-edition");
         return;
       }
 
-      // Succès : on met à jour l'affichage avec la nouvelle valeur confirmée par le serveur
       zone.dataset.valeurActuelle = data.quantite;
-      item.dataset.quantite = data.quantite; // pour que le tri par quantité reste juste sans recharger la page
+      item.dataset.quantite = data.quantite; // pour que le tri par quantité reste juste sans recharger
       zone.innerHTML = construireAffichageStatique(data.quantite, trackingType);
       item.classList.remove("en-edition");
 
-      // Petit effet visuel (flash) pour indiquer que la mise à jour a bien été prise en compte
       item.classList.add("maj-flash");
       setTimeout(function () {
         item.classList.remove("maj-flash");
@@ -750,8 +629,7 @@ function fermerEditionEtSauvegarder(item, zone, trackingType) {
     });
 }
 
-// Construit le petit bout de HTML affiché normalement (hors édition) pour une valeur donnée
-// ("Ajouter aux courses" n'apparaît qu'en mode édition, voir ouvrirEdition — jamais ici)
+// Affichage hors édition ("Ajouter aux courses" n'apparaît qu'en édition, jamais ici).
 function construireAffichageStatique(valeur, trackingType) {
   const valeurHtml = escapeHtml(valeur);
 
@@ -761,7 +639,6 @@ function construireAffichageStatique(valeur, trackingType) {
   return `<span class="stock-quantite anim-fondu">${valeurHtml}</span>`;
 }
 
-// Renvoie le nom de la classe CSS correspondant au niveau de remplissage (pour la barre visuelle "cl")
 function classeNiveauCL(valeur) {
   if (valeur === "plein") return "niveau-plein";
   if (valeur === "à moitié") return "niveau-moitie";
@@ -773,13 +650,11 @@ function classeNiveauCL(valeur) {
 // SUPPRIMER (fetch + animation de sortie)
 // ============================================
 
-// Active le comportement de suppression (via fetch, sans recharger la page) pour un article donné
 function activerItemSuppression(item) {
   const form = item.querySelector(".form-supprimer-stock");
 
   form.addEventListener("submit", function (event) {
-    // On empêche l'envoi classique du formulaire (qui rechargerait la page)
-    event.preventDefault();
+    event.preventDefault(); // pas de rechargement, on envoie en fetch()
 
     const donnees = new FormData(form);
     const objet = {};
@@ -799,8 +674,6 @@ function activerItemSuppression(item) {
           return;
         }
 
-        // On ajoute une classe qui déclenche une animation de disparition,
-        // puis on retire réellement l'élément de la page une fois l'animation terminée (300ms)
         item.classList.add("disparait");
         setTimeout(function () {
           item.remove();

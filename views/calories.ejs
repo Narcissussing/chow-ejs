@@ -1,20 +1,12 @@
 <%- include('partials/header') %>
 
 <%
-  // Ce bloc de code (sans le signe =) exécute du JavaScript côté serveur, sans rien afficher directement.
-  // On calcule ici les totaux du jour en additionnant les valeurs de chaque entrée du journal (reduce = "additionner tout").
   const totalKcal = journal.reduce((sum, j) => sum + Number(j.calories_calc), 0);
   const totalGlucides = journal.reduce((sum, j) => sum + Number(j.glucides_calc), 0);
   const totalProteines = journal.reduce((sum, j) => sum + Number(j.proteines_calc), 0);
   const totalLipides = journal.reduce((sum, j) => sum + Number(j.lipides_calc), 0);
-  // On trie les aliments par ordre alphabétique pour la liste de suggestions d'ingrédients (recette)
   const alimentsTries = [...aliments].sort((a, b) => a.nom.localeCompare(b.nom));
-  // Les deux catégories de recette sont un ensemble fermé (voir le sélecteur du panneau détail,
-  // qui n'offre que ces deux boutons) : on les fixe ici plutôt que de les déduire des recettes
-  // existantes, sinon une catégorie sans aucune recette n'aurait jamais sa propre section.
-  // "Plat" (nourriture) est listé en premier, "Fraîcheur" regroupe boissons ET glaces (les deux
-  // catégories froides/à boire n'ont pas assez de recettes chacune pour justifier une section
-  // séparée, voir l'échange avec l'utilisateur).
+  // Ensemble fixe plutôt que déduit des recettes existantes, sinon une catégorie sans recette n'aurait jamais sa section.
   const CATEGORIES_RECETTE = [
     { valeur: "plat", label: "Plats" },
     { valeur: "fraicheur", label: "Fraîcheur" }
@@ -26,8 +18,7 @@
     <h1>Compter sans <span>culpabiliser.</span></h1>
     <p class="page-header__description">Chaque bouchée a le droit d'être notée — sauf la troisième part de gâteau, on garde un œil dessus.</p>
 
-    <!-- Les 4 totaux du jour, calculés ci-dessus. Les id (totalKcal, etc.) permettent
-         au JavaScript (calories.js) de les mettre à jour en direct sans recharger la page -->
+    <!-- Les id (totalKcal, etc.) permettent à calories.js de mettre ces totaux à jour en direct. -->
     <div class="journal-totaux">
       <div class="macro-card macro-calories">
         <span class="macro-valeur" id="totalKcal"><%= totalKcal.toFixed(0) %></span>
@@ -47,8 +38,7 @@
       </div>
     </div>
 
-    <!-- Journal et Recettes sont deux onglets de la même page (pas des routes séparées) :
-         changer d'onglet ne recharge rien, voir calories.js -->
+    <!-- Journal et Recettes : deux onglets d'une même page, changer d'onglet ne recharge rien (voir calories.js). -->
     <div class="calories-tabs">
       <button type="button" class="calories-tab-btn actif" data-tab="journal">Journal</button>
       <button type="button" class="calories-tab-btn" data-tab="recettes">Recettes</button>
@@ -60,7 +50,6 @@
     <div class="calories-tab-panel actif" data-panel="journal">
 
       <div class="journal-actions-row">
-        <!-- Champ de recherche + liste de suggestions pour ajouter instantanément un aliment au journal -->
         <div id="autocompleteCalories">
           <div class="champ-recherche-wrapper">
             <input type="text" id="rechercheAlimentCalories" placeholder="Rechercher un aliment..." autocomplete="off" />
@@ -75,13 +64,7 @@
           </ul>
         </div>
 
-        <!-- Menu déroulant pour appliquer directement une recette (remplace le journal du jour par ses ingrédients).
-             Icône plutôt que texte : "Recette" se lisait comme un doublon de l'onglet "Recettes"
-             juste au-dessus. aria-label garde l'action compréhensible pour les lecteurs d'écran
-             malgré l'absence de texte visible (voir custom-selects.js). "Fraîcheur" (boissons +
-             glaces) a son propre menu juste à côté (voir #selectRecetteFraicheur) : celui-ci ne
-             liste donc que les plats. Une seule option désactivée sert de message "vide" quand
-             la catégorie n'a encore aucune recette (voir aussi custom-select__option--disabled). -->
+        <!-- Applique une recette de plat au journal ; aria-label compense l'icône seule, sans texte (voir custom-selects.js). -->
         <% const recettesPlat = recettes.filter(function(r) { return r.categorie === 'plat'; }).sort(function(a, b) { return a.nom.localeCompare(b.nom); }); %>
         <select id="selectRecettePlat" aria-label="Remplacer le journal du jour avec une recette" <%= recettesPlat.length === 0 ? 'disabled title="Aucune recette de plat pour le moment"' : '' %>>
           <option value=""><%= recettesPlat.length === 0 ? 'Aucune recette de plat' : '' %></option>
@@ -90,8 +73,7 @@
           <% }) %>
         </select>
 
-        <!-- Même principe que #selectRecettePlat juste à gauche, mais pour "Fraîcheur" (boissons
-             et glaces confondues, icône dédiée public/images/svg/glacon.svg, voir style.css) -->
+        <!-- Même principe que #selectRecettePlat, pour "Fraîcheur" (boissons + glaces). -->
         <% const recettesFraicheur = recettes.filter(function(r) { return r.categorie === 'fraicheur'; }).sort(function(a, b) { return a.nom.localeCompare(b.nom); }); %>
         <select id="selectRecetteFraicheur" aria-label="Remplacer le journal du jour avec une recette de fraîcheur" <%= recettesFraicheur.length === 0 ? 'disabled title="Aucune recette de fraîcheur pour le moment"' : '' %>>
           <option value=""><%= recettesFraicheur.length === 0 ? 'Aucune recette de fraîcheur' : '' %></option>
@@ -100,31 +82,19 @@
           <% }) %>
         </select>
 
-        <!-- Bouton rond "X" (plutôt qu'un texte "Tout effacer") : même langage que les autres
-             icônes de suppression de l'app -->
         <button type="button" id="btnToutEffacer" class="btn-x-rond" title="Tout effacer">Tout effacer</button>
       </div>
 
-      <!-- Caché par défaut : n'apparaît que si le journal du jour a 3 aliments ou plus ET que
-           cette combinaison exacte ne correspond à aucune recette déjà enregistrée (voir calories.js) -->
+      <!-- Visible seulement si le journal a 3+ aliments et que cette combinaison n'a pas déjà de recette (voir calories.js). -->
       <button type="button" id="btnEnregistrerRecette" class="btn-enregistrer-recette hidden"></button>
 
-      <!-- Liste des aliments déjà mangés aujourd'hui, générée côté serveur -->
       <div id="listeJournal">
         <% journal.forEach(function(entree) { %>
-        <!-- Les valeurs nutritionnelles sont stockées dans des attributs data-*, réutilisées par calories.js
-             pour recalculer les totaux sans avoir à redemander ces infos au serveur -->
         <%
-          // poids_unite_g est NOT NULL en base (0.00 sert de valeur "pas de pièce définie" pour
-          // les aliments qui n'en ont pas) : Postgres renvoie les colonnes NUMERIC sous forme de
-          // texte ("0.00"), qui est "vrai" en JS/EJS même quand la valeur vaut zéro — parseFloat
-          // est donc indispensable ici, sinon l'option "pièce" apparaissait pour absolument tous
-          // les aliments suivis à l'unité (banane, poulet...), pas seulement ceux réellement
-          // renseignés (oeuf, gousse de vanille...).
+          // "0.00" (NUMERIC en texte) est "vrai" en JS : parseFloat évite que "pièce" apparaisse pour tous les aliments à l'unité.
           const poidsPieceServeur = entree.tracking_type === 'unite' ? parseFloat(entree.poids_unite_g) : 0;
         %>
         <div class="journal-item carte-article" data-id="<%= entree.id %>" data-food-id="<%= entree.food_id %>" data-kcal="<%= entree.calories_calc %>" data-glucides="<%= entree.glucides_calc %>" data-proteines="<%= entree.proteines_calc %>" data-lipides="<%= entree.lipides_calc %>" data-emoji="<%= entree.emoji %>" data-g-cafe="<%= entree.grammes_par_cuil_a_cafe ?? '' %>" data-g-soupe="<%= entree.grammes_par_cuil_a_soupe ?? '' %>" data-poids-piece="<%= poidsPieceServeur || '' %>" data-unite-piece="<%= entree.unite_piece || '' %>" data-quantite-g="<%= parseFloat(entree.quantite_g) %>">
-          <!-- Réarranger l'ordre du journal : voir activerReorderJournal dans calories.js -->
           <div class="reorder-controls">
             <button type="button" class="btn-reorder btn-reorder-haut" title="Monter" aria-label="Monter"></button>
             <button type="button" class="btn-reorder btn-reorder-bas" title="Descendre" aria-label="Descendre"></button>
@@ -134,9 +104,7 @@
             <span class="journal-categorie"><%= entree.categorie %></span>
           </div>
           <div class="journal-valeurs">
-            <!-- Champ modifiable : changer la quantité met à jour les calories en direct (voir calories.js).
-                 Le sélecteur d'unité est toujours affiché (même juste "g" seul) : chaque ligne
-                 a la même forme, plutôt que certaines lignes ayant un menu et d'autres non. -->
+            <!-- Sélecteur d'unité toujours affiché (même juste "g") pour que chaque ligne garde la même forme. -->
             <div class="journal-quantite-groupe">
               <input type="number" class="journal-grammes-input" step="any" value="<%= parseFloat(entree.quantite_g) %>" min="0.25" />
               <select class="journal-unite-select">
@@ -148,7 +116,6 @@
             </div>
             <span class="journal-kcal"><%= Number(entree.calories_calc).toFixed(0) %> kcal</span>
           </div>
-          <!-- Formulaire de suppression, intercepté par le JavaScript pour l'envoyer sans recharger la page -->
           <form action="/calories/supprimer" method="post" class="form-supprimer-journal">
             <input type="hidden" name="idEntree" value="<%= entree.id %>" />
             <button type="submit" class="btn-supprimer-dash">Supprimer</button>
@@ -157,7 +124,6 @@
         <% }) %>
       </div>
 
-      <!-- Message affiché uniquement quand le journal du jour est vide -->
       <p class="no-results hidden" id="noResultsJournal">Rien d'ajouté aujourd'hui.</p>
     </div>
 
@@ -166,14 +132,10 @@
     <!-- ============================================ -->
     <div class="calories-tab-panel" data-panel="recettes">
 
-      <!-- Deux blocs bien séparés (pas un simple filtre) : les boissons et les plats ne se
-           mélangent jamais visuellement, même dans la vue par défaut -->
       <% CATEGORIES_RECETTE.forEach(function(cat) { %>
       <section class="recette-groupe">
         <h3 class="recette-groupe-titre">
-          <!-- Tri à gauche : propre à CETTE section (voir appliquerTriGroupe dans calories.js),
-               Plats et Fraîcheur ont chacun leur propre tri. Clic direct sur l'icône pour
-               changer/inverser, plutôt qu'un menu déroulant. Alpha ascendant par défaut. -->
+          <!-- Tri propre à cette section (voir appliquerTriGroupe dans calories.js) ; clic direct sur l'icône pour changer/inverser. -->
           <div class="recette-tri-icones">
             <button type="button" class="recette-tri-icone" data-critere="nom" title="Trier par nom">
               <img src="/images/svg/tri-alpha-asc.svg" alt="Trier par nom" />
@@ -182,11 +144,8 @@
               <img src="/images/svg/calorie-asc.svg" alt="Trier par calories" />
             </button>
           </div>
-          <!-- Nom de la catégorie centré -->
           <span class="recette-groupe-nom"><span class="icone-categorie-recette icone-categorie-recette--<%= cat.valeur %>"></span> <%= cat.label %></span>
-          <!-- Grille/Liste à droite : même bascule que Stock (#btnVueGrille/#btnVueListe dans
-               stock.js), mais propre à CETTE section, comme le tri — basculer Plats en liste ne
-               change rien pour Fraîcheur (voir appliquerVueGroupe dans calories.js). -->
+          <!-- Grille/Liste propre à cette section, comme le tri (voir appliquerVueGroupe dans calories.js). -->
           <div class="recette-vue-icones">
             <button type="button" class="recette-vue-icone active" data-vue="grille" title="Vue grille"></button>
             <button type="button" class="recette-vue-icone" data-vue="liste" title="Vue liste"></button>
@@ -195,12 +154,8 @@
         <div class="recette-grid" data-grid-cat="<%= cat.valeur %>">
           <% recettes.filter(function(r) { return r.categorie === cat.valeur; }).forEach(function(recette) { %>
           <div class="recette-card" data-id="<%= recette.id %>" data-cat="<%= recette.categorie %>" data-nom="<%= recette.nom.toLowerCase() %>" data-kcal="<%= recette.kcal_total %>" data-ingr="<%= recette.nb_ingredients %>">
-            <!-- Pas de bouton "éditer" NI "supprimer" sur la carte : toucher la carte ouvre le
-                 panneau de détail, et c'est SEULEMENT depuis ce panneau qu'on peut supprimer la
-                 recette (bouton poubelle à côté du "✕" fermer, voir plus bas) -->
-            <!-- Les 3 premiers émojis d'ingrédients (dans l'ordre d'ajout, voir emojis_ingredients
-                 dans chercherRecettes) composent l'icône, plus parlant qu'une icône générique de
-                 catégorie ; repli sur l'icône de catégorie si jamais aucun ingrédient n'a d'émoji -->
+            <!-- Pas de bouton éditer/supprimer ici : la carte ouvre le panneau de détail, seul endroit pour supprimer. -->
+            <!-- 3 premiers émojis d'ingrédients comme icône ; repli sur l'icône de catégorie si aucun émoji. -->
             <% const emojisRecette = recette.emojis_ingredients.slice(0, 3).join(''); %>
             <span class="recette-emoji"><% if (emojisRecette) { %><%= emojisRecette %><% } else { %><span class="icone-categorie-recette icone-categorie-recette--<%= cat.valeur %>"></span><% } %></span>
             <div class="recette-corps">
@@ -237,8 +192,7 @@
       </div>
     </div>
 
-    <!-- Boisson/Plat à gauche, "+" à droite sur la même ligne : le "+" ouvre/ferme la recherche
-         d'ingrédient, repliée par défaut, même principe que les panneaux d'ajout de Stock/Courses. -->
+    <!-- Le "+" ouvre/ferme la recherche d'ingrédient (repliée par défaut), même principe que Stock/Courses. -->
     <div class="detail-tag-row">
       <div class="detail-tag-select" id="recetteCategoriePicker">
         <button type="button" class="cat-pill actif" data-valeur="plat"><span class="icone-categorie-recette icone-categorie-recette--plat"></span> Plat</button>
@@ -248,10 +202,7 @@
     </div>
 
     <div id="listeIngredientsRecette">
-      <!-- Toujours le DERNIER enfant de la liste (voir ajouterLigneIngredient dans calories.js,
-           qui insère chaque nouvelle ligne juste AVANT ce champ plutôt qu'après) : la recherche
-           s'ouvre donc littéralement sous le dernier ingrédient ajouté, à l'intérieur de la
-           même zone qui défile, plutôt qu'en dehors dans une zone fixe séparée. -->
+      <!-- Toujours le dernier enfant : chaque nouvel ingrédient s'insère juste avant (voir ajouterLigneIngredient dans calories.js). -->
       <div id="autocompleteIngredient" class="replie">
         <div class="champ-recherche-wrapper">
           <input type="text" id="rechercheIngredient" placeholder="Rechercher un aliment à ajouter..." autocomplete="off" />
@@ -266,16 +217,11 @@
       </div>
     </div>
 
-    <!-- Affiché tant que la liste est vide (voir majEtatIngredients dans calories.js), pour ne
-         pas laisser un grand vide silencieux avant d'avoir ajouté le premier ingrédient -->
     <p class="ingredients-vide" id="ingredientsVide">Aucun ingrédient pour l'instant — touche "+" pour en ajouter.</p>
 
     <button type="submit" id="btnEnregistrerSheet">Enregistrer</button>
 
-    <!-- Séparée du "✕" fermer (en haut) : façon Apple (ex. "Delete Contact"), une action
-         destructive ne vit jamais collée à un bouton de fermeture/annulation, pour ne jamais
-         la déclencher par un tap malheureux. Cachée pour "Nouvelle recette" (rien à supprimer
-         avant le premier enregistrement), affichée en mode édition (voir calories.js). -->
+    <!-- Séparé du "✕" fermer pour ne jamais déclencher cette action destructive par un tap malheureux ; masqué pour "Nouvelle recette" (voir calories.js). -->
     <button type="button" id="btnSupprimerRecetteSheet" class="btn-supprimer-pleine-largeur hidden">
       Supprimer
     </button>
@@ -283,9 +229,7 @@
 </div>
 
 <script>
-  // Copie des recettes (avec leurs food_ids) disponible côté client, pour savoir si la
-  // combinaison actuellement notée dans le journal correspond déjà à une recette existante
-  // (voir miseAJourBoutonEnregistrerRecette dans calories.js), sans redemander au serveur.
+  // Copie des recettes côté client pour comparer au journal sans redemander au serveur (voir miseAJourBoutonEnregistrerRecette dans calories.js).
   window.RECETTES = <%- JSON.stringify(recettes) %>;
 </script>
 <script src="/js/calories.js" defer></script>

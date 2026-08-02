@@ -1,12 +1,7 @@
 <%- include('partials/header') %>
 
 <main>
-  <!-- Même structure que le hero d'Aliments (voir .hero/.hero__text) : hérite du même
-       comportement responsive (grille mobile titre/badge/texte déjà en place, voir style.css).
-       Le badge lui-même est un sac de courses plutôt qu'un cercle "160 ALIMENTS" : pas de mot
-       dessus, juste le sac et le nombre, pour rester distinct du badge d'Aliments. courses.js le
-       déplace vers la barre d'outils sticky (voir #badgeCoursesAncre plus bas) une fois que le
-       hero sort de l'écran, puis le ramène ici au retour, avec une transition animée. -->
+  <!-- Badge sac de courses (pas le cercle "160 ALIMENTS") : courses.js le déplace vers la barre d'outils au scroll (voir #badgeCoursesAncre). -->
   <section class="hero" id="heroCourses">
     <div class="hero__text">
       <h1>La liste qui <span>n'oublie jamais.</span></h1>
@@ -18,15 +13,11 @@
   </section>
 
   <% if (typeof error !== 'undefined') { %>
-  <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
   <p class="erreur"><%= error %></p>
   <% } %>
 
   <div class="courses-section">
-    <!-- Fond plein écran (voir .courses-controls-row), mais le contenu reste dans la même
-         colonne centrée (max-width 1200px) que le reste de la page : sinon "Trier par" et "+"
-         se retrouvaient collés aux bords réels de l'écran au lieu de s'aligner avec le titre
-         et les cartes en dessous, comme sur Stock (voir .filters/.filters__inner). -->
+    <!-- Fond plein écran, contenu recentré comme sur Stock (voir .filters/.filters__inner). -->
     <div class="courses-controls-row">
       <div class="courses-controls-row__inner">
         <div class="sort-wrapper">
@@ -36,26 +27,23 @@
             <option value="categorie">Catégorie</option>
           </select>
         </div>
-        <!-- Interrupteur façon iOS plutôt qu'un bouton pilule classique -->
+        <!-- Interrupteur façon iOS -->
         <button type="button" id="toggleMagasin" class="toggle-ios">
           <span class="toggle-ios__track"><span class="toggle-ios__thumb"></span></span>
           <span class="toggle-ios__label">Au magasin</span>
         </button>
-        <!-- Repère (vide, sans taille propre) marquant où le badge doit s'insérer une fois
-             déplacé ici par courses.js — voir #badgeCoursesContainer dans le hero plus haut. -->
+        <!-- Repère où le badge s'insère une fois déplacé par courses.js. -->
         <span id="badgeCoursesAncre"></span>
         <button type="button" id="btnToggleAjoutCourse" class="btn-ajout-icone" title="Ajouter un article">Ajouter un article</button>
       </div>
     </div>
 
-    <!-- Panneau d'ajout : fermé par défaut, ouvert/fermé en cliquant sur le "+" juste au-dessus.
-         Même technique d'accordéon que le panneau d'ajout de Stock (voir style.css). -->
+    <!-- Panneau d'ajout, accordéon (même technique que Stock). -->
     <div id="panneauAjoutCourse" class="panneau-ajout">
       <div class="panneau-ajout__piege">
       <div class="panneau-ajout__interieur">
-        <!-- Formulaire pour ajouter un nouvel article à la liste de courses, avec autocomplétion -->
         <form action="/courses/ajouter" method="post" id="formAjouterCourse">
-          <!-- Champ caché : rempli par le JavaScript avec l'id de l'aliment choisi dans la liste de suggestions -->
+          <!-- Rempli en JS avec l'id de l'aliment choisi -->
           <input type="hidden" name="idAliment" id="idAlimentCacheCourses" />
 
           <div id="autocompleteCourses">
@@ -71,37 +59,20 @@
               <% }) %>
             </ul>
           </div>
-          <!-- Bouton texte classique (comme #btnAjouter sur Stock), pas un rond "+" : sinon il
-               était identique au bouton qui ouvre ce panneau juste au-dessus, ce qui prêtait à
-               confusion (les deux étaient un simple rond rouge sans texte visible) -->
-          <!-- Caché par défaut : n'apparaît que si le texte tapé ne correspond à aucun aliment
-               connu (voir courses.js), pour éviter de proposer un ajout "en texte libre" alors
-               qu'il suffit de cliquer la suggestion déjà affichée juste au-dessus -->
+          <!-- N'apparaît que si le texte tapé ne correspond à aucun aliment connu (voir courses.js). -->
           <button type="button" id="btnAjouterCourse" class="hidden">Ajouter</button>
         </form>
       </div>
       </div>
     </div>
 
-    <!-- Cette rangée affiche DEUX groupes qui se remplacent l'un l'autre au même endroit (voir
-         style.css : .preset-hebdo-row__normal / __filtres, crossfade selon "Au magasin", même
-         esprit que l'accordéon déjà utilisé ailleurs sur cette page) plutôt que d'empiler un
-         nouveau bloc en dessous :
-         - normalement, "Enregistrer" (icône seule, à gauche) qui remplace le preset "Courses de
-           la semaine" par la liste actuelle (voir courses.js pour les règles d'affichage — 5+
-           articles — et d'activation — liste différente du preset) ;
-         - en mode "Au magasin", des filtres par rayon à la place (ex: Fruits + Légumes) — pas
-           besoin de filtrer pendant qu'on compose sa liste, seulement une fois dans le magasin. -->
+    <!-- Deux groupes en crossfade au même endroit (voir .preset-hebdo-row__normal/__filtres) : Enregistrer/Semaine normalement, filtres par rayon en mode "Au magasin". -->
     <div class="preset-hebdo-row">
       <div class="preset-hebdo-row__normal">
         <button type="button" id="btnEnregistrerPresetHebdo" class="btn-enregistrer-preset hidden" title="Mettre à jour le preset avec la liste actuelle">Enregistrer</button>
         <button type="button" id="btnPresetHebdo" class="filter-btn btn-preset-hebdo">🧺 Semaine</button>
       </div>
-      <!-- Sélection MULTIPLE (pas exclusive comme sur Aliments) : chaque rayon se coche/décoche
-           indépendamment, "Tous" est un raccourci qui coche/décoche tout d'un coup plutôt qu'une
-           vraie catégorie parmi d'autres (voir courses.js). Tout coché par défaut = rien de filtré,
-           mais SEUL "Tous" est marqué actif dans ce cas (pas chaque rayon en plus) — courses.js
-           réaffirme la même règle au chargement (metAJourBoutonsFiltreCourses). -->
+      <!-- Sélection multiple (pas exclusive comme Aliments) ; "Tous" est un raccourci, pas une vraie catégorie (voir courses.js). -->
       <% const categoriesCourses = [...new Set(courses.map(function (item) { return item.categorie || 'zzz'; }))].sort(); %>
       <div class="preset-hebdo-row__filtres filter-buttons" id="courseFiltresMagasin">
         <button type="button" class="filter-btn active" data-categorie="tous">Tous</button>
@@ -111,16 +82,11 @@
       </div>
     </div>
 
-    <!-- Liste des articles à acheter, générée côté serveur -->
     <div id="listeCourses">
       <% courses.forEach(function(item) { %>
-      <!-- data-nom et data-categorie servent au tri fait en JavaScript ; "zzz" place les articles
-           sans catégorie tout à la fin quand on trie par catégorie -->
-      <!-- data-food-id sert à comparer cette liste au preset "Courses de la semaine" (voir
-           mettreAJourBoutonPresetHebdo dans courses.js) : vide pour un article "libre" (nom_libre) -->
+      <!-- data-food-id vide = article "libre" (nom_libre), utilisé pour comparer au preset. -->
       <div class="course-item carte-article" data-nom="<%= item.nom.toLowerCase() %>" data-categorie="<%= item.categorie || 'zzz' %>" data-food-id="<%= item.food_id || '' %>">
-        <!-- Combien on en a déjà en stock à la maison (pastille en haut à gauche) :
-             un nombre pour les aliments suivis en quantité, un point de couleur pour les "cl" (ex: bouteille) -->
+        <!-- Pastille "déjà en stock" : nombre, ou point de couleur pour les "cl". -->
         <% if (item.quantite_stock !== null && item.tracking_type !== 'cl') { %>
         <span class="course-stock-indicator course-stock-badge" title="Déjà <%= item.quantite_stock %> en stock"><%= item.quantite_stock %></span>
         <% } else if (item.quantite_stock !== null && item.tracking_type === 'cl') { %>
@@ -132,38 +98,24 @@
         %>
         <span class="course-stock-indicator course-stock-dot <%= classeNiveauCourse %>" title="En stock : <%= item.quantite_stock %>"></span>
         <% } %>
-        <!-- Seul l'émoji ouvre le champ de note (voir courses.js) : le reste du nom ne fait
-             qu'armer/désarmer la carte comme le reste, plutôt que de rivaliser avec ce geste-là -->
+        <!-- Seul l'émoji ouvre la note (voir courses.js) ; le reste du nom arme/désarme la carte. -->
         <span class="course-nom"><span class="course-nom-emoji" data-id="<%= item.id %>"><%= item.emoji %></span> <%= item.nom %></span>
 
-        <!-- Formulaire de suppression, intercepté par courses.js pour l'envoyer sans recharger la page -->
         <form action="/courses/supprimer" method="post" class="form-supprimer">
           <input type="hidden" name="idCourse" value="<%= item.id %>" />
           <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>
         </form>
 
-        <!-- La note n'est affichée que si un commentaire existe déjà pour cet article. Icône
-             note.svg à la place du "📝" : cohérent avec les autres icônes de l'app (silhouette
-             en accent, pas d'emoji coloré qui jurerait avec ceux des aliments). -->
         <% if (item.commentaire) { %>
         <p class="note-affichee" data-id="<%= item.id %>"><span class="icone-note"></span> <%= item.commentaire %></p>
         <% } %>
-        <!-- Champ de saisie de la note + bouton photo (à droite du champ), caché par défaut,
-             affiché seulement au clic sur l'émoji/la note (voir plus haut). Une fois une photo
-             posée, courses.js déplace ce même bouton hors de cette ligne pour le rendre visible
-             en permanence en haut à droite de la carte (voir placerBoutonPhotoEnHaut) : pas
-             besoin de rouvrir la note à chaque fois pour la reconsulter. -->
+        <!-- Bouton photo déplacé hors de cette ligne par courses.js une fois une photo posée (voir placerBoutonPhotoEnHaut). -->
         <div class="ligne-commentaire hidden">
           <input type="text" class="input-commentaire" placeholder="Ajouter une note" value="<%= item.commentaire || '' %>" data-id="<%= item.id %>" />
           <button type="button" class="btn-photo-course" data-id="<%= item.id %>" data-a-photo="<%= item.has_photo ? 'true' : 'false' %>" title="Photo de référence"></button>
         </div>
 
-        <!--
-          Le bloc "Acheté" est différent selon le type de l'article :
-          - aliment connu suivi en "cl" (ex: bouteille) → juste un bouton (remet le niveau à plein)
-          - aliment connu suivi en quantité → un champ de quantité + suggestions rapides (1/2/5)
-          - article "libre" (nom tapé à la main, pas encore un aliment connu) → juste un bouton
-        -->
+        <!-- Bloc "Acheté" : "cl" = bouton simple, quantité = champ + suggestions, libre = bouton simple. -->
         <% if (item.food_id && item.tracking_type === 'cl') { %>
         <form action="/courses/acheter" method="post" class="form-acheter">
           <input type="hidden" name="idCourse" value="<%= item.id %>" />
@@ -183,7 +135,7 @@
             <input type="number" name="quantiteAchetee" class="champ-quantite-achat" min="1" placeholder="Quantité" />
           </div>
           <div class="course-item__shop-slot">
-            <!-- Ce bouton reste désactivé tant qu'aucune quantité n'a été saisie (activé par courses.js) -->
+            <!-- Désactivé tant qu'aucune quantité valide n'est saisie (voir courses.js) -->
             <button type="submit" class="btn-icone-rond btn-acheter-icone btn-enregistrer-achat" disabled>Acheté</button>
           </div>
         </form>
@@ -199,28 +151,23 @@
       <% }) %>
     </div>
 
-    <!-- Même pattern que Stock/Journal (voir #noResultsStock/#noResultsJournal) : affiché
-         seulement quand la liste de courses est vide, géré par courses.js -->
     <p class="no-results hidden" id="noResultsCourses">Aucun article dans la liste de courses.</p>
 
-    <!-- Champ fichier caché, réutilisé pour n'importe quel article (voir courses.js) : un clic
-         sur ".btn-photo-course" sans photo l'ouvre, "accept" limite au choix à des images. -->
+    <!-- Input file partagé : un clic sur ".btn-photo-course" sans photo l'ouvre. -->
     <input type="file" id="inputPhotoCourse" accept="image/*" hidden />
 
-    <!-- Aperçu plein écran de la photo de référence (voir courses.js), sur le même principe que
-         le panneau détail de recette : fond assombri + contenu, fermé au tap en dehors ou sur "✕" -->
+    <!-- Aperçu plein écran de la photo (voir courses.js) : fermé au tap en dehors ou sur "✕". -->
     <div class="photo-backdrop" id="photoBackdrop">
       <div class="photo-apercu">
         <button type="button" class="btn-fermer-photo" id="btnFermerPhoto" aria-label="Fermer">✕</button>
         <img id="imgApercuPhoto" alt="Photo de référence" />
-        <!-- Même style que le bouton "Supprimer" du panneau recette (voir .btn-supprimer-pleine-largeur) : un seul langage visuel pour toute action de suppression en pleine largeur dans l'app. -->
+        <!-- Même style que le "Supprimer" du panneau recette (.btn-supprimer-pleine-largeur). -->
         <button type="button" class="btn-supprimer-pleine-largeur" id="btnSupprimerPhoto">Supprimer</button>
       </div>
     </div>
 
     <script>
-      // Utilisé par courses.js pour comparer en direct la liste actuelle au preset enregistré
-      // (activer/désactiver "Enregistrer" sans recharger la page à chaque ajout/suppression)
+      // Comparé à la liste actuelle pour activer/désactiver "Enregistrer" (voir courses.js).
       window.PRESET_HEBDO = <%- JSON.stringify(presetHebdo) %>;
     </script>
     <script src="/js/courses.js" defer></script>

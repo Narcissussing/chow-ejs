@@ -1,7 +1,3 @@
-// On importe les outils dont on a besoin :
-// - express : pour créer le serveur web (recevoir des requêtes, envoyer des pages)
-// - pg : pour parler avec la base de données PostgreSQL
-// - dotenv/config : pour lire les informations secrètes (mot de passe, etc.) depuis un fichier .env
 import express from "express";
 import pg from "pg";
 import "dotenv/config";
@@ -11,16 +7,11 @@ import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 
-// On crée notre application Express (le "serveur")
 const app = express();
 
-// Le port sur lequel le serveur va écouter (ex: http://localhost:3000)
-// Si la variable PORT existe (par exemple sur un hébergeur en ligne), on l'utilise, sinon 3000 par défaut
 const port = process.env.PORT || 3000;
 
-// On crée la connexion à la base de données.
-// Si on a une "DATABASE_URL" (utilisé en production), on l'utilise directement.
-// Sinon, on utilise les infos séparées (utilisateur, hôte, nom de la base, mot de passe, port) pour développer en local.
+// DATABASE_URL en prod, sinon les DB_* séparées en local.
 const db = new pg.Client(
     process.env.DATABASE_URL
         ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
@@ -33,37 +24,21 @@ const db = new pg.Client(
         }
 );
 
-// On se connecte réellement à la base de données avant de continuer
 await db.connect();
 
-// Il n'y a pas d'outil de migration dans ce projet : ce petit ajustement de schéma s'applique
-// donc tout seul à chaque démarrage du serveur (IF NOT EXISTS le rend sûr à rejouer). Les
-// recettes existantes reçoivent "plat" par défaut, seule la nouvelle colonne les distingue
-// maintenant des recettes de type "boisson" (voir /recettes/creer et /recettes/:id/modifier).
+// Pas d'outil de migration : ces ALTER TABLE (IF NOT EXISTS) tournent à chaque démarrage, sûrs à rejouer.
 await db.query("ALTER TABLE recettes ADD COLUMN IF NOT EXISTS categorie TEXT NOT NULL DEFAULT 'plat'");
 
-// Le poids d'une cuillère dépend entièrement de l'aliment (1 c. à soupe d'huile ≈ 13g, 1 c. à
-// soupe de gomme xanthane ≈ 9g) : il n'existe aucune conversion universelle. On stocke donc ce
-// ratio directement sur chaque aliment, une fois pesé à la cuillère (voir /aliments/:id/equivalences),
-// plutôt que de deviner un poids au moment de préparer une recette. NULL = pas encore renseigné.
+// Poids par cuillère : pas de conversion universelle, mesuré et stocké par aliment (voir /aliments/:id/equivalences).
 await db.query("ALTER TABLE foods ADD COLUMN IF NOT EXISTS grammes_par_cuil_a_cafe NUMERIC");
 await db.query("ALTER TABLE foods ADD COLUMN IF NOT EXISTS grammes_par_cuil_a_soupe NUMERIC");
 
-// Ordre d'affichage du journal (réarrangeable à la main, voir /calories/deplacer et calories.js).
-// Les recettes n'ont pas besoin de cette colonne : leurs ingrédients sont entièrement
-// supprimés/réinsérés à chaque enregistrement (voir /recettes/:id/modifier), donc l'ordre
-// d'insertion (déjà utilisé par ARRAY_AGG ... ORDER BY id dans chercherRecettes) suffit.
+// Ordre d'affichage du journal, réarrangeable à la main (voir /calories/deplacer).
 await db.query("ALTER TABLE journal_repas ADD COLUMN IF NOT EXISTS ordre INTEGER");
 
-// Photo de référence sur un article de courses (voir /courses/:id/photo) : stockée directement
-// en base (BYTEA), pas comme fichier sur disque — les machines Fly s'arrêtent/redémarrent
-// automatiquement (auto_stop_machines, voir fly.toml) avec un disque éphémère, donc un fichier
-// écrit là serait silencieusement perdu au prochain redémarrage. La photo est déjà compressée
-// còté client avant l'envoi (voir courses.js), donc ça reste léger même stocké en base.
+// BYTEA plutôt qu'un fichier disque : le disque Fly est éphémère (auto_stop_machines).
 await db.query("ALTER TABLE courses ADD COLUMN IF NOT EXISTS photo BYTEA");
-// Comble l'ordre pour les entrées déjà existantes (jamais réordonnées) : classées par heure
-// d'ajout, comme l'était le tri par défaut avant l'ajout de cette colonne. Ne touche jamais une
-// ligne qui a déjà un ordre réel (mise à jour idempotente, sûre à rejouer à chaque démarrage).
+// Comble l'ordre des entrées existantes (jamais réordonnées) par heure d'ajout ; idempotent.
 await db.query(`
     UPDATE journal_repas SET ordre = sub.rn
     FROM (
@@ -73,9 +48,7 @@ await db.query(`
     WHERE journal_repas.id = sub.id
 `);
 
-// Courses habituelles de la semaine (bouton "preset" sur la page Courses) : vivait avant comme
-// un simple tableau figé dans le code (voir PRESET_COURSES_HEBDO plus bas), maintenant modifiable
-// depuis l'app elle-même (voir /courses/preset-hebdo/enregistrer) — il faut donc une vraie table.
+// Table du preset "Semaine" (voir /courses/preset-hebdo/enregistrer).
 await db.query(`
     CREATE TABLE IF NOT EXISTS courses_preset (
         id SERIAL PRIMARY KEY,
@@ -84,30 +57,19 @@ await db.query(`
     )
 `);
 
-// "quantite"/"unite"/"magasin" sur "courses" : jamais lues ni écrites nulle part dans l'app
-// (vérifié — aucun SELECT ne les affiche, aucun INSERT/UPDATE ne les remplit), reliquat d'une
-// version antérieure d'avant la répartition cl/quantité/libre actuelle.
+// Colonnes mortes, jamais lues ni écrites (reliquat d'avant la répartition cl/quantité/libre).
 await db.query("ALTER TABLE courses DROP COLUMN IF EXISTS quantite");
 await db.query("ALTER TABLE courses DROP COLUMN IF EXISTS unite");
 await db.query("ALTER TABLE courses DROP COLUMN IF EXISTS magasin");
 
-// On dit à Express de comprendre les données envoyées par les formulaires HTML classiques
 app.use(express.urlencoded({ extended: true }));
-// On dit à Express de servir les fichiers du dossier "public" tels quels (CSS, JS, images...)
 app.use(express.static("public"));
-// On dit à Express de comprendre les données envoyées en JSON (utilisé par nos appels fetch())
-// Limite par défaut (100kb) trop juste pour une photo compressée en base64 (voir
-// /courses/:id/photo) : le base64 gonfle déjà la taille d'environ 33%, plus la marge JSON.
-// 4mb (plutôt que 2mb) laisse de la marge maintenant que la compression vise 1600px/qualité 0.9.
+// 4mb : une photo compressée en base64 (voir /courses/:id/photo) dépasse la limite par défaut de 100kb.
 app.use(express.json({ limit: "4mb" }));
 
-
-// On indique à Express qu'on utilise le moteur de templates "EJS" pour générer les pages HTML
 app.set("view engine", "ejs");
 
-// Rend l'URL de la page actuelle disponible dans TOUTES les vues (res.locals), sans avoir à
-// l'ajouter manuellement à chaque res.render() : sert à savoir quel lien du menu surligner
-// (voir partials/header.ejs et .nav__link.actif dans style.css)
+// currentPath dispo dans toutes les vues, pour surligner le lien de menu actif.
 app.use(function (req, res, next) {
     res.locals.currentPath = req.path;
     next();
@@ -116,13 +78,9 @@ app.use(function (req, res, next) {
 // ============================================
 // AUTHENTIFICATION (accès limité aux 2 personnes du foyer, voir table "users")
 // ============================================
-// Pas de route "/register" : les comptes sont créés une fois pour toutes via
-// scripts/creer-utilisateur.js, jamais depuis une page publique.
+// Pas de route "/register" : comptes créés une fois via scripts/creer-utilisateur.js.
 
-// Sessions stockées en base (table "session", auto-créée) plutôt qu'en mémoire : les machines
-// Fly s'arrêtent automatiquement quand l'app est inactive (voir fly.toml, auto_stop_machines),
-// ce qui effacerait toutes les sessions en mémoire à chaque redémarrage et déconnecterait tout
-// le monde, peu importe la durée de vie du cookie ci-dessous.
+// Sessions en base (pas en mémoire) : les machines Fly s'arrêtent automatiquement et effaceraient tout.
 const PgSession = connectPgSimple(session);
 
 app.use(session({
@@ -168,8 +126,7 @@ passport.use(new LocalStrategy(
     }
 ));
 
-// On ne garde que l'id en session (pas tout l'utilisateur, ex: le hash du mot de passe) :
-// deserializeUser va rechercher le reste depuis la base à chaque requête.
+// Seul l'id est gardé en session ; deserializeUser recharge le reste depuis la base à chaque requête.
 passport.serializeUser(function (utilisateur, cb) {
     cb(null, utilisateur.id);
 });
@@ -210,22 +167,16 @@ app.post("/logout", function (req, res) {
 // Tout ce qui est déclaré APRÈS cette ligne exige d'être connecté.
 app.use(requireAuth);
 
-// Petit dictionnaire qui donne le nom d'unité à afficher selon le type de suivi d'un aliment
-// (par exemple : "unite" -> "unités", "pack" -> "packs", "cl" -> "cl")
+// Nom d'unité à afficher selon le type de suivi de l'aliment.
 const uniteParType = { unite: 'unités', pack: 'packs', cl: 'cl' };
 
-//Function
-
-// Récupère la liste de tous les aliments connus dans la table "foods"
 async function chercherAliments() {
     const result = await db.query("SELECT * FROM foods");
     return result.rows
 }
 
-// Récupère tout le stock actuel, en associant chaque ligne de stock à son aliment (nom, emoji, photo, type, emplacement)
 async function chercherStock() {
-    // deja_en_courses : sert à savoir si on doit proposer "Ajouter aux courses" sur un article bas
-    // (voir views/stock.ejs) — inutile de le reproposer s'il y est déjà en attente d'achat.
+    // deja_en_courses : évite de reproposer "Ajouter aux courses" si déjà en attente d'achat.
     const result = await db.query(
         `SELECT stock.*, foods.nom, foods.emoji, foods.image, foods.tracking_type, foods.emplacement,
                 EXISTS(
@@ -234,25 +185,16 @@ async function chercherStock() {
                 ) AS deja_en_courses
          FROM stock JOIN foods ON stock.food_id = foods.id`
     );
-    // Pour chaque article du stock, on calcule le nombre de jours écoulés depuis sa dernière mise à jour
     const aujourdhui = new Date();
     result.rows.forEach(row => {
         const diff = aujourdhui - new Date(row.date_maj);
-        // On convertit la différence (en millisecondes) en nombre de jours entiers
         row.jours_depuis = Math.floor(diff / (1000 * 60 * 60 * 24));
     });
     return result.rows
 }
 
-// Récupère la liste de courses (uniquement les articles pas encore achetés)
-// Si l'article existe dans "foods" on prend son nom/emoji, sinon on utilise le nom libre tapé par l'utilisateur
 async function chercherCourses() {
-    // Le LEFT JOIN sur stock permet d'afficher, sur chaque article de la liste de courses,
-    // la quantité déjà présente à la maison (quantite_stock vaut NULL si l'aliment n'est pas en stock)
-    // "courses.*" est volontairement évité ici : ça aurait inclus la colonne "photo" (BYTEA), donc
-    // chargé la photo ENTIÈRE de chaque article à chaque affichage de la page — juste un booléen
-    // suffit pour savoir s'il faut afficher l'icône d'alerte ; la vraie photo n'est récupérée qu'à
-    // la demande (voir /courses/:id/photo).
+    // "courses.*" évité : inclurait la colonne "photo" (BYTEA) entière ; has_photo suffit ici.
     const result = await db.query(
         `SELECT courses.id, courses.food_id, courses.nom_libre, courses.commentaire, courses.achete,
                 courses.date_ajout,
@@ -267,10 +209,6 @@ async function chercherCourses() {
     return result.rows
 }
 
-// Récupère la liste des recettes (juste id + nom), triée par ordre alphabétique
-// Renvoie chaque recette avec sa catégorie, son nombre d'ingrédients, son total de calories,
-// et la liste des food_id qui la composent (utilisée côté client pour savoir si la combinaison
-// actuellement notée dans le journal du jour correspond déjà à une recette existante)
 async function chercherRecettes() {
     const result = await db.query(`
         SELECT
@@ -283,8 +221,7 @@ async function chercherRecettes() {
                 ARRAY_AGG(recette_ingredients.food_id ORDER BY recette_ingredients.id) FILTER (WHERE recette_ingredients.food_id IS NOT NULL),
                 '{}'
             ) AS food_ids,
-            -- Émojis des ingrédients dans le même ordre que food_ids : sert à composer l'icône de
-            -- la carte recette (les 3 premiers combinés) plutôt qu'une icône générique de catégorie
+            -- Émojis des ingrédients dans le même ordre que food_ids, pour l'icône composée de la carte recette
             COALESCE(
                 ARRAY_AGG(foods.emoji ORDER BY recette_ingredients.id) FILTER (WHERE recette_ingredients.food_id IS NOT NULL),
                 '{}'
@@ -298,10 +235,7 @@ async function chercherRecettes() {
     return result.rows;
 }
 
-// Calcule nb_ingredients/kcal_total pour UNE recette (même calcul que chercherRecettes, mais
-// filtré sur un seul id) : utilisée juste après création/modification pour renvoyer tout de
-// suite le vrai total au client, plutôt que de le laisser afficher "…" jusqu'au prochain
-// rechargement de page (le client n'a pas accès aux calories/100g des aliments côté serveur).
+// Même calcul que chercherRecettes mais pour une seule recette : renvoie le vrai total tout de suite après création/modification.
 async function calculerTotauxRecette(idRecette) {
     const result = await db.query(
         `SELECT
@@ -315,8 +249,7 @@ async function calculerTotauxRecette(idRecette) {
     return result.rows[0];
 }
 
-// Récupère le journal alimentaire du jour (tout ce qui a été mangé aujourd'hui)
-// et calcule les calories/glucides/protéines/lipides réels en fonction de la quantité mangée
+// Journal du jour, avec calories/glucides/protéines/lipides recalculés selon la quantité mangée.
 async function chercherJournalDuJour() {
     const result = await db.query(
         `SELECT journal_repas.*, foods.nom, foods.emoji, foods.categorie,
@@ -338,7 +271,6 @@ async function chercherJournalDuJour() {
 // PAGE D'ACCUEIL
 // ============================================
 
-// Page d'accueil : on affiche simplement la vue "index.ejs"
 app.get("/", async (req, res) => {
     try {
         res.render("index.ejs", { title: "Accueil" });
@@ -352,7 +284,6 @@ app.get("/", async (req, res) => {
 // ALIMENTS
 // ============================================
 
-// Page listant tous les aliments connus
 app.get("/aliments", async (req, res) => {
     try {
         const aliments = await chercherAliments()
@@ -367,13 +298,11 @@ app.get("/aliments", async (req, res) => {
     }
 });
 
-// Page détail d'un seul aliment, retrouvé grâce à son id dans l'URL (ex: /aliments/5)
 app.get("/aliments/:idAliment", async (req, res) => {
     try {
         const idAliment = req.params.idAliment;
         const result = await db.query("SELECT * FROM foods WHERE id = $1", [idAliment]);
         const aliment = result.rows[0];
-        // Si aucun aliment ne correspond à cet id, on affiche quand même la page mais avec un message "introuvable"
         if (!aliment) { return res.status(404).render("aliment-detail.ejs", { title: "Aliment introuvable", aliment: null }); }
         res.render("aliment-detail.ejs", {
             title: aliment.nom,
@@ -385,13 +314,10 @@ app.get("/aliments/:idAliment", async (req, res) => {
     }
 });
 
-// -- POST /aliments/:id/equivalences : enregistre le poids d'une c. à café / c. à soupe pour cet aliment --
-// (voir le formulaire "Équivalences" sur la page détail d'un aliment)
 app.post("/aliments/:idAliment/equivalences", async (req, res) => {
     try {
         const idAliment = req.params.idAliment;
-        // Un champ laissé vide (pas encore pesé) est envoyé comme chaîne vide : on le stocke en
-        // NULL plutôt qu'en 0, pour bien distinguer "non renseigné" de "pèse réellement 0g"
+        // Vide (non pesé) stocké en NULL, pas 0, pour distinguer "non renseigné" de "pèse 0g".
         const grammesCafe = req.body.grammesCafe === "" ? null : req.body.grammesCafe;
         const grammesSoupe = req.body.grammesSoupe === "" ? null : req.body.grammesSoupe;
 
@@ -418,7 +344,6 @@ app.post("/aliments/:idAliment/equivalences", async (req, res) => {
 // STOCK
 // ============================================
 
-// Page du stock : on affiche le stock actuel + la liste des aliments (utile pour l'autocomplétion d'ajout)
 app.get("/stock", async (req, res) => {
     try {
         const stock = await chercherStock()
@@ -427,8 +352,6 @@ app.get("/stock", async (req, res) => {
             title: "Stock",
             stock: stock,
             aliments: aliments,
-
-
         });
     } catch (err) {
         console.error(err);
@@ -436,16 +359,13 @@ app.get("/stock", async (req, res) => {
     }
 });
 
-// Ajouter un nouvel article dans le stock
 app.post("/stock/ajouter", async (req, res) => {
     const idAliment = req.body.idAliment;
     const quantiteAliment = req.body.quantiteAliment;
     try {
-        // On vérifie que les champs obligatoires ont bien été envoyés
         if (!idAliment || !quantiteAliment) {
             return res.status(400).json({ erreur: "Champs requis." });
         }
-        // On va chercher les infos de cet aliment (son type de suivi, son nom, son emplacement, son emoji, sa photo)
         const result = await db.query("SELECT tracking_type, nom, emplacement, emoji, image FROM foods WHERE id = $1", [idAliment]);
         if (result.rows.length === 0) {
             return res.status(400).json({ erreur: "Article introuvable." });
@@ -454,24 +374,19 @@ app.post("/stock/ajouter", async (req, res) => {
         const nom = result.rows[0].nom;
         const emoji = result.rows[0].emoji;
         const image = result.rows[0].image;
-        // On déduit l'unité à utiliser (unités, packs ou cl) grâce au dictionnaire défini plus haut
         const unite = uniteParType[tracking_type];
         const emplacement = result.rows[0].emplacement;
 
-
-        // On vérifie que cet aliment n'est pas déjà présent dans le stock (on ne veut pas de doublon)
         const existeDeja = await db.query("SELECT 1 FROM stock WHERE food_id = $1", [idAliment]);
         if (existeDeja.rows.length > 0) {
             return res.status(400).json({ erreur: `L'article ${nom} est déjà dans le stock.` });
         }
 
-        // On insère la nouvelle ligne de stock, avec la date de mise à jour = maintenant
         const insertResult = await db.query(
             "INSERT INTO stock (food_id, quantite, unite, date_maj) VALUES ($1, $2, $3, NOW()) RETURNING id",
             [idAliment, quantiteAliment, unite]
         );
 
-        // On renvoie au navigateur les infos du nouvel article, pour qu'il puisse l'afficher sans recharger la page
         res.json({
             succes: true,
             item: {
@@ -493,7 +408,6 @@ app.post("/stock/ajouter", async (req, res) => {
     }
 });
 
-// Modifier la quantité d'un article déjà présent dans le stock (édition inline)
 app.post("/stock/modifier", async (req, res) => {
     try {
         const nouvelleQuantite = req.body.nouvelleQuantite;
@@ -503,8 +417,7 @@ app.post("/stock/modifier", async (req, res) => {
             return res.status(400).json({ erreur: "Champs requis." });
         }
 
-        // On met à jour uniquement la quantité : date_maj ne doit changer que lors de la création
-        // de la ligne de stock ou d'un ajout depuis les courses, pas à chaque simple correction de quantité
+        // date_maj ne change qu'à la création ou un ajout depuis les courses, jamais sur une simple correction.
         await db.query("UPDATE stock SET quantite = $1 WHERE id = $2", [nouvelleQuantite, idStock]);
         res.json({ succes: true, quantite: nouvelleQuantite });
     } catch (err) {
@@ -513,7 +426,6 @@ app.post("/stock/modifier", async (req, res) => {
     }
 });
 
-// Supprimer un article du stock
 app.post("/stock/supprimer", async (req, res) => {
     try {
         const idStock = req.body.idStock;
@@ -533,14 +445,12 @@ app.post("/stock/supprimer", async (req, res) => {
 // COURSES
 // ============================================
 
-// Page de la liste de courses : on affiche les courses à faire + la liste des aliments (autocomplétion) + le stock actuel
 app.get("/courses", async (req, res) => {
     try {
         const courses = await chercherCourses()
         const aliments = await chercherAliments()
         const stock = await chercherStock()
-        // Transmis au client pour comparer en direct la liste actuelle au preset enregistré
-        // (voir courses.js) : sert à activer/désactiver "Enregistrer" sans recharger la page.
+        // Transmis au client pour comparer en direct à la liste actuelle et activer/désactiver "Enregistrer" (voir courses.js).
         const presetHebdo = await db.query("SELECT food_id, nom_libre FROM courses_preset");
 
         res.render("courses.ejs", {
@@ -556,8 +466,7 @@ app.get("/courses", async (req, res) => {
     }
 });
 
-// Ajouter un article à la liste de courses
-// On peut soit choisir un aliment existant (idAliment), soit taper un nom libre qui n'existe pas encore dans "foods"
+// idAliment pour un aliment connu, sinon nom_libre pour un texte tapé qui n'existe pas encore dans "foods".
 app.post("/courses/ajouter", async (req, res) => {
     const idAliment = req.body.idAliment || null;
     const texteTape = req.body.rechercheAliment;
@@ -566,14 +475,12 @@ app.post("/courses/ajouter", async (req, res) => {
             return res.status(400).json({ erreur: "Champs requis." });
         }
 
-        // Si on a un idAliment, on ne remplit pas nom_libre (et inversement)
         const insertResult = await db.query(
             "INSERT INTO courses (food_id, nom_libre) VALUES ($1, $2) RETURNING id",
             [idAliment || null, idAliment ? null : texteTape]
         );
         const nouvelId = insertResult.rows[0].id;
 
-        // On relit la ligne fraîchement créée, avec toutes ses infos affichables (nom, emoji, quantité en stock, etc.)
         const itemResult = await db.query(
             `SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji,
                     foods.unite AS food_unite, foods.tracking_type, foods.categorie, stock.quantite AS quantite_stock
@@ -591,16 +498,11 @@ app.post("/courses/ajouter", async (req, res) => {
     }
 });
 
-// Ajouter d'un coup toutes les courses habituelles de la semaine (voir la table courses_preset,
-// modifiable depuis l'app elle-même — voir /courses/preset-hebdo/enregistrer ci-dessous).
-// Contrairement à la recette de /calories/ajouter-recette, on n'efface rien : on ajoute seulement
-// les articles du preset qui ne sont pas déjà dans la liste de courses en attente (pour ne pas créer
-// de doublons si on clique plusieurs fois sur le bouton).
+// N'ajoute que les articles du preset absents de la liste en attente, pour éviter les doublons si on clique plusieurs fois.
 app.post("/courses/preset-hebdo", async (req, res) => {
     try {
         const presetResult = await db.query("SELECT food_id, nom_libre FROM courses_preset");
 
-        // On récupère ce qui est déjà dans la liste (pas encore acheté), pour savoir quoi ne pas dupliquer
         const dejaLa = await db.query("SELECT food_id, nom_libre FROM courses WHERE achete = false");
         const foodIdsDejaLa = new Set(dejaLa.rows.map(r => r.food_id).filter(Boolean));
         const nomsLibresDejaLa = new Set(
@@ -611,7 +513,7 @@ app.post("/courses/preset-hebdo", async (req, res) => {
 
         for (const article of presetResult.rows) {
             if (article.food_id) {
-                if (foodIdsDejaLa.has(article.food_id)) continue; // déjà présent, on ne l'ajoute pas une 2e fois
+                if (foodIdsDejaLa.has(article.food_id)) continue;
                 const insertResult = await db.query(
                     "INSERT INTO courses (food_id, nom_libre) VALUES ($1, NULL) RETURNING id",
                     [article.food_id]
@@ -627,12 +529,10 @@ app.post("/courses/preset-hebdo", async (req, res) => {
             }
         }
 
-        // Si tout était déjà dans la liste, on renvoie une liste vide (rien de neuf à afficher)
         if (nouveauxIds.length === 0) {
             return res.json({ succes: true, items: [] });
         }
 
-        // On relit tous les articles fraîchement ajoutés, avec leurs infos affichables (nom, emoji, quantité en stock, etc.)
         const itemsResult = await db.query(
             `SELECT courses.*, COALESCE(foods.nom, courses.nom_libre) AS nom, COALESCE(foods.emoji, '🆕') AS emoji,
                     foods.unite AS food_unite, foods.tracking_type, foods.categorie, stock.quantite AS quantite_stock
@@ -650,9 +550,7 @@ app.post("/courses/preset-hebdo", async (req, res) => {
     }
 });
 
-// Remplace le preset "Courses de la semaine" par la liste de courses actuelle (en attente, pas
-// encore achetée) : DELETE + réinsertion plutôt qu'un diff ligne à ligne, comme pour les recettes
-// (voir /recettes/:id/modifier) — plus simple à maintenir, et cette liste reste toujours courte.
+// DELETE + réinsertion plutôt qu'un diff ligne à ligne (comme /recettes/:id/modifier) : plus simple, liste toujours courte.
 app.post("/courses/preset-hebdo/enregistrer", async (req, res) => {
     let transactionStarted = false;
     try {
@@ -680,7 +578,6 @@ app.post("/courses/preset-hebdo/enregistrer", async (req, res) => {
     }
 });
 
-// Ajouter/modifier un commentaire sur un article de la liste de courses
 app.post("/courses/commentaire", async (req, res) => {
     try {
         const idCourse = req.body.idCourse;
@@ -698,9 +595,7 @@ app.post("/courses/commentaire", async (req, res) => {
     }
 });
 
-// Enregistre (ou remplace) la photo de référence d'un article de courses. Envoyée en base64
-// JSON (comme le reste des routes AJAX de l'app), déjà compressée côté client (voir courses.js) :
-// le serveur ne fait que décoder et stocker, aucun retraitement d'image ici.
+// Photo envoyée en base64, déjà compressée côté client (voir courses.js) ; le serveur ne fait que décoder et stocker.
 app.post("/courses/photo", async (req, res) => {
     try {
         const idCourse = req.body.idCourse;
@@ -719,7 +614,6 @@ app.post("/courses/photo", async (req, res) => {
     }
 });
 
-// Retire la photo de référence d'un article (sans toucher au reste de l'article)
 app.post("/courses/photo/supprimer", async (req, res) => {
     try {
         const idCourse = req.body.idCourse;
@@ -734,9 +628,7 @@ app.post("/courses/photo/supprimer", async (req, res) => {
     }
 });
 
-// Sert l'image elle-même (pas de JSON ici) : appelée uniquement quand on ouvre la photo, jamais
-// au chargement normal de la liste (voir has_photo dans chercherCourses, qui évite justement de
-// charger toutes les photos d'un coup).
+// Sert l'image elle-même, appelée seulement à l'ouverture de la photo (voir has_photo dans chercherCourses).
 app.get("/courses/:id/photo", async (req, res) => {
     try {
         const result = await db.query("SELECT photo FROM courses WHERE id = $1", [req.params.id]);
@@ -751,7 +643,6 @@ app.get("/courses/:id/photo", async (req, res) => {
     }
 });
 
-// Supprimer un article de la liste de courses
 app.post("/courses/supprimer", async (req, res) => {
     try {
         const idCourse = req.body.idCourse;
@@ -767,7 +658,6 @@ app.post("/courses/supprimer", async (req, res) => {
     }
 });
 
-// Marquer un article de courses comme acheté, et l'ajouter (ou le mettre à jour) dans le stock
 app.post("/courses/acheter", async (req, res) => {
     try {
         let tracking_type = null;
@@ -778,41 +668,30 @@ app.post("/courses/acheter", async (req, res) => {
             return res.status(400).json({ erreur: "Aucun article sélectionné." });
         }
 
-        // On retrouve à quel aliment (foods) correspond cette ligne de courses
         const courseResult = await db.query("SELECT food_id FROM courses WHERE id = $1", [idCourse]);
         if (courseResult.rows.length === 0) {
             return res.status(400).json({ erreur: "Article introuvable." });
         }
         const foodId = courseResult.rows[0].food_id;
 
-        // Si l'article de courses correspond bien à un aliment connu (et pas juste un nom libre), on met à jour le stock
+        // Un nom_libre n'a pas de food_id : rien à mettre à jour dans le stock.
         if (foodId) {
             const resultFood = await db.query("SELECT tracking_type FROM foods WHERE id = $1", [foodId]);
             tracking_type = resultFood.rows[0].tracking_type;
 
             if (tracking_type === 'cl') {
-                // Pour les aliments suivis en "cl" (bouteille), acheter = remettre le niveau à "plein"
-                // ON CONFLICT : si l'aliment est déjà dans le stock, on met juste à jour au lieu de créer un doublon
+                // "cl" (bouteille) : acheter = remettre à "plein". ON CONFLICT évite un doublon si déjà en stock.
                 await db.query(
                     "INSERT INTO stock (food_id, quantite, date_maj) VALUES ($1, 'plein', NOW()) ON CONFLICT (food_id) DO UPDATE SET quantite = 'plein', date_maj = NOW()",
                     [foodId]
                 );
             } else {
-                // Pour les autres aliments (unités, packs), on demande la quantité achetée.
-                // On arrondit nous-mêmes plutôt que de faire confiance au champ HTML : ce
-                // formulaire est envoyé via fetch (pas une vraie soumission de formulaire), donc
-                // la validation native du navigateur (min="1", type="number") n'est jamais
-                // appliquée avant l'envoi — un "1.5" tapé au clavier arrivait tel quel ici et
-                // faisait planter le cast SQL "::integer" (qui refuse les décimales), renvoyant
-                // une erreur brute au milieu des courses.
+                // Arrondi côté serveur : ce formulaire passe par fetch, donc la validation native (min/type=number) du champ n'a jamais lieu.
                 const quantiteEntiere = Math.round(Number(quantiteAchetee));
                 if (!quantiteAchetee || !Number.isFinite(quantiteEntiere) || quantiteEntiere < 1) {
                     return res.status(400).json({ erreur: "Quantité invalide." });
                 }
-                // Si l'aliment est déjà dans le stock, on additionne la quantité achetée à celle qui existe déjà.
-                // La quantité existante est protégée par une expression régulière avant le cast ::integer :
-                // si elle contenait encore une ancienne valeur "cl" (ex: "plein") suite à un changement de
-                // type de suivi, le cast direct planterait aussi (voir la même logique dans /stock/modifier).
+                // Regex avant le cast ::integer : protège contre une ancienne valeur "cl" (ex: "plein") laissée par un changement de type de suivi.
                 await db.query(
                     `INSERT INTO stock (food_id, quantite, date_maj) VALUES ($1, $2, NOW())
                      ON CONFLICT (food_id) DO UPDATE SET
@@ -826,10 +705,7 @@ app.post("/courses/acheter", async (req, res) => {
             }
         }
 
-        // Dans tous les cas, on marque l'article de courses comme acheté. La photo de référence
-        // n'a plus de raison d'être conservée une fois l'achat fait (elle servait juste à
-        // reconnaître le produit au magasin) : on l'efface pour de bon plutôt que de la laisser
-        // traîner indéfiniment dans la table pour un article qui ne réapparaîtra plus tel quel.
+        // La photo n'a plus d'utilité une fois l'achat fait (elle servait à reconnaître le produit au magasin).
         await db.query("UPDATE courses SET achete = true, photo = NULL WHERE id = $1", [idCourse]);
         res.json({ succes: true });
     } catch (err) {
@@ -842,7 +718,6 @@ app.post("/courses/acheter", async (req, res) => {
 // CALORIES
 // ============================================
 
-// Page calories : on affiche le journal du jour + la liste des aliments + la liste des recettes
 app.get("/calories", async (req, res) => {
     try {
         const journal = await chercherJournalDuJour();
@@ -860,9 +735,6 @@ app.get("/calories", async (req, res) => {
     }
 });
 
-// -- POST /calories/ajouter : remplace l'ancienne (quantiteG optionnelle, défaut 100) --
-
-// Ajouter un aliment mangé dans le journal du jour (par défaut 100g si aucune quantité n'est précisée)
 app.post("/calories/ajouter", async (req, res) => {
     try {
         const idAliment = req.body.idAliment;
@@ -872,8 +744,7 @@ app.post("/calories/ajouter", async (req, res) => {
             return res.status(400).json({ erreur: "Champs requis." });
         }
 
-        // Le nouvel article va toujours à la fin (ordre max du jour + 1), pour apparaître après
-        // tout ce qui est déjà dans le journal plutôt qu'à une position arbitraire
+        // Toujours ajouté à la fin (ordre max du jour + 1).
         const insertResult = await db.query(
             `INSERT INTO journal_repas (food_id, quantite_g, ordre)
              VALUES ($1, $2, COALESCE((SELECT MAX(ordre) FROM journal_repas WHERE date_entree = CURRENT_DATE), 0) + 1)
@@ -882,7 +753,6 @@ app.post("/calories/ajouter", async (req, res) => {
         );
         const nouvelId = insertResult.rows[0].id;
 
-        // On relit la nouvelle entrée avec ses valeurs nutritionnelles déjà calculées
         const itemResult = await db.query(
             `SELECT journal_repas.*, foods.nom, foods.emoji, foods.categorie,
             foods.grammes_par_cuil_a_cafe, foods.grammes_par_cuil_a_soupe,
@@ -903,9 +773,6 @@ app.post("/calories/ajouter", async (req, res) => {
     }
 });
 
-// -- POST /calories/modifier : nouvelle route, édition inline de la quantité --
-
-// Modifier la quantité (en grammes) d'une entrée déjà présente dans le journal du jour
 app.post("/calories/modifier", async (req, res) => {
     try {
         const idEntree = req.body.idEntree;
@@ -917,7 +784,6 @@ app.post("/calories/modifier", async (req, res) => {
 
         await db.query("UPDATE journal_repas SET quantite_g = $1 WHERE id = $2", [nouvelleQuantite, idEntree]);
 
-        // On relit l'entrée mise à jour, avec ses valeurs nutritionnelles recalculées
         const itemResult = await db.query(
             `SELECT journal_repas.*, foods.nom, foods.emoji,
                     ROUND(foods.calories * journal_repas.quantite_g / 100, 1) AS calories_calc,
@@ -954,11 +820,7 @@ app.post("/calories/supprimer", async (req, res) => {
     }
 });
 
-// -- POST /calories/deplacer : réarrange le journal (boutons monter/descendre) --
-
-// Échange l'ordre d'une entrée avec celle juste au-dessus ("haut") ou juste en dessous ("bas") :
-// un simple échange entre deux voisines suffit pour "monter/descendre d'un cran", pas besoin
-// d'envoyer toute la liste réordonnée à chaque clic.
+// Échange l'ordre avec la voisine ("haut"/"bas") plutôt que de renvoyer toute la liste réordonnée.
 app.post("/calories/deplacer", async (req, res) => {
     try {
         const idEntree = req.body.idEntree;
@@ -974,7 +836,6 @@ app.post("/calories/deplacer", async (req, res) => {
         }
         const ordreActuel = actuelResult.rows[0].ordre;
 
-        // La voisine à échanger : l'entrée du jour avec l'ordre le plus proche, du bon côté
         const voisineResult = await db.query(
             `SELECT id, ordre FROM journal_repas
              WHERE date_entree = CURRENT_DATE AND ordre ${direction === "haut" ? "<" : ">"} $1
@@ -983,7 +844,6 @@ app.post("/calories/deplacer", async (req, res) => {
             [ordreActuel]
         );
         if (voisineResult.rows.length === 0) {
-            // Déjà tout en haut/en bas : rien à faire, ce n'est pas une erreur
             return res.json({ succes: true });
         }
         const voisine = voisineResult.rows[0];
@@ -998,9 +858,6 @@ app.post("/calories/deplacer", async (req, res) => {
     }
 });
 
-// -- POST /calories/vider : nouvelle route, Tout Effacer --
-
-// Vider complètement le journal du jour (bouton "Tout effacer")
 app.post("/calories/vider", async (req, res) => {
     try {
         await db.query("DELETE FROM journal_repas WHERE date_entree = CURRENT_DATE");
@@ -1011,11 +868,8 @@ app.post("/calories/vider", async (req, res) => {
     }
 });
 
-// -- POST /calories/ajouter-recette : nouvelle route, applique une recette --
-
-// Remplace le journal du jour par tous les ingrédients d'une recette sélectionnée
+// Remplace le journal du jour par tous les ingrédients d'une recette.
 app.post("/calories/ajouter-recette", async (req, res) => {
-    // On garde une trace si une transaction SQL a été démarrée, pour savoir si on doit l'annuler en cas d'erreur
     let transactionStarted = false;
 
     try {
@@ -1027,7 +881,6 @@ app.post("/calories/ajouter-recette", async (req, res) => {
             });
         }
 
-        // On récupère la liste des ingrédients de cette recette
         const ingredients = await db.query(
             "SELECT food_id, quantite_g FROM recette_ingredients WHERE recette_id = $1",
             [idRecette]
@@ -1039,23 +892,16 @@ app.post("/calories/ajouter-recette", async (req, res) => {
             });
         }
 
-        // On démarre une transaction : soit toutes les opérations réussissent, soit aucune n'est appliquée
-        // (utile ici car on supprime le journal du jour ET on insère plusieurs lignes d'un coup)
         await db.query("BEGIN");
         transactionStarted = true;
 
-        // On vide d'abord le journal du jour (la recette remplace tout ce qui a été mangé aujourd'hui)
         await db.query(
             "DELETE FROM journal_repas WHERE date_entree = CURRENT_DATE"
         );
 
         const nouvellesEntrees = [];
 
-        // On insère une ligne de journal pour chaque ingrédient de la recette, avec un ordre
-        // séquentiel (le journal vient d'être entièrement vidé juste au-dessus, donc 1, 2, 3...) :
-        // sans ça, ces lignes gardaient un "ordre" NULL, ce qui cassait silencieusement les
-        // boutons monter/descendre dessus (la comparaison SQL "ordre < NULL" ne trouve jamais de
-        // voisine, donc /calories/deplacer répondait succès sans rien faire).
+        // Ordre explicite requis : un "ordre" NULL casse silencieusement /calories/deplacer ("ordre < NULL" ne trouve jamais de voisine).
         let ordre = 1;
         for (const ingredient of ingredients.rows) {
             const insertResult = await db.query(
@@ -1067,7 +913,6 @@ app.post("/calories/ajouter-recette", async (req, res) => {
             ordre++;
         }
 
-        // On relit toutes les nouvelles entrées créées, avec leurs valeurs nutritionnelles calculées
         const itemsResult = await db.query(`
             SELECT
                 journal_repas.*,
@@ -1090,7 +935,6 @@ app.post("/calories/ajouter-recette", async (req, res) => {
             ORDER BY journal_repas.ordre ASC
         `, [nouvellesEntrees]);
 
-        // Tout s'est bien passé : on valide définitivement la transaction
         await db.query("COMMIT");
         transactionStarted = false;
 
@@ -1100,8 +944,6 @@ app.post("/calories/ajouter-recette", async (req, res) => {
         });
 
     } catch (err) {
-        // En cas d'erreur, si une transaction avait été démarrée, on annule tout (ROLLBACK)
-        // pour ne pas laisser la base de données dans un état à moitié modifié
         if (transactionStarted) {
             await db.query("ROLLBACK");
         }
@@ -1113,9 +955,6 @@ app.post("/calories/ajouter-recette", async (req, res) => {
     }
 });
 
-// -- POST /recettes/creer : nouvelle route, création d'une recette --
-
-// Créer une nouvelle recette avec sa liste d'ingrédients
 app.post("/recettes/creer", async (req, res) => {
     try {
         const nom = req.body.nom;
@@ -1126,14 +965,12 @@ app.post("/recettes/creer", async (req, res) => {
             return res.status(400).json({ erreur: "Nom et au moins un ingrédient requis." });
         }
 
-        // On crée d'abord la recette elle-même
         const recetteResult = await db.query(
             "INSERT INTO recettes (nom, categorie) VALUES ($1, $2) RETURNING id",
             [nom, categorie]
         );
         const idRecette = recetteResult.rows[0].id;
 
-        // Puis on ajoute chacun de ses ingrédients, un par un
         for (const ingredient of ingredients) {
             await db.query(
                 "INSERT INTO recette_ingredients (recette_id, food_id, quantite_g) VALUES ($1, $2, $3)",
@@ -1148,8 +985,6 @@ app.post("/recettes/creer", async (req, res) => {
         res.status(500).json({ erreur: err.message });
     }
 });
-
-// -- GET /recettes/:id : détail complet d'une recette (pour ouvrir le panneau d'édition) --
 
 app.get("/recettes/:id", async (req, res) => {
     try {
@@ -1185,8 +1020,6 @@ app.get("/recettes/:id", async (req, res) => {
     }
 });
 
-// -- POST /recettes/:id/modifier : renomme/retype une recette et remplace ses ingrédients --
-
 app.post("/recettes/:id/modifier", async (req, res) => {
     let transactionStarted = false;
 
@@ -1208,8 +1041,7 @@ app.post("/recettes/:id/modifier", async (req, res) => {
             [nom, categorie, idRecette]
         );
 
-        // Plutôt que de comparer ancienne/nouvelle liste ingrédient par ingrédient, on repart
-        // de zéro : plus simple à maintenir, et la liste d'ingrédients d'une recette reste courte
+        // DELETE + réinsertion plutôt qu'un diff ingrédient par ingrédient : plus simple, liste toujours courte.
         await db.query("DELETE FROM recette_ingredients WHERE recette_id = $1", [idRecette]);
 
         for (const ingredient of ingredients) {
@@ -1232,8 +1064,6 @@ app.post("/recettes/:id/modifier", async (req, res) => {
         res.status(500).json({ erreur: err.message });
     }
 });
-
-// -- POST /recettes/:id/supprimer : supprime une recette et ses ingrédients --
 
 app.post("/recettes/:id/supprimer", async (req, res) => {
     let transactionStarted = false;
@@ -1259,8 +1089,6 @@ app.post("/recettes/:id/supprimer", async (req, res) => {
         res.status(500).json({ erreur: err.message });
     }
 });
-
-// -- POST /recettes/depuis-journal : enregistre le journal du jour tel quel comme nouvelle recette --
 
 app.post("/recettes/depuis-journal", async (req, res) => {
     try {
@@ -1299,7 +1127,6 @@ app.post("/recettes/depuis-journal", async (req, res) => {
     }
 });
 
-// On démarre le serveur : à partir de maintenant, il écoute les requêtes sur le port choisi
 app.listen(port, () => {
     console.log(`API is running at http://localhost:${port}`);
 });

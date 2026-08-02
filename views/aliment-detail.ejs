@@ -49,13 +49,8 @@
           </div>
         </div>
 
-        <!-- Poids d'une cuillère de CET aliment précis : ça n'a rien d'universel (1 c. à soupe
-             d'huile ≈ 13g, 1 c. à soupe de gomme xanthane ≈ 9g), donc renseigné une fois ici,
-             au poids réel constaté à la cuisine. Sert ensuite à saisir "1/2 c. à café" plutôt que
-             de deviner un poids en grammes, dans le Journal et les recettes (voir calories.js). -->
-        <!-- <details> plutôt qu'affiché en permanence : repliée par défaut, elle n'a plus l'air de
-             "redemander" une équivalence à chaque aliment (carotte, poulet...) qui ne s'y prête
-             jamais — on l'ouvre seulement pour les quelques aliments concernés (huile, épices...). -->
+        <!-- Poids par cuillère propre à cet aliment (pas de conversion universelle), utilisé dans Journal/recettes (voir calories.js). -->
+        <!-- <details> repliée par défaut : ne "redemande" une équivalence que pour les aliments concernés (huile, épices...). -->
         <details class="detail-equivalences" data-id="<%= aliment.id %>">
           <summary class="detail-equivalences__titre">Équivalences (poids d'une cuillère)</summary>
           <p class="detail-equivalences__aide">Laisse vide tant que tu ne l'as pas pesé toi-même — sans valeur, seuls les grammes restent proposés.</p>

@@ -138,9 +138,7 @@ function mettreEnAvantJournalItem(item) {
   }, 1500);
 }
 
-// Petit bandeau discret en bas de l'écran (même composant visuel que courses.js, voir
-// .toast-reseau dans style.css), pour les messages "déjà dans le journal"/erreurs réseau : pas
-// une alert() bloquante à fermer soi-même.
+// Bandeau discret auto-effaçable (même composant que courses.js).
 function afficherToast(message) {
   let toast = document.getElementById("toastReseau");
   if (!toast) {
@@ -159,18 +157,10 @@ function afficherToast(message) {
   }, 3500);
 }
 
-// Empêche un aliment d'être ajouté deux fois en double-tapant vite sur la même suggestion : sans
-// ça, la vérification "déjà dans le journal" (trouverJournalItemParFoodId, juste en dessous) ne
-// voit rien tant que la 1ère requête n'a pas fini et que la nouvelle ligne n'est pas encore dans
-// le DOM — un 2e (ou 3e) tap pendant ce court délai passait donc chaque fois cette vérification
-// et créait une VRAIE ligne en base à chaque tap (visible seulement après un rechargement de la
-// page, jamais tout de suite, puisqu'il fallait justement que la 1ère requête réponde d'abord).
+// Verrou anti double-tap : sans lui, un 2e tap avant la réponse du 1er créait une vraie 2e ligne en base.
 const idsEnCoursAjoutJournal = new Set();
 
-// Cliquer directement sur une suggestion ajoute l'aliment au journal avec 100g par défaut
-// (pas besoin de valider un formulaire séparé, c'est immédiat). Si l'aliment est déjà dans le
-// journal du jour, on ne l'ajoute pas une 2e fois : on amène directement l'utilisateur sur
-// l'entrée existante, comme sur Stock/Courses.
+// Une suggestion ajoute directement au journal (100g par défaut) ; si déjà présent, on met en avant plutôt que dupliquer.
 itemsAutocomplete.forEach(function (item) {
   item.addEventListener("click", function () {
     const idAliment = this.dataset.id;
@@ -200,9 +190,7 @@ document.addEventListener("click", function (e) {
   }
 });
 
-// Envoie au serveur l'ajout d'un aliment au journal, puis affiche la nouvelle entrée sans recharger la page.
-// Renvoie la promesse (pas juste "fetch(...).then(...)" en l'air) : l'appelant s'en sert pour savoir
-// quand la requête est vraiment terminée (voir idsEnCoursAjoutJournal ci-dessus).
+// Renvoie la promesse (pas juste lancée en l'air) : sert à savoir quand la requête est vraiment terminée.
 function ajouterAlimentAuJournal(idAliment, quantiteG) {
   return fetch("/calories/ajouter", {
     method: "POST",
