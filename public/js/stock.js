@@ -34,6 +34,27 @@ function normaliserTexte(str) {
   return str.normalize("NFD").replace(new RegExp("[̀-ͯ]", "g"), "");
 }
 
+// Petit bandeau discret en bas de l'écran (même composant visuel que courses.js/calories.js,
+// voir .toast-reseau dans style.css), pour les messages "déjà dans le stock"/erreurs réseau :
+// pas une alert() bloquante à fermer soi-même.
+function afficherToast(message) {
+  let toast = document.getElementById("toastReseau");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toastReseau";
+    toast.className = "toast-reseau";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.remove("visible");
+  void toast.offsetWidth;
+  toast.classList.add("visible");
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(function () {
+    toast.classList.remove("visible");
+  }, 3500);
+}
+
 // Ajoute la classe "entree" (petite animation d'apparition, voir @keyframes popIn) puis la
 // retire une fois l'animation terminée : "animation: ... both" (voir style.css) fait tenir la
 // valeur de fin indéfiniment tant que la classe reste posée, ce qui écraserait silencieusement
@@ -219,6 +240,13 @@ rechercheAliment.addEventListener("input", function () {
   rechercheAliment.classList.toggle("recherche-invalide", visibles === 0);
 });
 
+// Empêche un aliment d'être ajouté deux fois en double-tapant vite sur la même suggestion : sans
+// ça, "trouverStockItemParNom" juste en dessous ne voit rien tant que la 1ère requête n'a pas
+// fini et que la nouvelle carte n'est pas encore dans le DOM — un tap en plus pendant ce court
+// délai passait donc la vérification et créait une VRAIE 2e ligne en base (visible seulement
+// après un rechargement de la page, jamais tout de suite).
+const idsEnCoursAjoutStock = new Set();
+
 // Toucher une suggestion ajoute directement l'aliment au stock, avec une quantité de départ
 // par défaut ("plein" pour un niveau, 1 pour une quantité) : la valeur exacte se corrige
 // ensuite directement sur la carte, pas besoin d'un second champ + bouton "Ajouter" séparés.
@@ -229,16 +257,23 @@ items.forEach(function (item) {
   item.addEventListener("click", function () {
     const type = this.dataset.type; // le type de suivi de cet aliment ("cl", "unite", "pack"...)
     const nom = this.dataset.nom;
+    const idAliment = this.dataset.id;
     fermerRechercheAjoutStock();
 
     const itemExistant = trouverStockItemParNom(nom);
     if (itemExistant) {
+      afficherToast("Déjà dans le stock.");
       mettreEnAvantStockItem(itemExistant);
       return;
     }
 
+    if (idsEnCoursAjoutStock.has(idAliment)) return; // déjà en train d'être ajouté, on ignore ce tap en plus
+
     const quantiteDepart = type === "cl" ? "plein" : 1;
-    ajouterAuStock(this.dataset.id, quantiteDepart);
+    idsEnCoursAjoutStock.add(idAliment);
+    ajouterAuStock(idAliment, quantiteDepart).finally(function () {
+      idsEnCoursAjoutStock.delete(idAliment);
+    });
   });
 });
 
@@ -468,16 +503,17 @@ function construireStockItemDOM(item) {
 // ============================================
 
 // Ajoute un aliment au stock (appelé au tap sur une suggestion, voir plus haut), avec une
-// quantité de départ déjà décidée (pas de deuxième étape de saisie avant l'ajout)
+// quantité de départ déjà décidée (pas de deuxième étape de saisie avant l'ajout).
+// Renvoie la promesse (pas juste "fetch(...).then(...)" en l'air) : l'appelant s'en sert pour
+// savoir quand la requête est vraiment terminée (voir idsEnCoursAjoutStock plus haut).
 function ajouterAuStock(idAliment, quantiteDepart) {
-  fetch("/stock/ajouter", {
+  return fetch("/stock/ajouter", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idAliment: idAliment, quantiteAliment: quantiteDepart })
   })
     .then(function (response) { return response.json(); })
     .then(function (data) {
-      // Si le serveur renvoie une erreur, on l'affiche simplement dans une alerte
       if (data.erreur) {
         alert(data.erreur);
         return;
@@ -507,6 +543,10 @@ function ajouterAuStock(idAliment, quantiteDepart) {
           nouvelItem.classList.remove("mise-en-avant");
         }, 1500);
       }
+    })
+    .catch(function (err) {
+      console.error("Erreur réseau :", err);
+      afficherToast("Connexion instable : réessaie dans un instant.");
     });
 }
 

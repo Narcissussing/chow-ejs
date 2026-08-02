@@ -138,22 +138,58 @@ function mettreEnAvantJournalItem(item) {
   }, 1500);
 }
 
+// Petit bandeau discret en bas de l'écran (même composant visuel que courses.js, voir
+// .toast-reseau dans style.css), pour les messages "déjà dans le journal"/erreurs réseau : pas
+// une alert() bloquante à fermer soi-même.
+function afficherToast(message) {
+  let toast = document.getElementById("toastReseau");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toastReseau";
+    toast.className = "toast-reseau";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.remove("visible");
+  void toast.offsetWidth;
+  toast.classList.add("visible");
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(function () {
+    toast.classList.remove("visible");
+  }, 3500);
+}
+
+// Empêche un aliment d'être ajouté deux fois en double-tapant vite sur la même suggestion : sans
+// ça, la vérification "déjà dans le journal" (trouverJournalItemParFoodId, juste en dessous) ne
+// voit rien tant que la 1ère requête n'a pas fini et que la nouvelle ligne n'est pas encore dans
+// le DOM — un 2e (ou 3e) tap pendant ce court délai passait donc chaque fois cette vérification
+// et créait une VRAIE ligne en base à chaque tap (visible seulement après un rechargement de la
+// page, jamais tout de suite, puisqu'il fallait justement que la 1ère requête réponde d'abord).
+const idsEnCoursAjoutJournal = new Set();
+
 // Cliquer directement sur une suggestion ajoute l'aliment au journal avec 100g par défaut
 // (pas besoin de valider un formulaire séparé, c'est immédiat). Si l'aliment est déjà dans le
 // journal du jour, on ne l'ajoute pas une 2e fois : on amène directement l'utilisateur sur
 // l'entrée existante, comme sur Stock/Courses.
 itemsAutocomplete.forEach(function (item) {
   item.addEventListener("click", function () {
+    const idAliment = this.dataset.id;
     rechercheAlimentCalories.value = "";
     listeAlimentsCalories.hidden = true;
 
-    const itemExistant = trouverJournalItemParFoodId(this.dataset.id);
+    const itemExistant = trouverJournalItemParFoodId(idAliment);
     if (itemExistant) {
+      afficherToast("Déjà dans le journal d'aujourd'hui.");
       mettreEnAvantJournalItem(itemExistant);
       return;
     }
 
-    ajouterAlimentAuJournal(this.dataset.id, 100);
+    if (idsEnCoursAjoutJournal.has(idAliment)) return; // déjà en train d'être ajouté, on ignore ce tap en plus
+
+    idsEnCoursAjoutJournal.add(idAliment);
+    ajouterAlimentAuJournal(idAliment, 100).finally(function () {
+      idsEnCoursAjoutJournal.delete(idAliment);
+    });
   });
 });
 
@@ -164,9 +200,11 @@ document.addEventListener("click", function (e) {
   }
 });
 
-// Envoie au serveur l'ajout d'un aliment au journal, puis affiche la nouvelle entrée sans recharger la page
+// Envoie au serveur l'ajout d'un aliment au journal, puis affiche la nouvelle entrée sans recharger la page.
+// Renvoie la promesse (pas juste "fetch(...).then(...)" en l'air) : l'appelant s'en sert pour savoir
+// quand la requête est vraiment terminée (voir idsEnCoursAjoutJournal ci-dessus).
 function ajouterAlimentAuJournal(idAliment, quantiteG) {
-  fetch("/calories/ajouter", {
+  return fetch("/calories/ajouter", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idAliment: idAliment, quantiteG: quantiteG })
@@ -183,6 +221,10 @@ function ajouterAlimentAuJournal(idAliment, quantiteG) {
       ajouterAnimationEntree(nouvelleEntree);
       recalculerTotaux();
       mettreAJourBoutonsReorder(listeJournal, ".journal-item");
+    })
+    .catch(function (err) {
+      console.error("Erreur réseau :", err);
+      afficherToast("Connexion instable : réessaie dans un instant.");
     });
 }
 

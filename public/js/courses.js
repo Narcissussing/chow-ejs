@@ -435,7 +435,7 @@ btnEnregistrerPresetHebdo.addEventListener("click", function () {
     fetchAvecRetry("/courses/preset-hebdo/enregistrer", { method: "POST" })
         .then(function (data) {
             if (data.erreur) {
-                afficherToast(data.erreur);
+                alert(data.erreur);
                 return;
             }
 
@@ -918,7 +918,7 @@ inputPhotoCourse.addEventListener("change", function () {
         })
         .then(function (data) {
             if (data.erreur) {
-                afficherToast(data.erreur);
+                alert(data.erreur);
                 return;
             }
             const bouton = document.querySelector(`.btn-photo-course[data-id="${idCourse}"]`);
@@ -991,7 +991,7 @@ btnSupprimerPhoto.addEventListener("click", function () {
     })
         .then(function (data) {
             if (data.erreur) {
-                afficherToast(data.erreur);
+                alert(data.erreur);
                 return;
             }
             // Fermer AVANT de déplacer le bouton dans la note : l'animation "vers l'oeil" a
@@ -1124,7 +1124,7 @@ function envoyerFormulaireAjax(form, callback) {
         })
             .then(function (data) {
                 if (data.erreur) {
-                    afficherToast(data.erreur);
+                    alert(data.erreur);
                     if (boutonSubmit) boutonSubmit.disabled = false;
                     return;
                 }
@@ -1421,6 +1421,7 @@ itemsAutocomplete.forEach(function (item) {
 
         const itemExistant = trouverCourseItemParFoodId(this.dataset.id);
         if (itemExistant) {
+            afficherToast("Déjà dans la liste de courses.");
             mettreEnAvantCourseItem(itemExistant);
             return;
         }
@@ -1460,9 +1461,20 @@ function tenterAjoutArticle() {
     ajouterArticle(idAliment, idAliment ? null : texte);
 }
 
+// Empêche un article d'être ajouté deux fois en tapant/cliquant vite plusieurs fois (suggestion,
+// Entrée, ou bouton "Ajouter" texte libre — les trois finissent ici) : sans ce verrou, la
+// vérification "déjà dans la liste" (trouverCourseItemParFoodId, juste au-dessus) ne voit rien
+// tant que la 1ère requête n'a pas fini et que le nouvel article n'est pas encore dans le DOM — un
+// 2e tap pendant ce court délai (ex: pendant un cold start Fly.io, voir la discussion) passait
+// donc la vérification et créait une VRAIE 2e ligne en base, visible seulement après rechargement.
+let ajoutArticleEnCours = false;
+
 // Envoie l'ajout d'un article de courses au serveur (soit via son id, soit en texte libre),
 // puis insère le nouvel article à l'écran au bon endroit selon le tri actif
 function ajouterArticle(idAliment, texteLibre) {
+    if (ajoutArticleEnCours) return;
+    ajoutArticleEnCours = true;
+
     fetchAvecRetry("/courses/ajouter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1470,7 +1482,7 @@ function ajouterArticle(idAliment, texteLibre) {
     })
         .then(function (data) {
             if (data.erreur) {
-                afficherToast(data.erreur);
+                alert(data.erreur);
                 return;
             }
 
@@ -1484,7 +1496,10 @@ function ajouterArticle(idAliment, texteLibre) {
             // On referme le panneau d'ajout automatiquement après un ajout réussi, comme sur Stock
             fermerPanneauAjoutCourse();
         })
-        .catch(gererErreurReseau);
+        .catch(gererErreurReseau)
+        .finally(function () {
+            ajoutArticleEnCours = false;
+        });
 }
 
 // ============================================
