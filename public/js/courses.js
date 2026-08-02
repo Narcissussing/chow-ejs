@@ -18,22 +18,15 @@ const btnAjouterCourse = document.getElementById("btnAjouterCourse"); // bouton 
 const btnToggleAjoutCourse = document.getElementById("btnToggleAjoutCourse"); // bouton "+" en haut de page qui ouvre/ferme le panneau
 const panneauAjoutCourse = document.getElementById("panneauAjoutCourse"); // le panneau (formulaire) d'ajout lui-même
 
-// Le panneau vit maintenant DANS la liste, comme dernier enfant : il s'ouvre donc juste sous
-// le dernier article, plutôt qu'en haut de page loin de ce qu'on est en train de composer
-// (même principe que le panneau "ajouter un ingrédient" des recettes, voir calories.js).
+// Le panneau vit dans la liste, comme dernier enfant : il s'ouvre juste sous le dernier article.
 listeCourses.appendChild(panneauAjoutCourse);
 
-// Remet le panneau en dernière position dans la liste après tout tri/insertion : trierPar et
-// inserrerSelonTri déplacent/insèrent des .course-item via appendChild/insertBefore sans savoir
-// que le panneau existe, ce qui le laisserait coincé au milieu de la liste sinon
+// Remet le panneau en dernière position après un tri/insertion (trierPar/inserrerSelonTri le déplaceraient sinon).
 function repositionnerPanneauAjout() {
     listeCourses.appendChild(panneauAjoutCourse);
 }
 
-// Ajoute la classe "entree" (petite animation d'apparition, voir @keyframes popIn) puis la
-// retire une fois l'animation terminée : "animation: ... both" (voir style.css) fait tenir la
-// valeur de fin indéfiniment tant que la classe reste posée, ce qui écraserait silencieusement
-// tout "transform" posé plus tard en JS si on ne la retirait jamais.
+// Retire "entree" après l'animation, sinon "animation: ... both" écraserait tout transform posé plus tard en JS.
 function ajouterAnimationEntree(el) {
     el.classList.add("entree");
     el.addEventListener(
@@ -45,16 +38,12 @@ function ajouterAnimationEntree(el) {
     );
 }
 
-// Retire les accents ("é" -> "e", "à" -> "a"...) pour que la recherche les ignore : taper "e"
-// doit trouver "Café" aussi bien que "Cafe". NFD décompose chaque lettre accentuée en deux
-// caractères (la lettre de base + un accent séparé), qu'on peut ensuite retirer avec la regex
-// (plage Unicode des signes diacritiques combinants).
+// Retire les accents (NFD + strip des diacritiques) pour que "e" trouve aussi "Café".
 function normaliserTexte(str) {
     return str.normalize("NFD").replace(new RegExp("[̀-ͯ]", "g"), "");
 }
 
-// Petite fonction de sécurité : transforme les caractères spéciaux en leur équivalent HTML,
-// pour éviter d'injecter du code HTML/JS dangereux dans la page (faille XSS)
+// Échappe le HTML pour éviter une injection XSS.
 function escapeHtml(value) {
     return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -64,9 +53,7 @@ function escapeHtml(value) {
         .replaceAll("'", "&#039;");
 }
 
-// Petit bandeau discret en bas de l'écran, plutôt qu'une alert() bloquante à fermer soi-même :
-// au magasin, une popup qui interrompt à chaque coupure wifi est plus pénible qu'utile. Se
-// referme tout seul après quelques secondes.
+// Bandeau discret auto-effaçable (pas d'alert() bloquante pour une simple coupure wifi).
 function afficherToast(message) {
     let toast = document.getElementById("toastReseau");
     if (!toast) {
@@ -76,9 +63,7 @@ function afficherToast(message) {
         document.body.appendChild(toast);
     }
     toast.textContent = message;
-    // Retire puis reposer la classe "visible" (avec un reflow forcé entre les deux) : sans ça,
-    // deux échecs rapprochés ne rejoueraient jamais l'animation d'apparition la 2e fois, puisque
-    // la classe serait déjà posée depuis le premier message.
+    // Reflow forcé pour rejouer l'animation même si "visible" était déjà posée.
     toast.classList.remove("visible");
     void toast.offsetWidth;
     toast.classList.add("visible");
@@ -88,19 +73,13 @@ function afficherToast(message) {
     }, 3500);
 }
 
-// Aucun des appels fetch() de ce fichier n'avait de .catch() à l'origine : sur une connexion
-// instable (ex: au magasin, en wifi ou 4G faible), une requête qui échoue ou qui répond avec
-// autre chose que du JSON valide (page d'erreur du proxy, portail captif...) faisait planter la
-// promesse en silence — aucune alerte, aucun message, le tap semblait juste "ne rien faire".
+// Sans ça, un fetch() qui échoue en silence (portail captif, wifi faible) laisse le tap sans aucun retour.
 function gererErreurReseau(err) {
     console.error("Erreur réseau :", err);
     afficherToast("Connexion instable : réessaie dans un instant.");
 }
 
-// Réessaie automatiquement une fois, après un court délai, avant d'abandonner pour de bon : au
-// magasin, la plupart des échecs sont un raté ponctuel (pas une vraie coupure), et ce seul essai
-// supplémentaire rattrape silencieusement la majorité des cas sans que l'utilisateur s'en rende
-// compte — pas besoin de retaper soi-même à chaque petit accroc de connexion.
+// Un seul réessai auto après 800ms : rattrape la plupart des accrocs de wifi magasin sans retaper.
 function fetchAvecRetry(url, options, tentativesRestantes) {
     if (tentativesRestantes === undefined) tentativesRestantes = 1;
     return fetch(url, options)
@@ -123,14 +102,8 @@ function fetchAvecRetry(url, options, tentativesRestantes) {
 // ============================================
 // PANNEAU D'AJOUT (repliable)
 // ============================================
-// Même comportement que le panneau d'ajout de Stock : le "+" ouvre/ferme un panneau juste en
-// dessous de lui (au lieu du formulaire fixe tout en bas de page qu'il y avait avant), avec la
-// même animation d'accordéon (voir .panneau-ajout dans style.css).
 
-// Referme le panneau et réinitialise son contenu : rouvrir le panneau plus tard ne doit pas
-// retrouver un vieux texte tapé (et le bouton "Ajouter" qu'il avait éventuellement fait apparaître).
-// Partagé entre le bouton "+", le tap en dehors du panneau, et la fermeture automatique après
-// un ajout réussi.
+// Referme le panneau et vide son contenu (texte tapé, bouton "Ajouter" éventuel).
 function fermerPanneauAjoutCourse() {
     panneauAjoutCourse.classList.remove("ouvert");
     panneauAjoutCourse.classList.remove("pret");
@@ -143,39 +116,31 @@ function fermerPanneauAjoutCourse() {
 
 btnToggleAjoutCourse.addEventListener("click", function () {
     const estOuvert = panneauAjoutCourse.classList.toggle("ouvert");
-    // Le "+" reste rouge (plein) tant que le panneau est ouvert, pour indiquer qu'on est
-    // en train d'ajouter, puis redevient un simple contour dès qu'on le referme
     btnToggleAjoutCourse.classList.toggle("actif", estOuvert);
     if (!estOuvert) {
         fermerPanneauAjoutCourse();
     } else {
-        // Le panneau vit tout en bas de la liste (voir plus haut) : on y fait défiler la page
-        // pour qu'il soit visible avant d'y mettre le curseur, sinon on tape sans rien voir
+        // Fait défiler jusqu'au panneau (tout en bas de la liste) avant d'y mettre le curseur.
         panneauAjoutCourse.scrollIntoView({ behavior: "smooth", block: "center" });
         rechercheAlimentCourses.focus();
     }
 });
 
-// Taper n'importe où en dehors du panneau (et du bouton qui l'ouvre, sinon on l'ouvrirait et
-// refermerait dans la foulée) le referme, comme un vrai menu déroulant plutôt qu'un panneau qui
-// ne se referme qu'en retapant explicitement sur le "+"
+// Cliquer en dehors du panneau (et du bouton qui l'ouvre) le referme.
 document.addEventListener("click", function (e) {
     if (!panneauAjoutCourse.classList.contains("ouvert")) return;
     if (e.target.closest("#panneauAjoutCourse") || e.target.closest("#btnToggleAjoutCourse")) return;
     fermerPanneauAjoutCourse();
 });
 
-// Une fois l'animation d'ouverture terminée, on ajoute "pret" : le panneau repasse en
-// overflow:visible, pour que la liste de suggestions (qui dépasse volontairement sous le
-// panneau) redevienne visible
+// "pret" repasse en overflow:visible une fois ouvert, pour que la liste de suggestions dépasse sous le panneau.
 panneauAjoutCourse.addEventListener("transitionend", function (event) {
     if (event.propertyName === "grid-template-rows" && panneauAjoutCourse.classList.contains("ouvert")) {
         panneauAjoutCourse.classList.add("pret");
     }
 });
 
-// Renvoie le nom de la classe CSS correspondant au niveau de remplissage d'un aliment suivi en "cl"
-// (même mapping que public/js/stock.js), utilisé pour le petit point de couleur "déjà en stock"
+// Classe CSS du niveau de remplissage pour un aliment suivi en "cl" (même mapping que stock.js).
 function classeNiveauCL(valeur) {
     if (valeur === "plein") return "niveau-plein";
     if (valeur === "à moitié") return "niveau-moitie";
@@ -190,8 +155,7 @@ function classeNiveauCL(valeur) {
 // Trie tous les articles de la liste selon la clé demandée ("nom" ou "categorie"),
 // puis les réinsère dans le bon ordre dans la page
 function trierPar(cle) {
-    // On repart des articles seuls : les éventuels en-têtes de catégorie posés par un tri
-    // précédent ne sont pas des articles et n'ont pas à être re-triés avec eux
+    // Exclut les en-têtes de catégorie d'un tri précédent : pas des articles.
     const items = Array.from(listeCourses.querySelectorAll(".course-item"));
     items.sort(function (a, b) {
         return a.dataset[cle].localeCompare(b.dataset[cle]);
@@ -200,9 +164,7 @@ function trierPar(cle) {
     retirerEntetesCategories();
 
     if (cle === "categorie") {
-        // Un en-tête discret ("FRUITS", "LÉGUMES"...) devant chaque nouveau groupe de catégorie,
-        // à la façon des listes de courses par rayon (ex : Rappels sur iOS) : ça donne un repère
-        // visuel pendant qu'on fait vraiment ses courses, sans être une vraie section cliquable
+        // En-tête discret devant chaque nouveau groupe de catégorie (repère visuel, pas cliquable).
         let derniereCategorie = null;
         items.forEach(function (item) {
             if (item.dataset.categorie !== derniereCategorie) {
@@ -217,29 +179,19 @@ function trierPar(cle) {
         });
     }
 
-    // Chaque appendChild ci-dessus recolle les articles/en-têtes en fin de liste : sans ce
-    // rappel, le panneau d'ajout (déplacé là au chargement) se retrouverait repoussé avant eux
+    // Le tri vient de recoller tout en fin de liste : remet le panneau d'ajout après.
     repositionnerPanneauAjout();
     mettreAJourMessageVideCourses();
     mettreAJourBadgeCourses();
 }
 
-// Affiche "Aucun article dans la liste de courses" seulement quand la liste est réellement
-// vide (même pattern que Stock/Journal, voir noResultsStock/noResultsJournal) : appelé après
-// chaque tri, qui se produit lui-même après chaque ajout/suppression (voir trierPar).
+// Affiche "Aucun article" seulement quand la liste est réellement vide.
 function mettreAJourMessageVideCourses() {
     const visibles = listeCourses.querySelectorAll(".course-item").length;
     noResultsCourses.classList.toggle("hidden", visibles > 0);
 }
 
-// Le nombre sur le badge "sac de courses" (voir hero__badge--courses) n'était posé qu'une seule
-// fois au chargement de la page (rendu côté serveur) : il ne bougeait jamais après un ajout ou
-// un achat/suppression en AJAX, sans recharger la page. On le recalcule donc au même moment que
-// le message "liste vide" ci-dessus. Le petit "pop"/"shake" ne joue que si le nombre a vraiment
-// changé (pas à chaque tri), pour rester un vrai signal et pas un tic visuel permanent.
-// "type" distingue l'animation : un achat mérite un rebond joyeux (badge-pop), une suppression
-// n'est pas une victoire à célébrer pareil — juste un petit "shake" (badge-shake). Par défaut
-// (ajout d'un article, tri initial), on garde le rebond.
+// Recalcule le badge après chaque ajout/achat/suppression AJAX. "type" choisit l'anim : achat = rebond (badge-pop), suppression = shake.
 function mettreAJourBadgeCourses(type) {
     const nb = listeCourses.querySelectorAll(".course-item").length;
     if (String(nb) === badgeNbCourses.textContent) return;
@@ -253,12 +205,8 @@ function mettreAJourBadgeCourses(type) {
 // ============================================
 // BADGE COURSES : NAVETTE HERO <-> BARRE D'OUTILS SELON LE SCROLL
 // ============================================
-// Le badge vit dans le hero par défaut (grand format). Une fois le hero scrollé sous la barre
-// d'outils sticky (plus de place pour lui en haut de l'écran), on le déplace RÉELLEMENT (même
-// noeud DOM, pas une copie) entre "Au magasin" et "+", en petit format — puis on le ramène dans
-// le hero au retour en haut. Technique FLIP (First/Last/Invert/Play) : on capture sa position
-// avant/après le déplacement, et on anime la DIFFÉRENCE via un transform, plutôt que de faire
-// deviner au navigateur comment interpoler un changement de parent (ce qu'il ne sait pas faire).
+// Le badge se déplace (même noeud DOM) du hero vers la barre d'outils une fois le hero scrollé
+// hors champ, et inversement. Technique FLIP : on anime la différence de position via transform.
 const heroCourses = document.getElementById("heroCourses");
 const badgeCoursesContainer = document.getElementById("badgeCoursesContainer");
 const badgeCoursesAncre = document.getElementById("badgeCoursesAncre");
@@ -266,9 +214,7 @@ const barreOutilsCourses = document.querySelector(".courses-controls-row");
 
 let badgeCoursesDansToolbar = false;
 
-// Hauteur réelle du bouton "Trier par" (menu déroulant personnalisé, voir custom-selects.js) :
-// mesurée en direct plutôt que devinée en dur en CSS, pour vraiment matcher peu importe comment
-// la police/le padding se rendent réellement sur l'appareil.
+// Hauteur réelle du bouton "Trier par", mesurée en direct (pas devinée en CSS).
 function hauteurBoutonTri() {
     const bouton = document.querySelector(".sort-wrapper .custom-select__button");
     return bouton ? bouton.offsetHeight : 34;
@@ -282,14 +228,11 @@ function deplacerBadgeCourses(versToolbar) {
     if (versToolbar) {
         badgeCoursesAncre.insertAdjacentElement("afterend", badgeCoursesContainer);
         badgeCoursesContainer.classList.add("badge-courses-toolbar");
-        // Taille imposée en JS (pas seulement via la classe CSS) : seul ce moment-là (vers le
-        // bas) doit changer la taille — le retour vers le hero (ci-dessous) l'efface pour
-        // retrouver EXACTEMENT la taille d'origine du hero, sans valeur intermédiaire figée.
+        // Taille imposée en JS pour matcher le bouton "Trier par" ; effacée au retour au hero.
         const taille = hauteurBoutonTri();
         badgeCoursesContainer.style.width = taille + "px";
         badgeCoursesContainer.style.height = taille + "px";
-        // Même ratio padding-bottom/hauteur que la version hero (8px pour 65px), pour que le
-        // nombre reste centré sur le sac à n'importe quelle taille de bouton "Trier par".
+        // Même ratio padding-bottom/hauteur que la version hero, pour garder le nombre centré.
         badgeCoursesContainer.style.paddingBottom = (taille * (8 / 65)).toFixed(1) + "px";
     } else {
         heroCourses.appendChild(badgeCoursesContainer);
@@ -316,9 +259,7 @@ function deplacerBadgeCourses(versToolbar) {
 }
 
 if (heroCourses && badgeCoursesContainer && badgeCoursesAncre && barreOutilsCourses) {
-    // rootMargin négatif en haut = zone "cachée" derrière le header fixe + la barre sticky : le
-    // badge ne rejoint la barre d'outils que lorsque le hero n'a VRAIMENT plus de place au-dessus
-    // de cette zone (pas juste dès qu'on scrolle un peu).
+    // rootMargin = zone cachée derrière header + barre sticky : le badge ne bouge qu'une fois le hero vraiment hors champ.
     const styleRacine = getComputedStyle(document.documentElement);
     const hauteurHeader = parseFloat(styleRacine.getPropertyValue("--header-h")) || 65;
     const decalage = hauteurHeader + barreOutilsCourses.offsetHeight;
@@ -388,16 +329,12 @@ function inserrerSelonTri(nouvelItem) {
 // PRESET "COURSES DE LA SEMAINE" — ENREGISTRER/METTRE À JOUR
 // ============================================
 
-// Clé unique pour un article, qu'il vienne d'un data-food-id (article connu) ou d'un data-nom /
-// nom_libre (article "libre") : sert à comparer la liste actuelle au preset sans dépendre de l'id
-// de ligne (qui change à chaque fois qu'on vide/recrée la liste).
+// Clé stable pour comparer un article au preset, indépendante de son id de ligne.
 function cleArticlePreset(foodId, nom) {
     return foodId ? "f:" + foodId : "n:" + (nom || "").toLowerCase();
 }
 
-// Affiche "Enregistrer" seulement à partir de 5 articles dans la liste, et le désactive si la
-// liste actuelle est déjà identique au preset (rien à mettre à jour). Appelé après chaque ajout
-// ou suppression d'article (voir plus bas), pas seulement au chargement.
+// "Enregistrer" apparaît à partir de 5 articles, désactivé si la liste égale déjà le preset.
 function mettreAJourBoutonPresetHebdo() {
     const items = Array.from(listeCourses.querySelectorAll(".course-item"));
 
@@ -439,8 +376,7 @@ btnEnregistrerPresetHebdo.addEventListener("click", function () {
                 return;
             }
 
-            // Le preset côté client doit refléter ce qu'on vient d'enregistrer, sinon le bouton
-            // resterait activable pour rien tant que la page n'est pas rechargée
+            // Reflète le preset côté client, sinon le bouton resterait activable pour rien.
             window.PRESET_HEBDO = Array.from(listeCourses.querySelectorAll(".course-item")).map(function (item) {
                 return item.dataset.foodId
                     ? { food_id: item.dataset.foodId, nom_libre: null }
@@ -448,8 +384,7 @@ btnEnregistrerPresetHebdo.addEventListener("click", function () {
             });
             mettreAJourBoutonPresetHebdo();
 
-            // Petite confirmation visuelle (icône "réussi", même que sur Aliments), avant de
-            // revenir à l'icône normale (disquette) après un court délai
+            // Confirmation visuelle temporaire (icône "réussi").
             btnEnregistrerPresetHebdo.classList.add("confirme");
             setTimeout(function () {
                 btnEnregistrerPresetHebdo.classList.remove("confirme");
@@ -461,14 +396,9 @@ btnEnregistrerPresetHebdo.addEventListener("click", function () {
 // ============================================
 // FILTRES PAR RAYON (mode magasin uniquement, voir .preset-hebdo-row__filtres)
 // ============================================
-// Sélection MULTIPLE (contrairement à Aliments, où un seul filtre exclut les autres) : chaque
-// rayon se coche/décoche indépendamment, pour pouvoir combiner par ex. Fruits + Légumes. "Tous"
-// reste EXCLUSIF visuellement : dès que le filtre revient à "tout accepté" (soit en cliquant
-// "Tous", soit en cochant chaque rayon un par un à la main), seul le bouton "Tous" s'allume —
-// jamais "Tous" + chaque rayon en même temps. Un sous-ensemble strict, lui, n'allume que les
-// rayons choisis, jamais "Tous". Déclaré AVANT "MODE MAGASIN" ci-dessous : appliquerModeMagasin()
-// (juste après) peut appeler reinitialiserFiltreCategorieCourses() dès son tout premier appel,
-// donc tout ça doit déjà exister à ce moment-là (sinon erreur "accès avant initialisation").
+// Sélection multiple (Fruits + Légumes combinables). "Tous" est exclusif visuellement : allumé
+// seul quand tout est sélectionné, jamais avec les autres chips. Déclaré avant "MODE MAGASIN"
+// car appliquerModeMagasin() peut appeler reinitialiserFiltreCategorieCourses() dès son 1er appel.
 const courseFiltresMagasin = document.getElementById("courseFiltresMagasin");
 let categoriesFiltreActives = new Set();
 
@@ -476,19 +406,14 @@ function boutonsCategorieCourses() {
     return Array.from(courseFiltresMagasin.querySelectorAll('.filter-btn:not([data-categorie="tous"])'));
 }
 
-// Les rayons (chips) sont dérivés UNE FOIS, côté serveur, de la liste au moment du chargement de
-// la page (voir courses.ejs) : un article ajouté ensuite peut très bien appartenir à un rayon qui
-// n'existait pas encore à ce moment-là (aucune chip pour lui). Sans ce garde-fou, un tel article
-// se ferait cacher en permanence par appliquerFiltreCategorie{Item,Courses} ci-dessous — même en
-// dehors du mode magasin — puisque categoriesFiltreActives ne peut par définition pas le connaître.
+// Un article d'un rayon apparu après le chargement n'a pas de chip : sans ce garde-fou il serait caché en permanence.
 function categorieEstConnue(categorie) {
     return boutonsCategorieCourses().some(function (b) {
         return b.dataset.categorie === categorie;
     });
 }
 
-// Reflète categoriesFiltreActives sur les boutons : "Tous" seul si tout est sélectionné, sinon
-// seuls les rayons réellement choisis (jamais les deux en même temps, voir plus haut).
+// "Tous" seul si tout est sélectionné, sinon seuls les rayons réellement choisis.
 function metAJourBoutonsFiltreCourses() {
     const total = boutonsCategorieCourses().length;
     const toutSelectionne = categoriesFiltreActives.size === total;
@@ -506,8 +431,7 @@ function appliquerFiltreCategorieCourses() {
     });
 }
 
-// Remet tout à "sélectionné" (donc rien de filtré) : appelé en quittant le mode magasin, pour ne
-// pas laisser des articles invisibles la prochaine fois qu'on compose sa liste normalement.
+// Remet tout à "sélectionné" (rien de filtré) en quittant le mode magasin.
 function reinitialiserFiltreCategorieCourses() {
     if (!courseFiltresMagasin) return;
     categoriesFiltreActives = new Set(boutonsCategorieCourses().map((b) => b.dataset.categorie));
@@ -517,17 +441,14 @@ function reinitialiserFiltreCategorieCourses() {
     });
 }
 
-// Applique le filtre actuel à UN article donné (utilisé pour les articles ajoutés après coup,
-// pendant qu'un filtre est déjà en cours — voir activerItem plus bas).
+// Applique le filtre actuel à un article ajouté après coup.
 function appliquerFiltreCategorieItem(item) {
     if (!courseFiltresMagasin) return;
     if (!categorieEstConnue(item.dataset.categorie)) return; // rayon apparu après coup : jamais filtré
     item.classList.toggle("hidden", !categoriesFiltreActives.has(item.dataset.categorie));
 }
 
-// Attache le comportement de clic à UNE chip de filtre : extrait à part pour pouvoir l'attacher
-// aussi bien aux chips rendues par le serveur (au chargement) qu'à celles créées en direct par
-// synchroniserChipsFiltreCourses() plus bas (nouveau rayon apparu en cours de route).
+// Extrait à part pour être attaché aux chips serveur ET à celles créées en direct.
 function activerBoutonFiltreCourses(bouton) {
     bouton.addEventListener("click", function () {
         const categorie = this.dataset.categorie;
@@ -535,14 +456,10 @@ function activerBoutonFiltreCourses(bouton) {
         const toutEtaitCoche = categoriesFiltreActives.size === boutonsCategorieCourses().length;
 
         if (categorie === "tous") {
-            // Interrupteur : si tout est déjà sélectionné, "Tous" désélectionne tout ; sinon
-            // il sélectionne tout (même depuis un état partiel).
+            // Interrupteur : tout désélectionner si déjà tout coché, sinon tout cocher.
             categoriesFiltreActives = toutEtaitCoche ? new Set() : new Set(boutonsCategorieCourses().map((b) => b.dataset.categorie));
         } else if (toutEtaitCoche) {
-            // On repart d'une sélection unique plutôt que de juste retirer celle-ci du tout :
-            // cliquer un rayon depuis "Tous" doit se sentir comme "je choisis CE rayon-là",
-            // pas comme "je retire ce seul rayon parmi tous les autres encore cochés".
-            // Les clics suivants (branche ci-dessous) pourront ensuite en ajouter d'autres.
+            // Repart d'une sélection unique : cliquer un rayon depuis "Tous" = "je choisis CE rayon", pas "je retire celui-ci".
             categoriesFiltreActives = new Set([categorie]);
         } else if (categoriesFiltreActives.has(categorie)) {
             categoriesFiltreActives.delete(categorie);
@@ -555,10 +472,7 @@ function activerBoutonFiltreCourses(bouton) {
     });
 }
 
-// Ajoute/retire des chips selon les rayons RÉELLEMENT présents dans la liste actuelle (pas
-// seulement ceux qui existaient au chargement de la page) : appelé après chaque achat/suppression/
-// ajout (voir retirerItem, ajouterArticle, btnPresetHebdo plus bas), pour que "Au magasin" reste
-// à jour tout seul pendant qu'on avance dans la liste, sans recharger la page.
+// Ajoute/retire des chips selon les rayons réellement présents, après chaque achat/suppression/ajout.
 function synchroniserChipsFiltreCourses() {
     if (!courseFiltresMagasin) return;
 
@@ -568,16 +482,14 @@ function synchroniserChipsFiltreCourses() {
         })
     );
 
-    // Un rayon entièrement acheté/supprimé n'a plus lieu de proposer un filtre vide
+    // Un rayon vidé n'a plus lieu de proposer un filtre vide.
     boutonsCategorieCourses().forEach(function (bouton) {
         if (categoriesPresentes.has(bouton.dataset.categorie)) return;
         categoriesFiltreActives.delete(bouton.dataset.categorie);
         bouton.remove();
     });
 
-    // Un rayon présent mais encore sans chip (nouvel article d'un rayon jamais vu) en reçoit une,
-    // COCHÉE tout de suite : sinon l'article qu'on vient d'ajouter/de voir disparaîtrait comme par
-    // magie au moment même où sa chip apparaît, alors que rien n'a changé de son point de vue.
+    // Nouveau rayon sans chip : coché tout de suite, sinon son article disparaîtrait sans raison apparente.
     const categoriesConnues = new Set(boutonsCategorieCourses().map((b) => b.dataset.categorie));
     categoriesPresentes.forEach(function (categorie) {
         if (categoriesConnues.has(categorie)) return;
@@ -603,23 +515,17 @@ if (courseFiltresMagasin) {
 // MODE MAGASIN
 // ============================================
 
-// Le "mode magasin" change l'affichage de la page (probablement en simplifiant l'interface)
-// pour une utilisation pratique pendant qu'on fait ses courses au magasin
 function appliquerModeMagasin(actif) {
     document.body.classList.toggle("mode-magasin", actif);
     toggleMagasin.classList.toggle("actif", actif);
-    // En quittant le mode magasin, on efface le filtre par rayon (voir plus haut) : sinon des
-    // articles resteraient invisibles la prochaine fois qu'on compose sa liste normalement,
-    // sans le repère visuel du filtre actif pour comprendre pourquoi.
+    // Efface le filtre en quittant le mode magasin, sinon des articles resteraient invisibles sans repère visuel.
     if (!actif) reinitialiserFiltreCategorieCourses();
 }
 
-// On se souvient du mode magasin choisi précédemment grâce au localStorage du navigateur
-// (il reste actif même si on ferme et rouvre la page)
+// Mémorisé en localStorage, restauré au chargement.
 const modeMagasinSauvegarde = localStorage.getItem("modeMagasin") === "true";
 appliquerModeMagasin(modeMagasinSauvegarde);
 
-// Clic sur le bouton : on inverse l'état actuel et on le sauvegarde
 toggleMagasin.addEventListener("click", function () {
     const nouvelEtat = !document.body.classList.contains("mode-magasin");
     appliquerModeMagasin(nouvelEtat);
@@ -642,14 +548,12 @@ btnPresetHebdo.addEventListener("click", function () {
                 return;
             }
 
-            // Le serveur n'a renvoyé que les articles pas encore dans la liste : s'il n'y en a aucun,
-            // tout le preset était déjà présent, on ne fait rien de plus
+            // Le serveur ne renvoie que ce qui manquait déjà à la liste.
             if (data.items.length === 0) {
                 alert("Tout est déjà dans la liste de courses.");
                 return;
             }
 
-            // On ajoute chaque nouvel article au bon endroit (selon le tri actif), sans toucher au reste
             data.items.forEach(function (item) {
                 const nouvelItem = construireItemDOM(item);
                 inserrerSelonTri(nouvelItem);
@@ -657,7 +561,7 @@ btnPresetHebdo.addEventListener("click", function () {
                 ajouterAnimationEntree(nouvelItem);
             });
             mettreAJourBoutonPresetHebdo();
-            synchroniserChipsFiltreCourses(); // une seule passe pour tout le lot plutôt qu'une par article
+            synchroniserChipsFiltreCourses(); // une passe pour tout le lot
         })
         .catch(gererErreurReseau);
 });
@@ -666,16 +570,13 @@ btnPresetHebdo.addEventListener("click", function () {
 // COMMENTAIRES / NOTES
 // ============================================
 
-// Affiche le champ de saisie de commentaire (+ bouton photo) pour un article donné, et cache
-// la note affichée à la place. "ligne" (pas juste l'input) est ce qui s'affiche/se cache
-// maintenant : elle contient le champ ET le bouton photo côte à côte (voir courses.ejs).
+// Affiche le champ de note (et cache la note affichée). "ligne" contient champ + bouton photo.
 function afficherInput(idCourse) {
     const input = document.querySelector(`.input-commentaire[data-id="${idCourse}"]`);
     const ligne = input.closest(".ligne-commentaire");
     const note = document.querySelector(`.note-affichee[data-id="${idCourse}"]`);
 
     if (note && !note.classList.contains("hidden")) {
-        // Petite animation de disparition avant de cacher réellement la note
         note.classList.add("masquage");
         setTimeout(function () {
             note.classList.add("hidden");
@@ -687,22 +588,19 @@ function afficherInput(idCourse) {
     input.focus();
 }
 
-// Active le comportement "cliquer pour ajouter/modifier une note" sur un article donné
+// Active "cliquer pour ajouter/modifier une note" sur un article donné.
 function activerNote(item) {
     const emoji = item.querySelector(".course-nom-emoji");
     const input = item.querySelector(".input-commentaire");
     const ligne = input.closest(".ligne-commentaire");
 
-    // On mémorise la valeur d'origine (celle rendue par le serveur au chargement de la page)
     input.dataset.original = input.value.trim();
 
-    // Seul un tap sur l'émoji ouvre le champ de saisie de commentaire (pas tout le nom, trop
-    // facile à toucher par accident) — le reste du nom se comporte comme le reste de la carte.
+    // Seul l'émoji ouvre la note (pas tout le nom, trop facile à toucher par accident).
     emoji.addEventListener("click", function () {
         afficherInput(this.dataset.id);
     });
 
-    // Attache le même comportement "cliquer pour éditer" à une note déjà affichée
     function attacherNote(note) {
         note.addEventListener("click", function () {
             afficherInput(this.dataset.id);
@@ -714,26 +612,24 @@ function activerNote(item) {
         attacherNote(noteExistante);
     }
 
-    // Quand on quitte le champ de saisie (perte du focus)...
     input.addEventListener("blur", function () {
         const idCourse = this.dataset.id;
         const commentaire = this.value.trim();
         const original = this.dataset.original || "";
         let note = item.querySelector(".note-affichee");
 
-        // Petite animation de disparition de la ligne (champ + bouton photo)
         ligne.classList.add("masquage-input");
         setTimeout(() => {
             ligne.classList.add("hidden");
             ligne.classList.remove("masquage-input");
         }, 150);
-        // Rien n'a changé → on annule, on réaffiche la note telle quelle
+        // Rien n'a changé : on annule.
         if (commentaire === original) {
             if (note) note.classList.remove("hidden");
             return;
         }
 
-        // Champ vidé volontairement (il y avait un texte avant) → suppression
+        // Champ vidé volontairement : suppression.
         if (commentaire === "") {
             fetchAvecRetry("/courses/commentaire", {
                 method: "POST",
@@ -748,14 +644,13 @@ function activerNote(item) {
             return;
         }
 
-        // Texte nouveau ou modifié → sauvegarde côté serveur
+        // Texte nouveau ou modifié : sauvegarde.
         fetchAvecRetry("/courses/commentaire", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ idCourse: idCourse, commentaire: commentaire })
         }).catch(gererErreurReseau);
 
-        // Si aucune note n'existait encore à l'écran, on en crée une nouvelle
         if (!note) {
             note = document.createElement("p");
             note.className = "note-affichee";
@@ -783,16 +678,10 @@ const imgApercuPhoto = document.getElementById("imgApercuPhoto");
 const btnFermerPhoto = document.getElementById("btnFermerPhoto");
 const btnSupprimerPhoto = document.getElementById("btnSupprimerPhoto");
 
-// Article concerné par le sélecteur de fichier ou l'aperçu actuellement ouverts (un seul à la
-// fois, comme le "input file" lui-même qui est partagé entre toutes les cartes)
+// Article concerné par le sélecteur de fichier / l'aperçu ouverts (un seul à la fois).
 let idCoursePhotoActuelle = null;
 
-// Réduit et recompresse une image côté client, AVANT de l'envoyer : une photo de téléphone fait
-// souvent plusieurs Mo, bien plus que nécessaire pour reconnaître un emballage au supermarché.
-// Redimensionnée sur son plus grand côté + réencodée en JPEG, elle tient en général entre 300
-// et 800 Ko à 1600px/qualité 0.9 (assez pour relire du texte fin sur un emballage), toujours
-// raisonnable à envoyer même en wifi faible (voir la résilience réseau ajoutée par ailleurs) et
-// à stocker (voir la colonne "photo" en base, BYTEA — voir index.js).
+// Redimensionne + recompresse en JPEG côté client avant l'envoi (~300-800Ko à 1600px/qualité 0.9).
 const PHOTO_TAILLE_MAX = 1600; // px, sur le plus grand côté
 const PHOTO_QUALITE = 0.9;
 
@@ -818,7 +707,7 @@ function compresserImage(fichier) {
                 canvas.getContext("2d").drawImage(image, 0, 0, largeur, hauteur);
 
                 const dataUrl = canvas.toDataURL("image/jpeg", PHOTO_QUALITE);
-                resolve(dataUrl.split(",")[1]); // juste la partie base64, sans le préfixe "data:image/jpeg;base64,"
+                resolve(dataUrl.split(",")[1]); // base64 seul, sans le préfixe data:
             };
             image.onerror = reject;
             image.src = lecteur.result;
@@ -828,13 +717,7 @@ function compresserImage(fichier) {
     });
 }
 
-// Le même bouton photo vit à deux endroits différents selon qu'une photo existe déjà :
-// - PAS de photo : dans .ligne-commentaire, à droite du champ de note (caché tant que la note
-//   n'est pas ouverte, voir .ligne-commentaire.hidden dans style.css) ;
-// - UNE photo existe : sorti de .ligne-commentaire et déplacé en enfant direct de .course-item
-//   (élément de grille à part entière, toujours visible en haut à droite, voir style.css) —
-//   pas besoin de rouvrir la note à chaque fois pour la reconsulter avant d'acheter.
-// On déplace donc le VRAI noeud DOM (pas de clone) d'un parent à l'autre selon les événements.
+// Le même bouton (vrai noeud DOM déplacé, pas cloné) vit dans .ligne-commentaire sans photo, ou en haut à droite de la carte avec photo.
 function placerBoutonPhotoEnHaut(item, bouton) {
     item.appendChild(bouton);
 }
@@ -844,20 +727,16 @@ function placerBoutonPhotoDansNote(item, bouton) {
     ligne.appendChild(bouton);
 }
 
-// Active le bouton photo (ajouter/revoir) d'un article donné : même bouton pour les deux cas,
-// son état "data-a-photo" (posé côté serveur, mis à jour ensuite en JS) décide de l'action.
+// "data-a-photo" (posé côté serveur, mis à jour en JS) décide de l'action du bouton.
 function activerPhoto(item) {
     const bouton = item.querySelector(".btn-photo-course");
 
-    // Au chargement de la page, un article qui a déjà une photo doit l'afficher tout de suite
-    // en haut à droite, sans attendre un clic (voir placerBoutonPhotoEnHaut ci-dessus).
     if (bouton.dataset.aPhoto === "true") {
         placerBoutonPhotoEnHaut(item, bouton);
     }
 
     bouton.addEventListener("click", function () {
-        // Petit rebond à chaque tap (même animation que l'ajout réussi, voir style.css) : un
-        // retour visuel immédiat, qu'on ouvre l'aperçu ou le sélecteur de fichier juste après.
+        // Petit rebond à chaque tap, retour visuel immédiat.
         this.classList.remove("photo-pop");
         void this.offsetWidth;
         this.classList.add("photo-pop");
@@ -866,17 +745,13 @@ function activerPhoto(item) {
         if (this.dataset.aPhoto === "true") {
             ouvrirApercuPhoto(idCoursePhotoActuelle);
         } else {
-            inputPhotoCourse.value = ""; // sinon rechoisir EXACTEMENT le même fichier ne redéclenche pas "change"
+            inputPhotoCourse.value = ""; // sinon rechoisir le même fichier ne redéclenche pas "change"
             inputPhotoCourse.click();
         }
     });
 }
 
-// ---- Cache local (localStorage) : voir/ajouter une photo doit marcher SANS réseau au magasin.
-// Un fetch() en direct à chaque ouverture ne suffirait pas (aucun réseau là-bas) : la photo,
-// déjà compressée à quelques dizaines de Ko, est donc aussi gardée sur l'appareil dès qu'on
-// l'ajoute, et relue depuis là en priorité — le réseau ne sert plus qu'à la synchroniser une
-// fois, au chargement de la page, tant qu'il y a une vraie connexion (voir synchroniserPhotosLocales).
+// Cache local (localStorage) : voir/ajouter une photo doit marcher sans réseau au magasin.
 function clePhotoLocale(idCourse) {
     return "chow-photo-course-" + idCourse;
 }
@@ -885,8 +760,7 @@ function sauvegarderPhotoLocale(idCourse, base64) {
     try {
         localStorage.setItem(clePhotoLocale(idCourse), base64);
     } catch (err) {
-        // Quota dépassé ou stockage désactivé (navigation privée...) : tant pis, la photo reste
-        // consultable en ligne seulement, pas la peine de bloquer le reste pour ça.
+        // Quota dépassé ou stockage désactivé : tant pis, reste consultable en ligne.
         console.warn("Impossible de garder la photo en cache locale :", err);
     }
 }
@@ -899,7 +773,7 @@ function supprimerPhotoLocale(idCourse) {
     localStorage.removeItem(clePhotoLocale(idCourse));
 }
 
-// Choix d'un fichier dans le sélecteur (déclenché par le bouton ci-dessus, un seul input partagé)
+// Un seul input file partagé entre toutes les cartes.
 inputPhotoCourse.addEventListener("change", function () {
     const fichier = this.files[0];
     if (!fichier || !idCoursePhotoActuelle) return;
@@ -925,21 +799,17 @@ inputPhotoCourse.addEventListener("change", function () {
             if (bouton) {
                 const item = bouton.closest(".course-item");
                 bouton.dataset.aPhoto = "true";
-                if (item) placerBoutonPhotoEnHaut(item, bouton); // no-op si déjà en haut (remplacement d'une photo existante)
+                if (item) placerBoutonPhotoEnHaut(item, bouton); // no-op si déjà en haut
                 bouton.classList.remove("photo-pop");
-                void bouton.offsetWidth; // force le navigateur à "oublier" l'animation précédente
+                void bouton.offsetWidth; // force le navigateur à rejouer l'animation
                 bouton.classList.add("photo-pop");
             }
-            // On la garde déjà en local ici : pas la peine d'attendre une resynchro pour pouvoir
-            // la revoir hors-ligne, elle est disponible tout de suite après cet ajout.
             sauvegarderPhotoLocale(idCourse, base64Compressee);
         })
         .catch(gererErreurReseau);
 });
 
-// Ouvre l'aperçu plein écran d'une photo. Le cache local (localStorage) est TOUJOURS tenté en
-// premier : c'est ce qui permet de la revoir sans réseau au magasin. Le réseau n'est utilisé que
-// si jamais cette photo n'a pas encore été synchronisée sur cet appareil précis.
+// Le cache local est toujours tenté en premier (pour marcher sans réseau au magasin).
 function ouvrirApercuPhoto(idCourse) {
     idCoursePhotoActuelle = idCourse;
     const local = lirePhotoLocale(idCourse);
@@ -951,10 +821,7 @@ function ouvrirApercuPhoto(idCourse) {
     photoBackdrop.classList.add("ouvert");
 }
 
-// Ferme l'aperçu en "aspirant" visuellement la photo vers l'oeil qui l'a ouverte (plutôt qu'une
-// simple disparition) : on calcule la distance réelle entre le centre de la photo affichée et le
-// centre du bouton oeil de cet article, puis on laisse le keyframe CSS (voir style.css) animer
-// vers ce point avant de vraiment cacher le fond assombri.
+// Ferme en animant la photo vers le bouton oeil (distance calculée, jouée via keyframe CSS).
 function fermerApercuPhoto() {
     const bouton = document.querySelector(`.btn-photo-course[data-id="${idCoursePhotoActuelle}"]`);
 
@@ -994,18 +861,14 @@ btnSupprimerPhoto.addEventListener("click", function () {
                 alert(data.erreur);
                 return;
             }
-            // Fermer AVANT de déplacer le bouton dans la note : l'animation "vers l'oeil" a
-            // besoin de sa position actuelle (en haut à droite), pas de sa future position une
-            // fois relogé dans .ligne-commentaire (caché) juste après.
+            // Fermer AVANT de déplacer le bouton : l'anim "vers l'oeil" a besoin de sa position actuelle.
             fermerApercuPhoto();
             supprimerPhotoLocale(idCourse);
 
             const bouton = document.querySelector(`.btn-photo-course[data-id="${idCourse}"]`);
             if (bouton) {
                 const item = bouton.closest(".course-item");
-                // Petite pause pour laisser la photo finir d'arriver visuellement dans l'oeil
-                // (voir aspirePhotoVersOeil), puis l'oeil se ferme et s'efface avant de reloger
-                // le bouton (avec l'icône "télécharger") dans la note.
+                // Laisse l'anim d'arrivée finir avant que l'oeil se ferme et se replace en note.
                 setTimeout(function () {
                     bouton.classList.add("oeil-fermeture");
                     setTimeout(function () {
@@ -1019,10 +882,7 @@ btnSupprimerPhoto.addEventListener("click", function () {
         .catch(gererErreurReseau);
 });
 
-// Récupère et met en cache local toute photo déjà enregistrée mais pas encore vue sur cet
-// appareil (ex: ajoutée depuis le téléphone de l'autre, ou avant l'installation de ce cache) —
-// tenté une fois au chargement de la page, tant qu'il y a du réseau. Échoue en silence si aucun
-// réseau : on retentera simplement au prochain chargement de page avec une vraie connexion.
+// Met en cache local toute photo pas encore vue sur cet appareil. Échoue en silence si hors ligne.
 function synchroniserPhotosLocales() {
     document.querySelectorAll('.btn-photo-course[data-a-photo="true"]').forEach(function (bouton) {
         const idCourse = bouton.dataset.id;
@@ -1041,7 +901,7 @@ function synchroniserPhotosLocales() {
                 lecteur.readAsDataURL(blob);
             })
             .catch(function () {
-                // Pas grave : on retentera au prochain chargement de page avec du réseau
+                // Retenté au prochain chargement de page.
             });
     });
 }
@@ -1050,39 +910,31 @@ function synchroniserPhotosLocales() {
 // FORMULAIRES QUANTITÉ (suggestions 1/2/5)
 // ============================================
 
-// Active les boutons de suggestion rapide de quantité (+1/+2/+5) pour un article donné
+// Boutons de suggestion rapide de quantité (+1/+2/+5).
 function activerQuantite(item) {
     const form = item.querySelector(".form-quantite");
-    if (!form) return; // certains articles (ex: suivis en "cl") n'ont pas ce formulaire de quantité
+    if (!form) return; // pas de formulaire de quantité pour un article suivi en "cl"
 
     const champ = form.querySelector(".champ-quantite-achat");
     const btnEnregistrer = form.querySelector(".btn-enregistrer-achat");
     const suggestions = form.querySelectorAll(".suggestion");
 
-    // Cliquer sur une suggestion (+1/+2/+5) achète directement cette quantité, comme les boutons
-    // de soustraction rapide sur Stock (même geste en un tap, pas besoin de confirmer avec
-    // "Acheté" en plus) : remplit le champ puis soumet le formulaire tout de suite.
+    // Une suggestion remplit le champ et soumet directement, sans repasser par "Acheté".
     suggestions.forEach(function (bouton) {
         bouton.addEventListener("click", function () {
             champ.value = this.dataset.valeur;
-            // Poser .value directement en JS ne déclenche jamais l'événement "input" tout seul :
-            // sans cette ligne, le bouton "Acheté" restait désactivé (voir l'écouteur "input"
-            // juste en dessous) et requestSubmit() ne soumettait donc rien du tout — le champ se
-            // remplissait, mais l'achat n'était jamais réellement envoyé.
+            // .value seul ne déclenche pas "input" : sans ça "Acheté" resterait désactivé.
             champ.dispatchEvent(new Event("input"));
             form.requestSubmit();
         });
     });
 
-    // Le bouton "Acheté" ne devient cliquable que si une quantité valide (>= 1) a été saisie
+    // "Acheté" ne devient cliquable qu'avec une quantité valide (>= 1).
     champ.addEventListener("input", function () {
         const etaitDesactive = btnEnregistrer.disabled;
         btnEnregistrer.disabled = champ.value.trim() === "" || Number(champ.value) < 1;
 
-        // Même couleur au repos, activé ou pas (voir style.css) : ce petit "pop" au moment précis
-        // où il devient cliquable est le seul signal que quelque chose a changé, sans avoir besoin
-        // de deux couleurs différentes en permanence (qui ne correspondaient plus entre un article
-        // "cl", toujours actif, et un article à quantité, désactivé par défaut).
+        // Petit "pop" au moment précis où il s'active, seul signal du changement.
         if (etaitDesactive && !btnEnregistrer.disabled) {
             btnEnregistrer.classList.add("vient-de-s-activer");
             setTimeout(function () {
@@ -1096,17 +948,12 @@ function activerQuantite(item) {
 // ENVOI AJAX (acheter / supprimer) + ANIMATIONS DE SORTIE
 // ============================================
 
-// Fonction générique : intercepte la soumission d'un formulaire, l'envoie en arrière-plan (fetch)
-// au lieu de recharger la page, puis appelle "callback" en cas de succès
+// Intercepte la soumission d'un formulaire pour l'envoyer en fetch() au lieu de recharger la page.
 function envoyerFormulaireAjax(form, callback) {
     form.addEventListener("submit", function (event) {
         event.preventDefault();
 
-        // Le bouton reste désactivé tant que CET envoi est en cours : sans ça, retaper "Acheté"
-        // par inquiétude ("est-ce que ça a marché ?") pendant un aller-retour lent envoyait
-        // silencieusement une 2e requête pour le même article — exactement la peur du "j'ai
-        // peut-être envoyé plusieurs fois" au magasin. Un seul tap ne peut plus jamais en
-        // déclencher deux.
+        // Désactivé pendant l'envoi : empêche un double-tap d'envoyer 2 requêtes.
         const boutonSubmit = form.querySelector('button[type="submit"]');
         if (boutonSubmit && boutonSubmit.disabled) return;
         if (boutonSubmit) boutonSubmit.disabled = true;
@@ -1245,8 +1092,7 @@ document.addEventListener("click", function (e) {
         carte.classList.add("arme");
         itemArmeActuellement = carte;
 
-        // Même "pop" que le panier non-cl à l'instant où la quantité devient valide : ici, c'est
-        // l'armement de la carte qui joue le rôle de "vient de devenir cliquable".
+        // Même "pop" que le panier quand la quantité devient valide.
         const btnPanier = carte.querySelector(".btn-acheter-icone");
         if (btnPanier) {
             btnPanier.classList.remove("vient-de-s-activer");
@@ -1259,18 +1105,14 @@ document.addEventListener("click", function (e) {
     }
 });
 
-// Au chargement de la page, on active tous les articles déjà présents dans le HTML
 document.querySelectorAll(".course-item").forEach(activerItem);
-// Tant qu'il y a du réseau maintenant (ex: à la maison, avant de partir), on rapatrie en local
-// toute photo pas encore en cache sur cet appareil — voir synchroniserPhotosLocales plus haut.
 synchroniserPhotosLocales();
-
 
 // ============================================
 // CONSTRUCTION D'UN NOUVEL ITEM (ajout sans rechargement)
 // ============================================
 
-// Construit dynamiquement le bloc HTML d'un nouvel article de courses, à partir des données reçues du serveur
+// Construit le HTML d'un nouvel article à partir des données du serveur.
 function construireItemDOM(item) {
     const div = document.createElement("div");
     const id = escapeHtml(item.id);
@@ -1279,16 +1121,11 @@ function construireItemDOM(item) {
 
     div.className = "course-item carte-article";
     div.dataset.nom = item.nom.toLowerCase();
-    // "zzz" pour que les articles sans catégorie se retrouvent triés en dernier
-    div.dataset.categorie = item.categorie || "zzz";
-    // Sert à comparer cette liste au preset "Courses de la semaine" (voir mettreAJourBoutonPresetHebdo)
+    div.dataset.categorie = item.categorie || "zzz"; // "zzz" trié en dernier
     div.dataset.foodId = item.food_id || "";
 
-    // Le formulaire "Acheté" est différent selon le type de l'article :
     let formAchat;
     if (item.food_id && item.tracking_type === "cl") {
-        // Aliment suivi en "cl" (ex: bouteille) : un simple bouton "Acheté" (remet le niveau à plein).
-        // "--solo" : pas de suggestions de quantité à côté, même raccord visuel que côté serveur (voir courses.ejs)
         formAchat = `
       <form action="/courses/acheter" method="post" class="form-acheter">
         <input type="hidden" name="idCourse" value="${id}" />
@@ -1297,7 +1134,6 @@ function construireItemDOM(item) {
         </div>
       </form>`;
     } else if (item.food_id) {
-        // Aliment connu suivi en quantité : on propose de saisir/choisir une quantité avant de valider l'achat
         formAchat = `
       <form action="/courses/acheter" method="post" class="form-acheter form-quantite">
         <input type="hidden" name="idCourse" value="${id}" />
@@ -1314,7 +1150,6 @@ function construireItemDOM(item) {
         </div>
       </form>`;
     } else {
-        // Article "libre" (nom tapé à la main, pas encore un aliment connu) : bouton "Acheté" simple
         formAchat = `
       <form action="/courses/acheter" method="post" class="form-acheter">
         <input type="hidden" name="idCourse" value="${id}" />
@@ -1324,8 +1159,7 @@ function construireItemDOM(item) {
       </form>`;
     }
 
-    // Combien on en a déjà en stock (pastille en haut à gauche) :
-    // un nombre pour les aliments suivis en quantité, un point de couleur pour les "cl" (ex: bouteille)
+    // Pastille "déjà en stock" : un nombre, ou un point de couleur pour les "cl".
     const aDuStock = item.quantite_stock !== null && item.quantite_stock !== undefined;
     let badgeStock = "";
     if (aDuStock && item.tracking_type !== "cl") {
@@ -1355,11 +1189,9 @@ function construireItemDOM(item) {
 // AUTOCOMPLETE + AJOUT INSTANTANÉ (fetch, sans rechargement)
 // ============================================
 
-// Au départ, la liste de suggestions est cachée
 listeAlimentsCourses.hidden = true;
 const itemsAutocomplete = listeAlimentsCourses.querySelectorAll("li");
 
-// Quand l'utilisateur tape dans le champ de recherche d'article...
 rechercheAlimentCourses.addEventListener("input", function () {
     idAlimentCacheCourses.value = "";
 
@@ -1367,7 +1199,6 @@ rechercheAlimentCourses.addEventListener("input", function () {
 
     if (recherche === "") {
         listeAlimentsCourses.hidden = true;
-        // Rien de tapé : ni suggestion ni ajout en texte libre n'ont de sens
         btnAjouterCourse.classList.add("hidden");
         rechercheAlimentCourses.classList.remove("recherche-invalide");
         return;
@@ -1375,9 +1206,6 @@ rechercheAlimentCourses.addEventListener("input", function () {
 
     listeAlimentsCourses.hidden = false;
 
-    // On affiche tous les aliments correspondants. Aucune limite de nombre :
-    // si la liste est longue, elle défile (voir max-height dans style.css). normaliserTexte des
-    // deux côtés : taper "e" doit aussi trouver "Café" (accents ignorés).
     let aUneCorrespondance = false;
     itemsAutocomplete.forEach(function (item) {
         const correspond = normaliserTexte(item.textContent.toLowerCase()).includes(recherche);
@@ -1385,23 +1213,18 @@ rechercheAlimentCourses.addEventListener("input", function () {
         if (correspond) aUneCorrespondance = true;
     });
 
-    // Le bouton "Ajouter" (texte libre) n'apparaît que si aucun aliment connu ne correspond :
-    // s'il y a des suggestions, on veut qu'on clique dessus plutôt que de dupliquer l'article
+    // "Ajouter" (texte libre) n'apparaît que si aucun aliment connu ne correspond.
     btnAjouterCourse.classList.toggle("hidden", aUneCorrespondance);
-    // Rouge seulement si aucun aliment connu ne correspond (le texte libre prend le relais dans
-    // ce cas précis, donc "invalide" ici veut vraiment dire "pas dans la base connue").
     rechercheAlimentCourses.classList.toggle("recherche-invalide", !aUneCorrespondance);
 });
 
-// Renvoie l'article de la liste de courses déjà en attente pour un aliment donné, s'il y en a un
 function trouverCourseItemParFoodId(foodId) {
     return Array.from(listeCourses.querySelectorAll(".course-item")).find(function (item) {
         return item.dataset.foodId === foodId;
     });
 }
 
-// Amène l'utilisateur directement sur un article déjà présent (même effet que sur Stock) :
-// défilement + brève surbrillance, plutôt que de créer un doublon dans la liste
+// Scroll + surbrillance vers un article déjà présent, au lieu d'un doublon.
 function mettreEnAvantCourseItem(item) {
     item.scrollIntoView({ behavior: "smooth", block: "center" });
     item.classList.add("mise-en-avant");
@@ -1437,21 +1260,17 @@ document.addEventListener("click", function (e) {
     }
 });
 
-// Entrée dans le champ de recherche : ajoute en texte libre si rien n'a été sélectionné dans la liste
-// (permet d'ajouter un article qui n'existe pas encore dans la base des aliments connus)
+// Entrée ajoute en texte libre si rien n'a été choisi dans les suggestions.
 rechercheAlimentCourses.addEventListener("keydown", function (event) {
     if (event.key !== "Enter") return;
     event.preventDefault();
     tenterAjoutArticle();
 });
 
-// Cliquer sur le bouton "+" fait exactement la même chose qu'appuyer sur Entrée
 btnAjouterCourse.addEventListener("click", function () {
     tenterAjoutArticle();
 });
 
-// Regroupe la logique partagée entre "Entrée" et le clic sur "+" : on ajoute soit l'aliment
-// choisi dans la liste de suggestions, soit le texte tapé tel quel (article "libre")
 function tenterAjoutArticle() {
     const idAliment = idAlimentCacheCourses.value || null;
     const texte = rechercheAlimentCourses.value.trim();
@@ -1461,16 +1280,9 @@ function tenterAjoutArticle() {
     ajouterArticle(idAliment, idAliment ? null : texte);
 }
 
-// Empêche un article d'être ajouté deux fois en tapant/cliquant vite plusieurs fois (suggestion,
-// Entrée, ou bouton "Ajouter" texte libre — les trois finissent ici) : sans ce verrou, la
-// vérification "déjà dans la liste" (trouverCourseItemParFoodId, juste au-dessus) ne voit rien
-// tant que la 1ère requête n'a pas fini et que le nouvel article n'est pas encore dans le DOM — un
-// 2e tap pendant ce court délai (ex: pendant un cold start Fly.io, voir la discussion) passait
-// donc la vérification et créait une VRAIE 2e ligne en base, visible seulement après rechargement.
+// Verrou anti double-tap : sans lui, un 2e tap avant la réponse du 1er créait une vraie 2e ligne en base.
 let ajoutArticleEnCours = false;
 
-// Envoie l'ajout d'un article de courses au serveur (soit via son id, soit en texte libre),
-// puis insère le nouvel article à l'écran au bon endroit selon le tri actif
 function ajouterArticle(idAliment, texteLibre) {
     if (ajoutArticleEnCours) return;
     ajoutArticleEnCours = true;
@@ -1492,8 +1304,6 @@ function ajouterArticle(idAliment, texteLibre) {
             ajouterAnimationEntree(nouvelItem);
             mettreAJourBoutonPresetHebdo();
             synchroniserChipsFiltreCourses(); // nouvelle chip si ce rayon n'en avait pas encore
-
-            // On referme le panneau d'ajout automatiquement après un ajout réussi, comme sur Stock
             fermerPanneauAjoutCourse();
         })
         .catch(gererErreurReseau)

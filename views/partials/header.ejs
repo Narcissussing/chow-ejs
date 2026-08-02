@@ -1,32 +1,21 @@
-<!-- Ce fichier est inclus en haut de chaque page (via un appel "include" dans les autres vues) -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <!-- maximum-scale=1 empêche Safari iOS de zoomer automatiquement sur un champ de saisie dont
-       le texte fait moins de 16px (tous nos champs, ex: 0.85rem) : sans ça, l'app "sautait"
-       à chaque tap dans un champ. user-scalable=1 laisse quand même le pincer-zoomer manuel
-       fonctionner (accessibilité), seul le zoom automatique au focus est bloqué. -->
+  <!-- maximum-scale=1 bloque le zoom auto iOS sur les champs <16px ; user-scalable=1 garde le pincer-zoomer manuel. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=1" />
-  <!-- Le titre de l'onglet change selon la page grâce à la variable "title" passée par index.js -->
   <title>Chow — <%= title %></title>
-  <!-- Favicon en SVG inline (data URI), pas de fichier .ico séparé à gérer : même technique
-       que LookuLooku (🚆). Icône source : public/images/svg/icone-tab.svg, recolorée en
-       --accent (#c8472b) au lieu du noir d'origine pour rester cohérente avec le reste de l'app -->
+  <!-- Favicon SVG inline (data URI) : source public/images/svg/icone-tab.svg, recolorée en --accent. -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3Cstyle%3E.cls-1%7Bfill:none;stroke:%23c8472b;stroke-miterlimit:10;stroke-width:1.91px;%7D%3C/style%3E%3C/defs%3E%3Cpath class='cls-1' d='M19.64,1.5H4.36L2.45,5.32V7.23a1.91,1.91,0,0,0,3.82,0,1.91,1.91,0,0,0,3.82,0,1.91,1.91,0,0,0,3.82,0,1.91,1.91,0,1,0,3.82,0,1.91,1.91,0,1,0,3.82,0V5.32Z'/%3E%3Cpath class='cls-1' d='M12,13.91h0a3.82,3.82,0,0,1,3.82,3.82v1a0,0,0,0,1,0,0H8.18a0,0,0,0,1,0,0v-1A3.82,3.82,0,0,1,12,13.91Z'/%3E%3Cline class='cls-1' x1='12' y1='12' x2='12' y2='13.91'/%3E%3Cline class='cls-1' x1='6.27' y1='18.68' x2='17.73' y2='18.68'/%3E%3Cline class='cls-1' x1='0.55' y1='22.5' x2='23.45' y2='22.5'/%3E%3Cline class='cls-1' x1='3.41' y1='8.18' x2='3.41' y2='22.5'/%3E%3Cline class='cls-1' x1='20.59' y1='8.18' x2='20.59' y2='22.5'/%3E%3Cline class='cls-1' x1='2.45' y1='5.32' x2='21.55' y2='5.32'/%3E%3Cline class='cls-1' x1='6.27' y1='5.32' x2='6.27' y2='7.23'/%3E%3Cline class='cls-1' x1='10.09' y1='5.32' x2='10.09' y2='7.23'/%3E%3Cline class='cls-1' x1='13.91' y1='5.32' x2='13.91' y2='7.23'/%3E%3Cline class='cls-1' x1='17.73' y1='5.32' x2='17.73' y2='7.23'/%3E%3C/svg%3E" />
-  <!-- Chargement des polices d'écriture personnalisées (Google Fonts) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
-<!-- Barre de navigation présente en haut de toutes les pages -->
 <header class="header">
   <div class="header__inner">
     <a href="/" class="logo">Chow</a>
-    <!-- currentPath vient d'un middleware dans index.js (disponible sur toutes les pages) :
-         on compare avec chaque lien pour savoir lequel est la page actuelle, et lui donner
-         la classe "actif" (stylée en CSS, voir .nav__link.actif) -->
+    <!-- currentPath (middleware index.js) détermine quel lien reçoit la classe "actif" (voir .nav__link.actif). -->
     <nav class="nav">
       <a href="/aliments" class="nav__link <%= currentPath.startsWith('/aliments') ? 'actif' : '' %>">Aliments</a>
       <a href="/stock" class="nav__link <%= currentPath.startsWith('/stock') ? 'actif' : '' %>">Stock</a>
@@ -36,12 +25,7 @@
   </div>
 </header>
 <script>
-  // La barre de filtres (Aliments/Stock) et la barre de contrôles (Courses) se collent juste
-  // sous ce header au scroll (voir .filters et .courses-controls-row en CSS). Leur "top" ne
-  // peut pas être une valeur fixe en dur : la hauteur réelle du header change selon l'écran
-  // (padding mobile, retour à la ligne du logo...) et une valeur figée finissait décalée sur
-  // certains téléphones, faisant passer la barre à moitié sous le header au lieu de rester
-  // collée juste en dessous. On mesure donc la vraie hauteur et on la publie en variable CSS.
+  // Publie la vraie hauteur du header en variable CSS (--header-h) : elle varie selon l'écran, donc une valeur figée décalait .filters/.courses-controls-row au scroll.
   (function () {
     function publierHauteurHeader() {
       var header = document.querySelector(".header");
@@ -53,12 +37,7 @@
     window.addEventListener("resize", publierHauteurHeader);
   })();
 
-  // Filet de sécurité pour le zoom automatique au clic dans un champ : tous nos champs sont
-  // maintenant à 16px sur mobile (voir style.css), ce qui suffit sur iOS Safari récent, mais
-  // certains navigateurs (Android notamment) respectent encore maximum-scale et peuvent zoomer
-  // quand même selon le champ. Ici, on force le zoom à revenir à 1 dès qu'on quitte un champ, en
-  // désactivant brièvement le zoom utilisateur (ce qui recale instantanément l'affichage) avant
-  // de le réactiver, plutôt que de laisser la page zoomée tant qu'on n'a pas re-pincé soi-même.
+  // Filet de sécurité Android : certains navigateurs zooment quand même au focus malgré maximum-scale ; on force un reset du zoom à la sortie du champ.
   (function () {
     var viewport = document.querySelector('meta[name="viewport"]');
     if (!viewport) return;

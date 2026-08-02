@@ -1,8 +1,6 @@
 <%- include('partials/header') %>
 
 <%
-  // On construit la liste des catégories uniques présentes parmi les aliments, triée alphabétiquement.
-  // "new Set(...)" élimine automatiquement les doublons (ex: si "Fruits" apparaît 10 fois, on ne le garde qu'une fois).
   const categories = [...new Set(aliments.map(a => a.categorie))].sort();
 %>
 
@@ -35,8 +33,6 @@
     <div class="search-sort-wrapper">
       <div class="search-wrapper">
         <input type="text" id="searchInput" placeholder="Rechercher un aliment..." autocomplete="off" />
-        <!-- Bouton "✕" pour vider le champ d'un tap, mobile uniquement (voir style.css) : n'apparaît
-             que si le champ contient du texte (géré par activerEffacementRecherche dans ce fichier) -->
         <button type="button" class="btn-effacer-recherche" data-cible="searchInput" aria-label="Effacer la recherche"></button>
       </div>
       <div class="sort-wrapper">
@@ -55,8 +51,7 @@
     <!-- Grille de toutes les cartes d'aliments, générée côté serveur -->
     <div class="food-grid" id="foodGrid">
       <% aliments.forEach(function(aliment) { %>
-      <!-- Toute la carte est un lien cliquable vers la page détail de l'aliment.
-           Les attributs data-* servent au filtre/tri fait en JavaScript -->
+      <!-- Carte entièrement cliquable ; attributs data-* utilisés pour le filtre/tri en JS. -->
       <a
         href="/aliments/<%= aliment.id %>"
         class="food-card"

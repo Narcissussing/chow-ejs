@@ -5,15 +5,11 @@
     <h1>Ton frigo <span>ne ment pas.</span></h1>
     <p class="page-header__description">La vérité sur ce qu'il te reste vraiment — spoiler : moins que tu crois.</p>
     <% if (typeof error !== 'undefined') { %>
-    <!-- On affiche un message d'erreur seulement si la variable "error" a été transmise par le serveur -->
     <p class="erreur"><%= error %></p>
     <% } %>
   </div>
 
-  <!-- Boutons de filtre : emplacement (Tous/Frigo/Congélateur/Réserve) et type de suivi
-       (Niveau/Pièces) sont deux filtres indépendants, mais rangés dans le même groupe de
-       boutons pour qu'ils s'enchaînent naturellement à la suite. Cliquer dessus ne recharge
-       pas la page, c'est du JavaScript (public/js/stock.js) qui cache/affiche les articles. -->
+  <!-- Emplacement et type de suivi sont deux filtres indépendants dans le même groupe (voir stock.js). -->
   <div class="filters">
     <div class="filters__inner">
       <div class="filter-buttons">
@@ -21,8 +17,7 @@
         <button type="button" class="filter-btn" data-emplacement="fg">🧊 Frigo</button>
         <button type="button" class="filter-btn" data-emplacement="fz">❄️ Congélateur</button>
         <button type="button" class="filter-btn" data-emplacement="st">📦 Réserve</button>
-        <!-- Pas de bouton "Tous" pour celui-ci : cliquer sur le bouton déjà actif le désactive
-             et revient à tout afficher (voir stock.js) -->
+        <!-- Pas de bouton "Tous" ici : cliquer sur le bouton déjà actif le désactive (voir stock.js). -->
         <button type="button" class="filter-btn" data-type="cl">🫙 Niveau</button>
         <button type="button" class="filter-btn" data-type="autre">🔢 Pièces</button>
       </div>
@@ -30,37 +25,22 @@
   </div>
 
   <div class="stock-section">
-    <!-- Assombrit le reste de la page (filtres, liste) pendant qu'on ajoute un aliment, pour
-         concentrer l'attention sur la recherche d'ajout — même technique que le fond de la
-         fiche recette sur Calories (voir .sheet-backdrop). Cliquer dessus referme, comme taper
-         n'importe où en dehors (voir stock.js). -->
+    <!-- Assombrit la page pendant l'ajout, même technique que .sheet-backdrop sur Calories ; clic dessus referme (voir stock.js). -->
     <div class="ajout-backdrop" id="ajoutBackdropStock"></div>
 
-    <!-- Recherche + bouton d'ajout (icône "+" seule, pas de long texte) sur la même ligne.
-         En desktop le "+" est à gauche de la recherche, en mobile il passe à droite
-         (voir la règle "order" dans le CSS, appliquée seulement sous 768px). -->
-    <!-- Recherche stock et recherche d'ajout occupent le même emplacement, jamais les deux à la
-         fois (impossible de s'en servir en même temps) : cliquer sur "+" remplace la barre de
-         recherche du stock par celle d'ajout ; sélectionner un aliment (ou taper en dehors) fait
-         immédiatement revenir la recherche du stock (voir stock.js). -->
+    <!-- Recherche stock et recherche d'ajout partagent le même emplacement : "+" bascule vers la recherche d'ajout (voir stock.js). -->
     <div class="search-ajout-row">
       <button type="button" id="btnToggleAjout" class="btn-ajout-icone" title="Ajouter un aliment">Ajouter un aliment</button>
       <div class="search-wrapper" id="rechercheStockWrapper">
         <input type="text" id="searchInput" placeholder="Rechercher dans le stock..." autocomplete="off" />
         <button type="button" class="btn-effacer-recherche" data-cible="searchInput" aria-label="Effacer la recherche"></button>
       </div>
-      <!-- Toucher une suggestion l'ajoute directement au stock (comme Courses/Calories),
-           avec une quantité de départ par défaut (1 unité/pack, ou "Plein" pour un aliment
-           suivi en niveau) : plus besoin d'un second champ + bouton "Ajouter" séparés, la
-           quantité exacte se corrige ensuite directement sur la carte (édition en place déjà
-           possible, voir activerEditionInline dans stock.js) -->
+      <!-- Une suggestion s'ajoute directement au stock avec une quantité par défaut, corrigeable ensuite en édition inline. -->
       <div id="autocomplete" hidden>
         <div class="champ-recherche-wrapper">
           <input type="text" id="rechercheAliment" placeholder="Rechercher un aliment..." autocomplete="off" />
           <button type="button" class="btn-effacer-recherche" data-cible="rechercheAliment" aria-label="Effacer la recherche"></button>
         </div>
-        <!-- La liste complète des aliments est générée ici côté serveur (avec EJS),
-             puis filtrée dynamiquement par le JavaScript selon ce que l'utilisateur tape -->
         <ul id="listeAliments">
           <% aliments.forEach(function(aliment) { %>
           <li data-id="<%= aliment.id %>" data-type="<%= aliment.tracking_type %>" data-nom="<%= aliment.nom.toLowerCase() %>">
@@ -71,7 +51,6 @@
       </div>
     </div>
 
-    <!-- Menu de tri + bascule grille/liste, également gérés par stock.js -->
     <div class="search-sort-wrapper">
       <div class="sort-wrapper">
         <label for="sortSelect">Trier par :</label>
@@ -84,19 +63,16 @@
         </select>
       </div>
 
-      <!-- Bascule grille/liste : change juste une classe sur #listeStock (voir stock.js/style.css),
-           la préférence est retenue d'une visite à l'autre grâce à localStorage -->
+      <!-- Préférence grille/liste retenue via localStorage (voir stock.js). -->
       <div class="vue-toggle">
         <button type="button" id="btnVueGrille" class="filter-btn active" data-vue="grille" title="Vue grille">▦ Grille</button>
         <button type="button" id="btnVueListe" class="filter-btn" data-vue="liste" title="Vue liste">☰ Liste</button>
       </div>
     </div>
 
-    <!-- Liste des articles actuellement en stock, générée côté serveur -->
     <div id="listeStock">
       <% stock.forEach(function(aliment) { %>
-      <!-- Chaque article stocke ses infos dans des attributs data-*, réutilisés ensuite par stock.js
-           pour filtrer, trier, et savoir comment l'afficher/le modifier sans recharger la page -->
+      <!-- Attributs data-* réutilisés par stock.js pour filtrer/trier/afficher sans recharger la page. -->
       <div
         class="stock-item carte-article"
         data-id="<%= aliment.id %>"
@@ -108,7 +84,6 @@
         data-food-id="<%= aliment.food_id %>"
         data-deja-en-courses="<%= aliment.deja_en_courses %>"
       >
-        <!-- On affiche la vraie photo si elle existe, sinon l'emoji comme solution de secours -->
         <% if (aliment.image) { %>
         <img src="/<%= aliment.image %>" alt="<%= aliment.nom %>" class="stock-item__img" />
         <% } else { %>
@@ -120,7 +95,6 @@
             <div class="stock-item__ligne stock-item__ligne--nom">
               <span class="stock-nom"><%= aliment.nom %></span>
             </div>
-            <!-- Emplacement + fraîcheur, séparés par un "|", sur une deuxième ligne sous un filet horizontal -->
             <div class="stock-item__ligne stock-item__ligne--meta">
               <span class="stock-emplacement">
                 <% if (aliment.emplacement === 'fg') { %>Frigo
@@ -129,7 +103,6 @@
                 <% } %>
               </span>
               <span class="stock-separateur">|</span>
-              <!-- Affichage du nombre de jours depuis la dernière mise à jour, avec un texte adapté selon le cas -->
               <% if (aliment.jours_depuis === 0) { %>
               <span class="stock-jours">aujourd'hui</span>
               <% } else if (aliment.jours_depuis === 1) { %>
@@ -140,16 +113,9 @@
             </div>
           </div>
 
-          <!-- Zone cliquable pour modifier la quantité : le contenu affiché dépend du type de suivi de l'aliment.
-               Sépararée du bloc nom/emplacement par un filet vertical, et centrée sur toute la hauteur des deux lignes.
-               "Ajouter aux courses" (bas de stock, voir data-deja-en-courses ci-dessus) n'apparaît qu'en mode
-               édition, pas ici : voir ouvrirEdition dans stock.js. -->
+          <!-- "Ajouter aux courses" n'apparaît qu'en mode édition, pas ici (voir ouvrirEdition dans stock.js). -->
           <div class="stock-editable-zone" data-valeur-actuelle="<%= aliment.quantite %>">
             <% if (aliment.tracking_type === 'cl') { %>
-            <!--
-              Pour les aliments suivis en "cl" (ex: une bouteille), on affiche une petite barre
-              dont le remplissage dépend du niveau actuel (plein / à moitié / presque vide / vide)
-            -->
             <%
               let classeNiveau = 'niveau-vide';
               if (aliment.quantite === 'plein') classeNiveau = 'niveau-plein';
@@ -160,14 +126,11 @@
               <div class="stock-barre-cl-remplissage <%= classeNiveau %>"></div>
             </div>
             <% } else { %>
-            <!-- Pour les autres aliments (unités, packs), on affiche simplement le nombre -->
             <span class="stock-quantite"><%= aliment.quantite %></span>
             <% } %>
           </div>
         </div>
 
-        <!-- Formulaire de suppression : normalement il rechargerait la page en soumettant vers /stock/supprimer,
-             mais le JavaScript intercepte cet envoi pour le faire en arrière-plan (voir stock.js) -->
         <form action="/stock/supprimer" method="post" class="form-supprimer-stock">
           <input type="hidden" name="idStock" value="<%= aliment.id %>" />
           <button type="submit" class="btn-supprimer-icone btn-supprimer-dash">Supprimer</button>

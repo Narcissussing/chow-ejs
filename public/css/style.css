@@ -1,16 +1,6 @@
-/* ================================================================
-   CHOW — style.css
-   Structure : Variables → Reset → Layout de base → Header → Hero
-   → Filtres/Recherche/Tri → Grille aliments → Page détail →
-   Page courses → Page stock → Footer → Responsive → Utilitaires
-   (Les utilitaires sont toujours en dernier : ils doivent gagner
-   sur les styles des composants, peu importe leur spécificité.)
-   ================================================================ */
+/* CHOW — style.css. Utilitaires toujours en dernier : doivent gagner sur les composants, peu importe la spécificité. */
 
 /* ---------- VARIABLES ---------- */
-/* Les "variables CSS" (--nom) permettent de définir une valeur une seule fois
-   et de la réutiliser partout avec var(--nom). Pratique pour les couleurs :
-   si on veut changer la couleur principale du site, on ne la change qu'ici. */
 
 :root {
   --bg: #f5f0e8; /* couleur de fond générale du site */
@@ -28,8 +18,6 @@
 }
 
 /* ---------- RESET & BASE ---------- */
-/* Le "reset" enlève les marges/paddings par défaut que chaque navigateur
-   applique différemment, pour repartir sur une base identique partout. */
 
 *,
 *::before,
@@ -40,12 +28,8 @@
 }
 
 html {
-  scroll-behavior: smooth; /* les clics vers une ancre (#section) font défiler la page en douceur au lieu d'un saut brusque */
-  /* Empêche tout élément qui déborderait légèrement (par erreur) de créer un défilement
-     horizontal : sans ça, la largeur "réelle" de la page peut devenir plus grande que l'écran,
-     et le header (qui suit la largeur normale de la page) semble alors ne plus atteindre le
-     bord droit une fois qu'on dézoome sur mobile (on voit soudain ce surplus de largeur). */
-  overflow-x: hidden;
+  scroll-behavior: smooth;
+  overflow-x: hidden; /* évite qu'un léger débordement élargisse la page et décale le header sur mobile */
 }
 
 body {
@@ -56,12 +40,7 @@ body {
   line-height: 1.6;
 }
 
-/* iOS Safari ignore désormais maximum-scale/user-scalable dans le <meta viewport> (comportement
-   volontairement retiré pour l'accessibilité, voir partials/header.ejs) : le seul moyen fiable
-   d'empêcher le zoom automatique au clic dans un champ reste que ce champ affiche du texte à au
-   moins 16px. Beaucoup de nos champs sont plus petits (0.85rem, 0.9rem...) pour rester compacts
-   visuellement : on les remonte donc à 16px UNIQUEMENT sur mobile (voir @media plus bas), pas
-   question de perdre ce design compact sur desktop où le bug n'existe pas. */
+/* 16px minimum sur mobile pour bloquer le zoom auto iOS au focus (voir partials/header.ejs) ; desktop garde des champs plus compacts. */
 @media (max-width: 768px) {
   input,
   select,
@@ -200,10 +179,7 @@ body {
   color: var(--text-muted);
 }
 
-/* ============================================
-   MISE EN PAGE UNIFIÉE DES CARTES D'ARTICLE
-   (stock, courses, calories) — même structure partout
-   ============================================ */
+/* ---------- CARTES D'ARTICLE (stock, courses, calories) : même structure partout ---------- */
 
 .carte-article {
   position: relative; /* nécessaire pour que le bouton "supprimer" (position: absolute) se positionne par rapport à cette carte */
@@ -225,7 +201,6 @@ body {
 }
 
 /* ---------- HERO ---------- */
-/* Le "hero" est le grand bloc d'introduction en haut d'une page (titre + texte d'accroche) */
 
 .hero {
   max-width: 1200px;
@@ -239,10 +214,7 @@ body {
 
 .hero__text h1 {
   font-family: var(--font-display);
-  /* Même taille fixe que .page-header h1 (Stock/Courses/Calories) : avant, ce titre grandissait
-     avec l'écran (clamp jusqu'à 4rem) alors que les 3 autres pages restaient à 2.6rem, donc
-     Aliments avait toujours un titre nettement plus gros que les autres */
-  font-size: 2.6rem;
+  font-size: 2.6rem; /* même taille fixe que .page-header h1 (Stock/Courses/Calories) */
   font-weight: 900;
   line-height: 1.1;
   color: var(--text);
@@ -288,11 +260,7 @@ body {
   text-transform: uppercase;
 }
 
-/* ---- Badge Courses (sac de courses, pas un cercle) ----
-   Même conteneur que .hero__badge (mêmes dimensions/position dans la grille mobile), mais pas de
-   cercle plein ni de rotation : le sac (sac-courses.svg) est masqué directement en accent, sans
-   mot dessus — juste sa silhouette et le nombre d'articles, pour rester distinct du badge rond
-   "160 ALIMENTS" d'Aliments. */
+/* Badge Courses : sac (sac-courses.svg) au lieu du cercle plein "160 ALIMENTS". */
 .hero__badge--courses {
   width: 65px;
   height: 65px;
@@ -301,13 +269,7 @@ body {
   animation: none;
   position: relative;
   justify-content: flex-end;
-  /* En px, pas en % : un padding en pourcentage se calcule TOUJOURS sur la largeur du bloc
-     englobant (ici la ligne .hero, bien plus large que ces 110px), jamais sur la propre hauteur
-     de l'élément — même avec box-sizing:border-box. Ça faisait grossir la boîte du badge à
-     ~179px de haut au lieu des 110px voulus, détachant complètement le nombre du sac.
-     8px ici (pas 14px) : proportionnel à la même échelle que la boîte 65px (14px allait avec
-     110px ; même ratio ≈ 8px pour 65px), sinon le nombre se retrouve collé tout en bas. */
-  padding-bottom: 8px;
+  padding-bottom: 8px; /* px, pas % : un % de padding se calcule sur la largeur du bloc, pas sa hauteur */
   box-sizing: border-box;
 }
 
@@ -331,14 +293,7 @@ body {
   z-index: 1;
 }
 
-/* Variante compacte, posée par courses.js (deplacerBadgeCourses) une fois le hero scrollé hors
-   champ : même sac/nombre que la version hero (65px), mais réduit à la hauteur RÉELLE de
-   .custom-select__button ("Trier par" juste à côté), mesurée en JS (voir hauteurBoutonTri) plutôt
-   que devinée ici en dur — width/height/padding-bottom sont donc posés en style inline par JS,
-   pas cette classe. Sa position dans la ligne suit le "gap" régulier de
-   .courses-controls-row__inner comme les autres contrôles (pas de margin spéciale ici). La
-   transition entre les deux tailles est gérée en JS via un transform (FLIP), pas ici : cette
-   classe ne fixe que l'état final, une fois l'anim terminée. */
+/* Variante toolbar : taille imposée en JS (hauteurBoutonTri), transition en FLIP (voir courses.js). */
 .badge-courses-toolbar {
   flex-shrink: 0;
 }
@@ -347,9 +302,7 @@ body {
   font-size: 0.95rem;
 }
 
-/* Petit "pop" joué uniquement quand le nombre change vraiment (voir mettreAJourBadgeCourses dans
-   courses.js) : un rebond ludique plutôt qu'un simple changement silencieux de texte, sans
-   surcharger le geste d'un ajout/achat qui a déjà sa propre animation ailleurs. */
+/* Rebond joué uniquement quand le nombre change vraiment. */
 .badge-pop {
   animation: badgeSacPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -369,8 +322,7 @@ body {
   }
 }
 
-/* Suppression = pas un achat réussi : petit "shake" horizontal plutôt que le rebond joyeux du
-   pop, pour que retirer un article sans l'acheter se ressente distinctement d'une victoire. */
+/* Suppression = shake horizontal, pas le rebond du pop (pas une victoire). */
 .badge-shake {
   animation: badgeSacShake 0.4s ease;
 }
@@ -402,10 +354,7 @@ body {
   border-bottom: 1.5px solid var(--border);
   padding: 18px 40px;
   position: sticky;
-  /* --header-h est mesurée en JS (voir partials/header.ejs) : une valeur fixe en dur se
-     désynchronisait de la vraie hauteur du header selon l'écran, ce qui faisait passer cette
-     barre à moitié sous le header au lieu de rester collée juste en dessous */
-  top: var(--header-h, 65px);
+  top: var(--header-h, 65px); /* --header-h mesurée en JS, voir partials/header.ejs */
   z-index: 90;
 }
 
@@ -417,19 +366,12 @@ body {
 }
 
 .filter-buttons {
-  /* Une seule ligne qui défile horizontalement plutôt que de passer les boutons à la ligne
-     du dessous : sur un écran étroit, on scrolle (ou on ajoute des flèches plus tard si besoin)
-     au lieu d'avoir une barre de filtres qui prend deux lignes de haut */
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: nowrap; /* défile horizontalement sur écran étroit plutôt que de passer sur 2 lignes */
   overflow-x: auto;
-  /* Centre le bloc de boutons dans .filters__inner quand il y a de la place (grand écran) ;
-     sur mobile, dès que le contenu déborde, les marges auto s'annulent d'elles-mêmes et on
-     retombe sur un simple défilement classique, sans couper le début de la liste ("Tous") */
-  margin: 0 auto;
+  margin: 0 auto; /* centré si la place le permet ; s'annule et retombe en défilement sur mobile */
   gap: 10px;
-  /* Cache la barre de défilement visuellement (le défilement au doigt/à la molette reste possible) */
-  scrollbar-width: none;
+  scrollbar-width: none; /* cache la barre de défilement, le scroll au doigt/molette reste possible */
   -ms-overflow-style: none;
 }
 
@@ -439,10 +381,7 @@ body {
 
 .filter-btn {
   flex-shrink: 0; /* garde sa taille normale plutôt que de s'écraser dans la ligne qui défile */
-  /* display:flex + une hauteur fixe (au lieu de laisser juste le padding déterminer la
-     hauteur) : sans ça, un bouton avec emoji (ex: "🧊 Frigo" sur Stock) rendait ~5px plus
-     haut qu'un bouton texte seul (ex: "Boissons" sur Aliments) à padding/font-size identiques,
-     parce que la métrique de hauteur de ligne d'un glyphe emoji dépasse celle du texte normal */
+  /* Hauteur fixe (pas juste le padding) : un emoji (ex: "🧊 Frigo") rend sinon ~5px plus haut qu'un texte seul. */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -475,21 +414,16 @@ body {
 }
 
 .search-ajout-row {
-  /* Recherche + bouton "+" (page Stock) sur la même ligne. En desktop le "+" est écrit en
-     premier dans le HTML donc apparaît à gauche ; en mobile, une règle "order" plus bas
-     (dans le media query) le fait passer après la recherche, donc à droite. */
+  /* "+" à gauche en desktop (ordre HTML) ; une règle "order" en media query le passe à droite en mobile. */
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 14px;
-  /* Doit rester au-dessus de .ajout-backdrop (voir plus bas) pour ne jamais être assombrie elle-même */
-  position: relative;
+  position: relative; /* doit rester au-dessus de .ajout-backdrop pour ne jamais être assombrie */
   z-index: 65;
 }
 
-/* Assombrit tout ce qui est derrière (filtres, liste) pendant l'ajout, pour concentrer
-   l'attention sur la recherche — même principe que .sheet-backdrop (Calories). Le header
-   (z-index 100) reste au-dessus et donc non assombri, comme sur la fiche recette. */
+/* Assombrit filtres/liste pendant l'ajout, même principe que .sheet-backdrop (Calories) ; header reste au-dessus. */
 .ajout-backdrop {
   position: fixed;
   inset: 0;
@@ -506,14 +440,10 @@ body {
 }
 
 .btn-ajout-icone {
-  /* L'icône (public/images/svg/ajouter.svg) dessine déjà son propre contour arrondi : pas besoin
-     d'un cadre séparé sur le bouton, sinon on empile un cercle autour d'un carré arrondi. Le
-     border-radius reste (arrondi léger plutôt que 50%, pour suivre la même forme que l'icône)
-     pour que le fond plein au survol/actif garde une forme cohérente avec elle. */
   width: 30px;
   height: 30px;
   flex-shrink: 0;
-  border-radius: 9px;
+  border-radius: 9px; /* léger, pas 50% : suit la forme déjà arrondie de l'icône ajouter.svg */
   background: transparent;
   border: none;
   color: var(--accent);
@@ -527,9 +457,7 @@ body {
 }
 
 .btn-ajout-icone::before {
-  /* Centré par position absolue + translate plutôt que par le flex du bouton : centrer une
-     icône avec justify/align-items le cale sur sa boîte de ligne, pas sur son encre
-     réelle, ce qui la décalait visiblement d'un ou deux pixels selon la police */
+  /* Centré par position absolue + translate (pas flex) : centre sur l'encre réelle, évite un décalage de 1-2px selon la police. */
   content: "";
   position: absolute;
   top: 50%;
@@ -548,9 +476,7 @@ body {
   mask-position: center;
 }
 
-/* (hover: hover) exclut les écrans tactiles : au doigt il n'y a pas de vrai "survol", donc
-   pas de mouseout pour annuler le style — sans cette condition, le bouton restait rouge après
-   un tap tant qu'on ne touchait pas autre chose ailleurs sur l'écran */
+/* (hover: hover) exclut le tactile : sans ça, le bouton restait rouge après un tap (pas de vrai mouseout au doigt). */
 @media (hover: hover) and (pointer: fine) {
   .btn-ajout-icone:hover {
     background: var(--accent);
@@ -565,10 +491,8 @@ body {
   color: white;
 }
 
+/* Classe posée/retirée en JS tant que le panneau d'ajout est ouvert (voir stock.js/courses.js), contrairement à :hover/:active. */
 .btn-ajout-icone.actif {
-  /* Contrairement à :hover/:active (temporaires), "actif" est une vraie classe posée/retirée
-     en JS tant que le panneau d'ajout est ouvert (voir stock.js/courses.js) : le bouton reste
-     plein rouge pour montrer qu'on est en train d'ajouter, jusqu'à ce qu'on referme le panneau */
   background: var(--accent);
   color: white;
 }
@@ -586,33 +510,24 @@ body {
 }
 
 .search-wrapper {
-  flex: 1; /* prend tout l'espace restant disponible dans la ligne */
+  flex: 1;
   min-width: 220px;
   position: relative; /* ancre le bouton "✕" mobile (voir .btn-effacer-recherche) */
 }
 
-/* Même rôle que .search-wrapper, pour les champs de recherche qui n'avaient pas encore de
-   conteneur dédié (Stock "ajouter un aliment", Courses, Journal, Recettes) : juste de quoi
-   ancrer le bouton "✕" mobile en position absolute, sans changer la mise en page existante. */
+/* Même rôle que .search-wrapper pour les champs sans conteneur dédié (Stock ajout, Courses, Journal, Recettes). */
 .champ-recherche-wrapper {
   position: relative;
 }
 
-/* Bouton "✕" pour vider un champ de recherche d'un tap : mobile uniquement (voir @media plus
-   bas, où il devient réellement visible/positionné) — sur desktop on a déjà la souris pour
-   sélectionner et effacer, ce bouton n'y ajoute rien. Caché par défaut ici, affiché seulement
-   une fois du texte tapé (voir la classe "visible", posée par JS dans chaque fichier
-   correspondant : aliments.js, stock.js, courses.js, calories.js). */
+/* Vide le champ d'un tap, mobile uniquement (desktop a déjà la souris) ; affiché via la classe "visible" posée en JS. */
 .btn-effacer-recherche {
   display: none;
 }
 
 #searchInput {
   width: 100%;
-  /* Même hauteur exacte que .btn-ajout-icone (30px) à côté, sur la page Stock : box-sizing
-     border-box fait que padding + bordure sont comptés dans ces 30px plutôt que rajoutés
-     par-dessus, sinon les deux ne s'alignaient pas pile (le bouton dépassait légèrement) */
-  height: 30px;
+  height: 30px; /* même hauteur que .btn-ajout-icone à côté ; box-sizing border-box pour un alignement pile */
   box-sizing: border-box;
   background: var(--surface);
   border: 1.5px solid var(--border);
@@ -633,19 +548,10 @@ body {
   border-color: #d77a4291; /* focus neutre (terracotta adouci) : le rouge est réservé à .recherche-invalide */
 }
 
-/* Règle partagée par tous les champs de recherche de l'app (Aliments, Stock, Courses, Journal,
-   Recettes — voir appliquerFiltres, appliquerFiltresStock et les écouteurs "input" sur
-   rechercheAliment, rechercheAlimentCourses, rechercheAlimentCalories, rechercheIngredient
-   dans leurs fichiers JS respectifs) : rouge UNIQUEMENT quand une recherche tapée ne trouve
-   vraiment rien, jamais au simple focus. Sélecteur générique (par classe, pas par id) pour
-   s'appliquer à tous ces champs sans dupliquer la règle six fois. Le plus grand nombre de
-   classes+id le fait gagner sur la règle ":focus" ci-dessus sans avoir besoin de !important. */
+/* Partagé par tous les champs de recherche : rouge seulement si la recherche ne trouve rien, jamais au simple focus. */
 input.recherche-invalide,
 input.recherche-invalide:focus {
-  /* !important nécessaire : plusieurs champs de recherche sont ciblés par leur id ailleurs
-     (#searchInput, #rechercheIngredient...), qui l'emporterait sinon sur ce sélecteur générique
-     malgré l'ordre — un id bat toujours une classe en spécificité CSS, peu importe le nombre. */
-  border-color: var(--accent) !important;
+  border-color: var(--accent) !important; /* nécessaire : un id (#searchInput...) l'emporterait sinon sur cette classe générique */
 }
 
 .sort-wrapper {
@@ -1020,38 +926,23 @@ input.recherche-invalide:focus {
 }
 
 .courses-controls-row {
-  /* Reste visible en scrollant la liste : on peut vouloir ajouter un article ou basculer
-     "Au magasin" à tout moment, sans avoir à remonter en haut de la page. Même principe que
-     .filters (Aliments/Stock), collé juste sous le header grâce à --header-h (voir header.ejs). */
+  /* Sticky sous le header, même principe que .filters (Aliments/Stock). */
   position: sticky;
   top: var(--header-h, 65px);
   z-index: 90;
-  /* Même traitement que .filters (Aliments/Stock) : fond "surface" + bordures + ombre légère,
-     pour qu'elle se lise comme une vraie barre d'outils qui flotte au-dessus de la liste
-     pendant le scroll, plutôt que de se fondre à plat dans le fond de la page */
   background: var(--surface);
   border-top: 1.5px solid var(--border);
   border-bottom: 1.5px solid var(--border);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
   margin-bottom: 0;
-  /* "Full-bleed" : le FOND doit couvrir toute la largeur de l'écran (sinon les pastilles de
-     stock des cartes en dessous, position absolute, débordent visuellement au-dessus aux deux
-     bords pendant le scroll), mais le CONTENU, lui, ne doit pas coller aux bords réels de
-     l'écran : voir .courses-controls-row__inner, qui recentre "Trier par/Au magasin/+" dans la
-     même colonne (max-width 1200px) que le titre et les cartes, comme .filters/.filters__inner
-     sur Aliments/Stock. Sans cette séparation fond/contenu, le contenu suivait le fond jusqu'aux
-     bords de l'écran sur un grand moniteur, très décalé par rapport au reste de la page. */
+  /* Fond full-bleed, contenu recentré via .courses-controls-row__inner (comme .filters/.filters__inner). */
   width: 100vw;
   margin-left: calc(50% - 50vw);
   box-sizing: border-box;
 }
 
 .courses-controls-row__inner {
-  /* "Trier par" à l'extrême gauche, "+" à l'extrême droite, et tout ce qu'il y a entre les deux
-     (Au magasin, et le badge une fois docké ici, voir courses.js) réparti à intervalles ÉGAUX
-     entre ces deux bords — exactement ce que fait justify-content:space-between, plutôt qu'un
-     "gap" fixe + une marge auto sur le "+" (ancienne approche, qui laissait un vide disproportionné
-     entre le groupe de gauche et le "+" sur un écran large). */
+  /* space-between : "Trier par" à gauche, "+" à droite, le reste réparti entre les deux. */
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
@@ -1060,26 +951,19 @@ input.recherche-invalide:focus {
   padding: 14px 40px;
 }
 
-/* Repère utilisé par courses.js (insertAdjacentElement) pour savoir où réinsérer le badge une
-   fois déplacé ici : "display:none" plutôt que caché autrement, pour qu'il ne compte PAS comme
-   enfant flex (sinon il ajouterait un intervalle "space-between" supplémentaire pour rien, même
-   vide, entre "Au magasin" et le badge). */
+/* Repère pour courses.js (insertAdjacentElement) ; display:none pour ne pas compter comme enfant flex. */
 #badgeCoursesAncre {
   display: none;
 }
 
-/* Largeur FIXE (pas flex:0 1 220px comme les autres pages) : sinon la boîte se redimensionnait
-   selon le mot choisi ("Nom" vs "Catégorie"), donnant l'impression que le bouton "respire"/bouge
-   à chaque changement de tri au lieu de rester stable dans la barre d'outils. */
+/* Largeur fixe : sinon la boîte bougeait selon le mot choisi ("Nom" vs "Catégorie"). */
 .courses-controls-row .sort-wrapper .custom-select {
   flex: 0 0 92px;
   width: 92px;
   min-width: 0;
 }
 
-/* Plus compact que le bouton générique (padding/police réduits) pour rester à l'échelle des
-   autres contrôles ronds/étroits de cette barre (badge, interrupteur, "+"), plutôt que la même
-   taille que sur Aliments/Stock/Calories où ce bouton est plus proéminent. */
+/* Plus compact que le bouton générique, à l'échelle des autres contrôles de cette barre. */
 .courses-controls-row .sort-wrapper .custom-select__button {
   padding: 6px 20px 6px 10px;
   font-size: 0.76rem;
@@ -1136,23 +1020,14 @@ input.recherche-invalide:focus {
   transform: translateX(16px);
 }
 
-/* Même colonne que "Enregistrer"/les filtres (voir .preset-hebdo-row__normal/__filtres juste en
-   dessous) : la marge qui séparait ce bouton du premier article de la liste vit maintenant sur le
-   conteneur commun. "position:relative" + hauteur fixe : les deux groupes qu'elle contient se
-   superposent en crossfade au même endroit (voir plus bas) plutôt que de s'empiler l'un sous
-   l'autre, donc la rangée elle-même ne bouge/ne collapse plus — seul son CONTENU change. */
+/* Hauteur fixe : les deux groupes qu'elle contient se superposent en crossfade, la rangée elle-même ne bouge jamais. */
 .preset-hebdo-row {
   position: relative;
   height: 34px;
   margin-top: 10px;
 }
 
-/* Les deux groupes remplissent tout l'espace de .preset-hebdo-row et se croisent en fondu : le
-   groupe INACTIF passe en "position:absolute" (sorti du flux, donc sans influence sur la hauteur)
-   pendant que l'ACTIF repasse en "position:static" (flux normal, lui donne sa vraie largeur/hauteur).
-   Basculer ces deux propriétés en même temps que l'opacité, plutôt qu'un simple fondu croisé
-   classique, est ce qui évite que les deux groupes ne se chevauchent visuellement pendant la
-   transition (voir "Au magasin" dans courses.js, qui pose "mode-magasin" sur le body). */
+/* Le groupe inactif passe en absolute (hors flux), l'actif en static (lui donne sa vraie taille) : évite le chevauchement pendant la transition. */
 .preset-hebdo-row__normal,
 .preset-hebdo-row__filtres {
   display: flex;
@@ -1260,22 +1135,14 @@ body.mode-magasin .preset-hebdo-row__filtres {
   mask-image: url("/images/svg/reussi.svg");
 }
 
-/* Flux normal (pas flex) : #panneauAjoutCourse vit maintenant dans cette liste (voir courses.js)
-   et c'est une grille à une seule ligne (voir .panneau-ajout) dont la hauteur est animée via
-   grid-template-rows 0fr -> 1fr. Dans un conteneur flex, ce panneau devenait lui-même un item
-   flexible et se retrouvait étiré/mal dimensionné (grand bloc vide) au lieu de ne prendre que
-   la hauteur de son contenu. Le flux bloc normal n'a pas ce problème (comme #listeStock,
-   qui n'a jamais ce souci car son panneau d'ajout reste hors de la liste). */
+/* Flux bloc normal (pas flex), sinon #panneauAjoutCourse s'étirait comme un item flexible au lieu de garder la hauteur de son contenu. */
 
-/* Espace fixe avant le premier article, qu'importe si .preset-hebdo-row (juste au-dessus) est
-   visible ou masquée (mode magasin) : sans lui, la pastille de stock d'un article (position:
-   absolute, top:-8px) chevauchait la barre d'outils sticky dès que cette rangée disparaissait. */
+/* Espace fixe avant le 1er article, sinon la pastille de stock (absolute, top:-8px) chevauchait la barre sticky quand .preset-hebdo-row disparaît. */
 #listeCourses {
   margin-top: 14px;
 }
 
-/* .panneau-ajout est exclu : sa propre marge (0 fermé / 20px ouvert, voir plus haut) gère déjà
-   son espacement, animée en même temps que son ouverture/fermeture. */
+/* .panneau-ajout exclu : sa propre marge anime déjà son ouverture/fermeture. */
 #listeCourses > *:not(.panneau-ajout) {
   margin-bottom: 8px;
 }
@@ -1284,10 +1151,8 @@ body.mode-magasin .preset-hebdo-row__filtres {
   margin-bottom: 0;
 }
 
+/* Repère discret entre groupes de catégorie (voir courses.js, trierPar), pas un vrai titre. */
 .course-categorie-entete {
-  /* Repère discret entre deux groupes de catégorie (voir courses.js, trierPar) : petite
-     majuscule espacée et atténuée façon "section" de Réglages iOS, pas un vrai titre qui
-     ferait concurrence aux noms d'articles juste en dessous */
   font-family: var(--font-body);
   font-size: 0.72rem;
   font-weight: 600;
@@ -1303,9 +1168,7 @@ body.mode-magasin .preset-hebdo-row__filtres {
 
 .course-item {
   display: grid;
-  /* Grille à 2 colonnes : la 1ère prend tout l'espace disponible (le nom),
-     la 2ème s'ajuste à son contenu (les boutons d'action) */
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto; /* 1ère colonne = tout l'espace (nom), 2e = son contenu (boutons) */
   align-items: center;
   column-gap: 14px;
   row-gap: 8px;
@@ -1313,10 +1176,8 @@ body.mode-magasin .preset-hebdo-row__filtres {
 }
 
 .course-nom {
-  /* On place explicitement cet élément dans la grille : colonne 1, ligne 1 */
   grid-column: 1;
   grid-row: 1;
-  /* Police de texte courant, poids plus léger que la serif en gras des titres (voir .food-card__name) */
   font-family: var(--font-body);
   font-size: 1.05rem;
   font-weight: 400;
@@ -1324,9 +1185,7 @@ body.mode-magasin .preset-hebdo-row__filtres {
 }
 
 .course-nom-emoji {
-  /* Seule cette partie ouvre la note (voir courses.js) : curseur pointer réservé à l'émoji,
-     pas à tout le nom, pour ne pas laisser croire que le texte entier est cliquable. */
-  cursor: pointer;
+  cursor: pointer; /* seule cette partie ouvre la note (voir courses.js), pas tout le nom */
 }
 
 .course-item .form-supprimer {
@@ -1335,11 +1194,7 @@ body.mode-magasin .preset-hebdo-row__filtres {
   right: -8px;
 }
 
-/* Indicateur "j'en ai déjà à la maison", posé sur le coin supérieur gauche de la carte
-   (symétrique au bouton supprimer, à droite). Deux variantes : un badge numéroté façon
-   pastille de notification iOS (aliments suivis en quantité), ou un simple point de couleur
-   (aliments suivis en "cl", ex: bouteille) reprenant les mêmes couleurs que la barre de niveau
-   utilisée sur la page Stock (.stock-barre-cl-remplissage). */
+/* "Déjà en stock" : badge numéroté (quantité) ou point de couleur (suivi "cl", couleurs de .stock-barre-cl-remplissage). */
 .course-stock-indicator {
   position: absolute;
   top: -8px;
@@ -1386,9 +1241,7 @@ body.mode-magasin .preset-hebdo-row__filtres {
 
 .note-affichee,
 .ligne-commentaire {
-  /* Ligne 2 de la grille : sous le nom de l'article. La ligne (champ + bouton photo) est
-     maintenant le vrai élément de grille, l'input lui-même n'en est plus un directement. */
-  grid-column: 1;
+  grid-column: 1; /* ligne 2 de la grille, sous le nom */
   grid-row: 2;
 }
 
@@ -1414,16 +1267,13 @@ body.mode-magasin .preset-hebdo-row__filtres {
   mask-position: center;
 }
 
-/* Les formulaires d'achat sont transparents pour la grille : leurs enfants
-   (groupe quantité + bouton) se placent directement dans les cellules voulues */
 .form-acheter,
 .form-quantite {
   display: contents; /* le <form> "disparaît" visuellement : ses enfants se comportent comme s'ils étaient directement dans .course-item */
 }
 
 .course-item__quantite-groupe {
-  /* Replié par défaut (pas "display:none", qui ne se transitionne pas) : basculer "Au magasin"
-     déplie ces lignes en douceur sur toute la liste au lieu de les faire apparaître d'un coup */
+  /* max-height à 0 (pas display:none, non transitionnable) : "Au magasin" déplie en douceur. */
   display: flex;
   grid-column: 1;
   grid-row: 3;
@@ -1439,10 +1289,7 @@ body.mode-magasin .preset-hebdo-row__filtres {
 }
 
 .course-item__shop-slot {
-  /* Toujours la même colonne (2), pour tous les types d'articles : le bouton "Acheté" reste
-     aligné à la même position verticale d'une carte à l'autre en parcourant la liste, même
-     si certaines n'ont pas de suggestions de quantité au-dessus (mieux qu'un remplissage
-     parfait mais avec le bouton qui saute d'une ligne à l'autre selon le type). */
+  /* Toujours colonne 2 pour tous les types : le bouton "Acheté" reste aligné d'une carte à l'autre. */
   display: flex;
   grid-column: 2;
   grid-row: 3;
@@ -1467,15 +1314,7 @@ body.mode-magasin .course-item__shop-slot {
   opacity: 1;
 }
 
-/* Tant que la carte n'a pas été tapée une première fois (voir activerArmement dans courses.js),
-   seul le panier ("Acheté") reste inerte — "+1/+2/+5" restent cliquables tout de suite, sans
-   armer la carte d'abord, pas besoin de confirmation en plus pour ceux-là. Un tap accidentel sur
-   le panier d'un article "cl" OU "libre" (toujours actif, sans quantité à saisir) ne peut plus
-   valider un achat tout seul — il faut d'abord "armer" la carte, comme confirmation.
-   ":not(.form-quantite)" exclut les articles à quantité : taper un nombre est déjà, en soi, un
-   geste volontaire (un tap accidentel ne tape pas "3" tout seul) — cette carte-là n'a donc pas
-   besoin d'un armement en plus, et son panier doit refléter tout de suite (sans le voile de
-   ce fondu) qu'une quantité valide vient d'être saisie. */
+/* Panier inerte tant que la carte n'est pas "armée" (voir activerArmement dans courses.js), pour éviter un achat accidentel sur un article "cl"/libre. ":not(.form-quantite)" exclut les articles à quantité : taper un nombre est déjà un geste volontaire. */
 body.mode-magasin
   .course-item:not(.arme)
   .form-acheter:not(.form-quantite)
@@ -1486,11 +1325,7 @@ body.mode-magasin
     opacity 0.2s ease;
 }
 
-/* pointer-events:none va sur le BOUTON, pas sur .course-item__shop-slot lui-même : sinon un tap
-   dessus devient "transparent" au hit-test et retombe directement sur .course-item en dessous,
-   ce qui armait la carte par effet de bord au lieu de ne rien faire du tout (voir le clic exclu
-   sur .course-item__shop-slot dans le gestionnaire global de courses.js — qui ne peut jouer son
-   rôle que si le clic atteint bien cette zone). */
+/* pointer-events:none sur le bouton, pas sur .course-item__shop-slot : sinon le tap retombe sur .course-item et arme la carte par effet de bord. */
 body.mode-magasin
   .course-item:not(.arme)
   .form-acheter:not(.form-quantite)
@@ -1499,11 +1334,7 @@ body.mode-magasin
   pointer-events: none;
 }
 
-/* Repère visuel que la carte est "armée" (comme .stock-item.en-edition sur Stock) : terracotta
-   adouci (même famille que le thème de l'app), pas rouge plein — un tap pour accéder à une
-   action n'est ni invalide ni négatif, et un contour rouge pour ça se lit à tort comme une
-   erreur (convention QA/accessibilité : le rouge est réservé aux états invalides, voir aussi
-   .en-edition, .custom-select--open et .mise-en-avant). */
+/* Terracotta adouci, pas rouge plein : le rouge est réservé aux états invalides (voir .en-edition, .custom-select--open). */
 .course-item.arme {
   border-color: #d77a4291;
 }
@@ -1514,13 +1345,7 @@ body.mode-magasin
   gap: 6px;
 }
 
-/* Boutons "+1/+2/+5" : achètent directement cette quantité (voir activerQuantite dans
-   courses.js). Même structure exacte que .stock-quick-subtract .suggestion (Stock, "-1/-2/-5"),
-   juste recolorée en vert — la couleur déjà utilisée pour "Acheté" (.btn-acheter-icone) — plutôt
-   que le rouge d'un retrait : une teinte "fanée" dès le repos, pas juste au survol. */
-/* Vert désaturé ("sauge") plutôt que le vert vif iOS (#34c759) : sur le fond crème chaud de
-   l'app, ce vert-là ressortait trop et distrayait l'œil, contrairement au rouge de Stock qui se
-   fond mieux (déjà proche des autres accents rouges de l'app). */
+/* Même structure que .stock-quick-subtract .suggestion, recolorée en vert sauge désaturé (le vert vif iOS ressortait trop sur le fond crème). */
 .form-quantite .suggestion {
   width: 26px;
   height: 26px;
@@ -1577,27 +1402,14 @@ body.mode-magasin
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  /* Pas de margin-bottom ici : .panneau-ajout__interieur centre maintenant ce formulaire
-     verticalement lui-même (display:flex + align-items:center, voir plus haut) dans une hauteur
-     imposée en JS pour matcher un article de la liste — une marge en bas n'aurait plus lieu
-     d'être et grandirait la carte au-delà de cette hauteur voulue. */
 }
 
 #autocompleteCourses {
-  position: relative; /* sert de repère pour positionner la liste de suggestions juste en dessous (position: absolute) */
-  /* Comme #autocomplete (Stock) : compact plutôt qu'étiré sur toute la largeur du panneau,
-     mais un plafond légèrement différent (280px vs 320px) pour ne pas être un simple clone —
-     ce champ partage aussi sa ligne avec "Ajouter" (texte libre), contrairement à Stock.
-     "margin:0 auto" en plus de justify-content:center sur le parent (ceinture et bretelles) :
-     centre le champ même si jamais un futur enfant supplémentaire de #formAjouterCourse
-     redevenait visible et perturbait le calcul de centrage du parent. */
+  position: relative; /* repère pour positionner la liste de suggestions en dessous */
   flex: 0 1 280px;
   min-width: 200px;
   margin: 0 auto;
 }
-
-/* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
-   plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec Stock, Calories, etc.) */
 
 /* ---- Erreur ---- */
 
@@ -1610,10 +1422,7 @@ body.mode-magasin
   margin-bottom: 20px;
 }
 
-/* ---- Toast réseau (voir afficherToast/gererErreurReseau dans courses.js) ----
-   Bandeau discret en bas de l'écran plutôt qu'une alert() bloquante : au magasin, une popup à
-   fermer à chaque coupure wifi est plus pénible qu'utile. Se referme tout seul. Couleur neutre
-   (texte foncé), pas rouge : c'est une notice ("réessaie"), pas une accusation d'erreur grave. */
+/* Toast réseau (voir afficherToast/gererErreurReseau dans courses.js) : bandeau discret, pas d'alert() bloquante. Couleur neutre, pas rouge (notice, pas erreur grave). */
 .toast-reseau {
   position: fixed;
   left: 50%;
@@ -1734,15 +1543,7 @@ body.mode-magasin
   margin-top: 4px;
 }
 
-/* Bouton photo de référence : ce même bouton vit à deux endroits différents selon "data-a-photo"
-   (voir placerBoutonPhotoEnHaut/placerBoutonPhotoDansNote dans courses.js, qui déplacent le vrai
-   noeud DOM d'un parent à l'autre) :
-   - sans photo = icône "télécharger", reste un enfant de .ligne-commentaire (à droite du champ de
-     note), donc caché tant que la note n'est pas ouverte (clic sur l'émoji), exactement comme le
-     champ lui-même — pas la peine de montrer une invite à ajouter une photo en permanence ;
-   - avec photo = icône "oeil", déplacé en enfant direct de .course-item (colonne 2 / ligne 1,
-     même ligne horizontale que le nom de l'article, au-dessus du bouton "Acheté" en ligne 3) :
-     toujours visible sans rouvrir la note, pour la consulter avant d'acheter. */
+/* Vit dans .ligne-commentaire sans photo (icône "télécharger"), ou en enfant direct de .course-item avec photo (icône "oeil", voir placerBoutonPhoto* dans courses.js). */
 .btn-photo-course {
   grid-column: 2;
   grid-row: 1;
@@ -1778,11 +1579,7 @@ body.mode-magasin
   mask-position: center;
 }
 
-/* Une fois la photo posée : juste l'oeil, sans le cercle/bordure du bouton "ajouter" (ce n'est
-   plus une invite à agir mais une simple consultation) — couleur d'accent de l'app (terracotta,
-   même teinte que le logo "Chow"), légèrement transparente pour l'adoucir un peu. Largeur/hauteur
-   alignées sur .btn-icone-rond (le bouton "Acheté" juste en dessous, voir ligne 3 / colonne 2)
-   pour que les deux colonnes s'alignent. */
+/* Photo posée : juste l'oeil, sans cercle/bordure (consultation, pas une invite à agir). */
 .btn-photo-course[data-a-photo="true"] {
   width: 25px;
   height: 25px;
@@ -1803,17 +1600,12 @@ body.mode-magasin
   transform: scale(0.92);
 }
 
-/* Rebond joyeux à l'ajout réussi d'une photo (voir courses.js, déclenché après confirmation du
-   serveur) : même animation que le badge sac de courses, pour rester cohérent avec le seul autre
-   "succès" animé de la page plutôt que d'inventer un nouveau rebond. */
+/* Rebond à l'ajout réussi, même animation que le badge sac de courses. */
 .btn-photo-course.photo-pop {
   animation: badgeSacPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Suppression d'une photo : l'oeil se ferme (paupière = aplatissement vertical) puis s'efface,
-   plutôt que de disparaître d'un coup — joué juste avant de reloger le bouton dans la note (voir
-   btnSupprimerPhoto dans courses.js), qui remet ensuite l'icône "télécharger" propre pour la
-   prochaine fois. */
+/* Suppression : l'oeil se ferme (paupière) et s'efface avant de reloger le bouton dans la note. */
 .btn-photo-course.oeil-fermeture {
   animation: oeilSeFerme 0.3s ease-in forwards;
 }
@@ -1845,14 +1637,10 @@ body.mode-magasin
   border-color: #d77a4291;
 }
 
-/* ---------- EN-TÊTE PARTAGÉ (Stock / Courses) ---------- */
-/* Même gabarit que la section .hero d'Aliments : titre + largeur max, juste au-dessus
-   de la barre de filtres pleine largeur, pour que les trois pages se ressemblent. */
+/* ---------- EN-TÊTE PARTAGÉ (Stock / Courses) : même gabarit que .hero d'Aliments ---------- */
 
 .page-header {
-  /* Même largeur max que .grid-section/.filters__inner (Aliments), pour que les grilles
-     de cartes de Stock aient exactement le même nombre de colonnes qu'Aliments */
-  max-width: 1200px;
+  max-width: 1200px; /* même largeur max que .grid-section/.filters__inner, mêmes colonnes qu'Aliments */
   margin: 0 auto;
   padding: 50px 40px 20px;
 }
@@ -1866,7 +1654,6 @@ body.mode-magasin
 }
 
 .page-header__description {
-  /* Même traitement que le texte d'intro de la page Aliments (.hero__text p) */
   margin-top: 8px;
   font-size: 1.05rem;
   color: var(--text-muted);
@@ -1883,30 +1670,8 @@ body.mode-magasin
 }
 
 /* ---- Panneau d'ajout (repliable) ---- */
-/* #btnToggleAjout n'a plus besoin de marge propre : il vit maintenant dans .search-ajout-row,
-   dont le margin-bottom gère déjà l'espacement avant le panneau juste en dessous. Un ancien
-   margin-bottom résiduel ici décalait le bouton vers le haut au lieu de le centrer avec la
-   barre de recherche à côté (sa "boîte" incluant la marge devenait plus haute que l'input,
-   donc plus jamais centrée pareil par align-items: center). */
 
-/*
-  Technique "grid-rows accordéon" pour une vraie ouverture/fermeture animée (hauteur 0 -> hauteur réelle),
-  au lieu d'un simple show/hide instantané avec la classe .hidden :
-  - .panneau-ajout est une grille à une seule ligne, dont la hauteur de cette ligne (grid-template-rows)
-    passe de "0fr" (fermé) à "1fr" (ouvert) — une valeur qu'on peut animer en douceur avec "transition".
-  - .panneau-ajout__piege est l'unique enfant de cette grille, avec "overflow: hidden" : c'est ce qui
-    l'autorise à être compressé à 0px par la grille pendant la fermeture.
-  - .panneau-ajout__interieur, à l'intérieur du piège, porte le fond, la bordure et le padding.
-    Ces deux niveaux sont nécessaires : si le fond/bordure/padding étaient posés directement sur
-    l'élément "overflow:hidden" (le piège), ils resteraient visibles même à 0px de haut (le padding
-    et la bordure d'une boîte ne se compressent jamais en dessous de leur valeur déclarée, même quand
-    la boîte elle-même est réduite à 0 par son parent) — le panneau ne se fermerait donc jamais tout
-    à fait. En les déplaçant sur un niveau encore plus interne, le piège peut les cacher entièrement.
-  Ça remplace l'ancienne "animation: slideDownNote" qui n'animait que l'ouverture (jamais la fermeture),
-  et qui avait un effet de bord : elle créait un contexte d'empilement qui piégeait le z-index de la liste
-  de suggestions. On garde quand même position/z-index ici par sécurité, au cas où d'autres éléments
-  positionnés viendraient un jour se glisser juste après le panneau dans le HTML.
-*/
+/* Accordéon : grid-template-rows 0fr->1fr, overflow:hidden sur .panneau-ajout__piege ; fond/bordure sur __interieur pour rester invisibles à 0px. */
 .panneau-ajout {
   display: grid;
   grid-template-rows: 0fr;
@@ -1928,11 +1693,7 @@ body.mode-magasin
   min-height: 0;
 }
 
-/* Une fois l'ouverture terminée (classe "pret", ajoutée par JS via l'événement "transitionend"),
-   on repasse en overflow:visible : sinon la liste de suggestions (#listeAliments, #listeIngredientsRecherche),
-   qui dépasse volontairement sous le panneau, resterait coupée/invisible en permanence à cause de
-   l'overflow:hidden nécessaire pendant l'animation. On repasse en "hidden" dès le début de la fermeture
-   (retiré par JS avant même que l'animation de fermeture ne démarre) pour que celle-ci reste bien coupée. */
+/* "pret" (posé par JS après l'anim d'ouverture) repasse en overflow:visible, sinon la liste de suggestions débordante resterait coupée. */
 .panneau-ajout.ouvert.pret .panneau-ajout__piege {
   overflow: visible;
 }
@@ -1942,10 +1703,7 @@ body.mode-magasin
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 20px;
-  /* 90px normalement, 108px "Au magasin" (voir body.mode-magasin ci-dessous) : "display:flex" +
-     "center" garde le formulaire centré verticalement dans cette hauteur fixe plutôt que collé en
-     haut. La transition rend le changement entre les deux hauteurs animé au lieu d'un saut sec. */
-  height: 90px;
+  height: 90px; /* 108px en mode magasin (voir plus bas) */
   display: flex;
   align-items: center;
   transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1959,25 +1717,16 @@ body.mode-magasin .panneau-ajout__interieur {
 
 #listeStock {
   display: grid;
-  /* Exactement les mêmes proportions que .food-grid (Aliments), pour que les deux
-     grilles de cartes donnent le même rythme visuel (mêmes colonnes, même espacement) */
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* mêmes proportions que .food-grid (Aliments) */
   gap: 28px;
-  /* Pas de margin-bottom propre : comme .food-grid/#listeJournal/.recette-grid, l'espace
-     avant le footer vient uniquement du "gap" régulier + du padding du footer, pas d'une
-     marge de fin supplémentaire qui créerait un vide plus grand que les autres. */
 }
 
 .stock-item {
-  /* On repart d'une mise en page en colonne (au lieu de la ligne 1fr/auto d'origine) :
-     emoji en haut, infos en dessous, comme une .food-card */
+  /* Colonne (emoji en haut, infos en dessous) comme une .food-card, plutôt que la ligne 1fr/auto d'origine. */
   display: flex;
   flex-direction: column;
-  padding: 0; /* le padding de .carte-article est retiré ici : il est géré par .stock-item__body */
-  /* Pas de overflow:hidden ici : le bouton supprimer (.form-supprimer-stock) est positionné
-     volontairement en dehors du cadre de la carte (top/right négatifs) pour flotter sur le coin ;
-     un overflow:hidden sur la carte entière le couperait et le rendrait invisible. On arrondit
-     donc seulement les coins du haut de l'emoji, plus bas, plutôt que de couper toute la carte. */
+  padding: 0; /* géré par .stock-item__body */
+  /* Pas de overflow:hidden : .form-supprimer-stock flotte volontairement hors du cadre (top/right négatifs), un overflow le couperait. */
   cursor: pointer; /* toute la carte est cliquable pour ouvrir l'édition (voir stock.js) */
   transition:
     transform 0.2s ease,
@@ -1986,7 +1735,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .stock-item:hover {
-  /* Même effet de survol qu'une .food-card, pour que les deux grilles se comportent pareil */
   transform: translateY(-4px);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
   border-color: var(--accent-2);
@@ -2021,10 +1769,7 @@ body.mode-magasin .panneau-ajout__interieur {
   border-top-right-radius: var(--radius);
 }
 
-/* ---- Vue liste (articles empilés, inspirée d'apps comme Bring!/Out of Milk) ----
-   Même carte, même HTML : seule la classe "vue-liste" sur #listeStock change, le CSS
-   réarrange juste l'image à gauche et le corps à droite au lieu d'empiler en colonne. */
-
+/* Vue liste : même carte/HTML, la classe "vue-liste" réarrange juste l'image à gauche et le corps à droite. */
 #listeStock.vue-liste {
   display: flex;
   flex-direction: column;
@@ -2041,8 +1786,7 @@ body.mode-magasin .panneau-ajout__interieur {
   width: 90px;
   aspect-ratio: auto; /* la hauteur suit celle de la ligne (align-items: stretch) plutôt qu'un ratio fixe */
   flex-shrink: 0;
-  /* Seuls les coins gauches suivent l'arrondi de la carte (l'image est maintenant à gauche, pas en haut) */
-  border-top-left-radius: var(--radius);
+  border-top-left-radius: var(--radius); /* seuls les coins gauches, l'image est à gauche ici */
   border-top-right-radius: 0;
   border-bottom-left-radius: var(--radius);
 }
@@ -2057,13 +1801,9 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .stock-item__body {
-  /* Deux colonnes : le bloc nom/emplacement à gauche (prend tout l'espace restant),
-     la zone quantité à droite (largeur selon son contenu, centrée sur toute la hauteur) */
   display: grid;
-  grid-template-columns: 1fr auto;
-  /* La zone quantité garde son propre padding interne (.stock-editable-zone), mais sans cette
-     marge supplémentaire ici elle touchait directement le bord droit de la carte */
-  padding-right: 14px;
+  grid-template-columns: 1fr auto; /* nom/emplacement à gauche, quantité à droite selon son contenu */
+  padding-right: 14px; /* sinon la zone quantité touche directement le bord droit de la carte */
 }
 
 .stock-item__infos {
@@ -2081,7 +1821,6 @@ body.mode-magasin .panneau-ajout__interieur {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* Police de texte courant, poids plus léger que la serif en gras des titres (voir .food-card__name) */
   font-family: var(--font-body);
   font-size: 1.05rem;
   font-weight: 400;
@@ -2089,10 +1828,7 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .stock-item__ligne--meta {
-  /* display:block (au lieu de flex) : emplacement/séparateur/fraîcheur redeviennent un seul flux
-     de texte en ligne, qui peut alors tronquer proprement avec "..." sur les cartes étroites au
-     lieu de déborder sur la carte voisine */
-  display: block;
+  display: block; /* pas flex : redevient un flux de texte, qui peut tronquer proprement avec "..." */
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -2100,8 +1836,7 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .stock-emplacement {
-  /* Plus petit que .food-card__category (0.78rem) : ce texte doit tenir sur une seule ligne
-     avec la fraîcheur ("Congélateur | il y a 3 jours") même sur une carte étroite, sans "..." */
+  /* Plus petit que .food-card__category : doit tenir sur une ligne avec la fraîcheur même sur carte étroite. */
   margin-right: 5px;
   font-size: 0.66rem;
   font-weight: 500;
@@ -2117,7 +1852,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .stock-quantite {
-  /* Taille inchangée : seuls l'emplacement et la fraîcheur rétrécissent pour laisser la place */
   font-size: 1.5rem;
   font-weight: 800;
   color: var(--accent-2);
@@ -2140,9 +1874,7 @@ body.mode-magasin .panneau-ajout__interieur {
   transition: background 0.15s ease;
 }
 
-/* "Ajouter aux courses" : ne s'affiche que si l'article est bas ET pas déjà dans la liste de
-   courses (voir chercherStock/stock.ejs). Rond discret (contour, pas plein) pour rester secondaire
-   par rapport à la quantité elle-même, qui reste l'info principale de cette zone. */
+/* Affiché seulement si l'article est bas ET pas déjà en attente d'achat (voir chercherStock/stock.ejs). Contour, pas plein : reste secondaire. */
 .btn-ajouter-courses {
   width: 26px;
   height: 26px;
@@ -2199,14 +1931,12 @@ body.mode-magasin .panneau-ajout__interieur {
   background: var(--bg);
 }
 
+/* Terracotta adouci, pas rouge : éditer n'est pas une erreur (voir .course-item.arme plus haut). */
 .stock-item.en-edition {
-  /* Classe ajoutée par JavaScript quand un article de stock est en train d'être modifié.
-     Terracotta adouci, pas rouge — éditer n'est pas une erreur (voir .course-item.arme plus haut). */
   border-color: #d77a4291;
 }
 
 @keyframes stockFondu {
-  /* Petit fondu enchaîné : l'élément apparaît en grossissant légèrement depuis 94% de sa taille normale */
   from {
     opacity: 0;
     transform: scale(0.94);
@@ -2228,8 +1958,6 @@ body.mode-magasin .panneau-ajout__interieur {
 
 .stock-quantite-edit,
 .stock-cl-edit {
-  /* Champs affichés uniquement quand on clique pour modifier la quantité/niveau d'un article.
-     Terracotta adouci, pas rouge — même raison que .stock-item.en-edition juste au-dessus. */
   background: var(--bg);
   border: 1.5px solid #d77a4291;
   border-radius: 999px;
@@ -2249,35 +1977,26 @@ body.mode-magasin .panneau-ajout__interieur {
   outline: none;
 }
 
-/* Ligne du haut en édition (champ + "Ajouter aux courses" côte à côte) : voir ouvrirEdition
-   dans stock.js, qui pose cette ligne à l'intérieur de .stock-editable-zone. */
+/* Ligne du haut en édition (champ + "Ajouter aux courses" côte à côte), posée en JS (voir ouvrirEdition dans stock.js). */
 .stock-edition-ligne {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-/* Empile la ligne du haut et les boutons de soustraction rapide (voir juste en dessous) l'une
-   sous l'autre, plutôt que la disposition normale en une seule ligne centrée. Retiré à la
-   fermeture de l'édition (voir fermerEditionEtSauvegarder), donc jamais présent hors édition. */
+/* Empile champ + boutons de soustraction en édition (retiré à la fermeture, voir fermerEditionEtSauvegarder). */
 .stock-editable-zone.stock-edition-colonne {
   flex-direction: column;
   gap: 6px;
 }
 
-/* Boutons "-1"/-2"/"-5" (voir ajouterBoutonsSoustraction) : assez petits pour tenir tous les
-   trois sur la largeur du champ (.stock-quantite-edit, 95px) sans déborder sur mobile. */
+/* "-1/-2/-5" (voir ajouterBoutonsSoustraction) : assez petits pour tenir sur la largeur du champ (95px). */
 .stock-quick-subtract {
   display: flex;
   gap: 4px;
 }
 
-/* Teinte rouge "fanée" dès le repos (pas juste au survol) : lisible comme une action de
-   retrait/déduction sans crier, contrairement au premier essai (gris neutre). Même structure
-   exacte que .form-quantite .suggestion (Courses, "+1/+2/+5") plus bas, seule la couleur change —
-   rouge ici pour retirer du stock, vert là-bas pour un achat, chacun réutilisant une couleur déjà
-   établie ailleurs dans l'app (var(--accent) / le vert de .btn-acheter-icone) plutôt qu'en inventer
-   une nouvelle. */
+/* Même structure que .form-quantite .suggestion (Courses, vert) : rouge fané ici pour un retrait, réutilise var(--accent). */
 .stock-quick-subtract .suggestion {
   width: 26px;
   height: 26px;
@@ -2309,17 +2028,13 @@ body.mode-magasin .panneau-ajout__interieur {
   background: rgba(200, 71, 43, 0.22);
 }
 
-/* Le signe reste discret (plus petit, un peu transparent) : à la même taille que le chiffre, il
-   dominait le bouton et donnait l'impression de lire "plus"/"moins" avant de lire la quantité
-   elle-même. Partagé entre Stock ("−") et Courses ("+", voir .form-quantite .suggestion). */
+/* Discret pour ne pas dominer le chiffre. Partagé entre Stock ("−") et Courses ("+", voir .form-quantite .suggestion). */
 .signe-mini {
   font-size: 0.7em;
   opacity: 0.65;
 }
 
 /* ---- Barre de remplissage (cl) ---- */
-/* Pour les aliments suivis en "cl" (ex: une bouteille), on affiche une petite barre
-   qui se remplit plus ou moins selon le niveau (plein / à moitié / presque vide / vide) */
 
 .stock-barre-cl {
   width: 50px;
@@ -2379,31 +2094,22 @@ body.mode-magasin .panneau-ajout__interieur {
 
 #autocomplete {
   position: relative;
-  /* flex:1 avait du sens quand ce champ partageait la ligne avec la quantité + "Ajouter" ; seul
-     maintenant (tap-to-add, voir stock.js), il n'a plus besoin de s'étirer sur toute la largeur
-     du panneau */
-  flex: 0 1 320px;
+  flex: 0 1 320px; /* tap-to-add (stock.js) : plus besoin de s'étirer sur toute la largeur */
   min-width: 220px;
 }
 
-/* Sur Stock, cette recherche vit directement dans .search-ajout-row et remplace la recherche du
-   stock (jamais les deux affichées ensemble, voir stock.ejs/stock.js) : elle doit donc prendre
-   exactement la même place que .search-wrapper (flex:1), pas la largeur fixe utilisée ailleurs. */
+/* Remplace la recherche du stock dans .search-ajout-row (jamais les deux ensemble) : même place qu'elle (flex:1). */
 .search-ajout-row #autocomplete {
   flex: 1;
   min-width: 220px;
 }
 
-/* Même hauteur exacte que #searchInput (30px) qu'elle remplace : sinon la ligne change de
-   hauteur au moment du remplacement, ce qui fait "sauter" le bouton "+" et le reste de la page. */
+/* Même hauteur que #searchInput qu'elle remplace, sinon le bouton "+" et le reste de la ligne "sautent". */
 .search-ajout-row #autocomplete input {
   height: 30px;
   box-sizing: border-box;
   padding: 8px 18px;
 }
-
-/* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
-   plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec Courses, Calories, etc.) */
 
 #champQuantite,
 #champCL {
@@ -2450,17 +2156,11 @@ body.mode-magasin .panneau-ajout__interieur {
 .btn-icone-rond:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  /* Empêche complètement :hover/:active de se déclencher (pas seulement le clic natif du
-     bouton) : sans ça, l'animation d'appui (scale, voir :active plus haut) jouait quand même au
-     tap, donnant l'impression trompeuse que le bouton "répond" alors qu'il ne fait rien. */
-  pointer-events: none;
+  pointer-events: none; /* bloque aussi :hover/:active, sinon l'animation d'appui jouait quand même au tap */
 }
 
+/* Style "coche" façon iOS plutôt que l'emoji panier (teinte peu cohérente) ; vert plus saturé que .form-quantite .suggestion pour que l'état "prêt" ressorte. */
 .btn-acheter-icone {
-  /* Style "coche" façon iOS (Rappels, Santé...) plutôt que l'emoji panier, qui rendait dans une
-     teinte rose/violette peu cohérente avec le reste de l'app. Vert "sauge" un peu plus saturé
-     que .form-quantite .suggestion (+1/+2/+5) pour que l'état "prêt" se voie davantage : un fond
-     léger dès le repos, pas seulement un contour, sinon le bouton se noyait à côté du reste. */
   background: rgba(58, 122, 69, 0.12);
   border-color: rgba(107, 142, 111, 0.45);
   color: #35be4a;
@@ -2471,19 +2171,15 @@ body.mode-magasin .panneau-ajout__interieur {
   border-color: #35be4a;
 }
 
+/* Même couleur qu'actif, estompée par opacité, comme le bouton "cl" avant armement (voir .arme). */
 .btn-acheter-icone:disabled {
-  /* Même couleur qu'actif, juste estompée par opacité : exactement comme le bouton "cl" avant
-     armement de la carte (voir .arme plus bas), plutôt qu'une teinte recolorée à part. */
   opacity: 0.4;
   background: rgba(58, 122, 69, 0.12);
   color: #35be4a;
   border-color: rgba(107, 142, 111, 0.45);
 }
 
-/* Petit "pop" joué une seule fois, exactement au moment où le bouton passe de désactivé à
-   cliquable (voir activerQuantite dans courses.js) : le seul signal que quelque chose vient de
-   changer, sans avoir besoin de deux couleurs au repos qui ne correspondraient plus entre un
-   article "cl" (toujours actif) et un article à quantité (désactivé par défaut). */
+/* Pop joué une fois quand le bouton passe de désactivé à cliquable (voir activerQuantite dans courses.js). */
 .vient-de-s-activer {
   animation: popActivation 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -2501,9 +2197,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .btn-acheter-icone::before {
-  /* Icône dédiée (public/images/svg/achete.svg, un panier avec une coche) plutôt qu'un simple
-     "✓" texte : même technique de mask-image que les autres icônes de l'app, colorée via
-     currentColor (donc verte ici, comme le reste du bouton) */
   content: "";
   display: block;
   width: 15px;
@@ -2530,11 +2223,8 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 /* ---------- ANIMATIONS ---------- */
-/* Chaque @keyframes définit les étapes d'une animation, qu'on applique ensuite
-   à un élément avec la propriété "animation" (nom + durée + type de vitesse) */
 
 @keyframes fadeIn {
-  /* Apparition en fondu, en montant légèrement depuis le bas */
   from {
     opacity: 0;
     transform: translateY(12px);
@@ -2546,7 +2236,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 @keyframes rotate-slow {
-  /* Rotation complète et continue (utilisée sur le badge du hero) */
   from {
     transform: rotate(0deg);
   }
@@ -2556,7 +2245,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 @keyframes popIn {
-  /* Apparition avec un léger effet de "rebond" (utilisée quand un nouvel article est ajouté) */
   from {
     opacity: 0;
     transform: scale(0.92) translateY(-10px);
@@ -2567,9 +2255,7 @@ body.mode-magasin .panneau-ajout__interieur {
   }
 }
 
-/* Bref halo terracotta : attire l'œil sur la carte qu'on vient d'ajouter/retrouver, une fois
-   amenée à l'écran par scrollIntoView (voir ajouterAuStock dans stock.js), puis s'efface tout
-   seul. Pas rouge — "voici l'article" n'est ni invalide ni négatif. */
+/* Halo terracotta (pas rouge) sur la carte visée par scrollIntoView (voir ajouterAuStock dans stock.js), s'efface seul. */
 .mise-en-avant {
   animation: pulseMiseEnAvant 1.5s ease;
 }
@@ -2587,7 +2273,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 @keyframes slideOutLeft {
-  /* Disparition vers la gauche, en réduisant aussi la hauteur pour que les éléments du dessous remontent en douceur */
   from {
     opacity: 1;
     transform: translateX(0);
@@ -2604,7 +2289,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 @keyframes popOutSuccess {
-  /* Disparition utilisée quand un article de courses est marqué "Acheté" : léger agrandissement puis disparition */
   0% {
     opacity: 1;
     transform: scale(1);
@@ -2624,7 +2308,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 @keyframes slideDownNote {
-  /* Petite apparition vers le bas, utilisée pour les notes/commentaires et le panneau d'ajout */
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -2636,7 +2319,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 @keyframes fadeOutNote {
-  /* L'inverse de slideDownNote : disparition d'une note */
   from {
     opacity: 1;
     transform: translateY(0);
@@ -2648,7 +2330,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 @keyframes flashMaj {
-  /* Petit flash de couleur de fond, pour signaler visuellement qu'un article vient d'être mis à jour */
   0% {
     background: var(--surface);
   }
@@ -2663,7 +2344,6 @@ body.mode-magasin .panneau-ajout__interieur {
 .course-item.entree,
 .stock-item.entree,
 .ligne-ingredient-recette.entree {
-  /* Classe ajoutée par le JavaScript juste après la création d'un nouvel article */
   animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
@@ -2696,26 +2376,17 @@ body.mode-magasin .panneau-ajout__interieur {
   animation: flashMaj 0.6s ease;
 }
 
-/* ---------- RESPONSIVE — MOBILE ---------- */
-/* Cette section ne s'applique que sur les écrans de 768px de large ou moins (tablettes/mobiles) */
+/* ---------- RESPONSIVE — MOBILE (≤768px) ---------- */
 
 @media (max-width: 768px) {
-  /* Bug iOS : Safari (et les navigateurs iOS basés dessus) zoome automatiquement toute la page
-     quand on touche un champ de saisie affiché à moins de 16px, et ne redézoome pas tout seul
-     après (il faut pincer l'écran soi-même). Nos champs font presque tous 0.85rem/0.9rem, donc
-     13-14px : plutôt que de changer un par un chaque font-size (il y en a des dizaines dans ce
-     fichier), on force ici 16px sur tous les champs de saisie d'un coup, uniquement sur mobile.
-     Le "!important" est volontaire : c'est la façon la plus simple de gagner sur toutes ces
-     règles existantes sans devoir toutes les retrouver et les modifier une par une. */
+  /* Bug iOS : zoom auto sur un champ <16px. !important pour gagner sur les dizaines de font-size existants sans les retrouver un par un. */
   input,
   select,
   textarea {
     font-size: 16px !important;
   }
 
-  /* Bouton "✕" pour vider un champ de recherche d'un tap, mobile uniquement (voir la classe de
-     base plus haut, cachée par défaut) : la visibilité réelle ("visible") est posée par JS dès
-     qu'il y a du texte dans le champ, jamais avant. */
+  /* Visibilité réelle ("visible") posée par JS dès qu'il y a du texte, jamais avant. */
   .btn-effacer-recherche {
     display: flex;
     position: absolute;
@@ -2741,16 +2412,12 @@ body.mode-magasin .panneau-ajout__interieur {
   }
 
   .btn-effacer-recherche::before {
-    /* effacer-x.svg : juste deux traits fins qui se croisent, pas fermer.svg (une forme plate
-       épaisse) qui rendait lourd/brouillé à cette petite taille */
+    /* effacer-x.svg (traits fins) plutôt que fermer.svg, trop lourd à cette taille. */
     content: "";
     display: block;
     width: 12px;
     height: 12px;
-    /* Même famille que la bordure terracotta de ces champs (#d77a4291), pas --text-muted (gris
-       neutre) ni --accent (rouge plein, réservé aux vraies erreurs) : lié au thème sans s'y
-       confondre. */
-    background-color: #d77a42;
+    background-color: #d77a42; /* famille de la bordure terracotta, pas --accent (rouge, réservé aux erreurs) */
     -webkit-mask-image: url("/images/svg/effacer-x.svg");
     mask-image: url("/images/svg/effacer-x.svg");
     -webkit-mask-size: contain;
@@ -2761,7 +2428,7 @@ body.mode-magasin .panneau-ajout__interieur {
     mask-position: center;
   }
 
-  /* De la place pour que le texte tapé ne passe jamais sous le bouton "✕" */
+  /* De la place pour que le texte tapé ne passe pas sous le "✕" */
   #searchInput,
   #rechercheAliment,
   #rechercheAlimentCourses,
@@ -2786,10 +2453,7 @@ body.mode-magasin .panneau-ajout__interieur {
     font-size: 0.82rem;
   }
 
-  /* Vraie grille sur mobile (plutôt que le flex row/column du bureau) : titre et badge se
-     partagent la première ligne, le paragraphe prend toute la largeur en dessous — sinon le
-     paragraphe restait coincé dans la même colonne que le titre, à côté du badge, au lieu de
-     profiter de toute la largeur de l'écran. */
+  /* Grille (pas flex) : titre+badge sur la 1ère ligne, le texte prend toute la largeur en dessous. */
   .hero {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -2798,9 +2462,7 @@ body.mode-magasin .panneau-ajout__interieur {
       "texte texte";
     column-gap: 16px;
     row-gap: 10px;
-    /* Peu de marge au-dessus : le H1 doit se sentir comme un vrai titre de page (juste sous le
-       header), pas précédé d'un grand vide, contrairement au bureau qui a la place d'"respirer". */
-    padding: 16px 20px 24px;
+    padding: 16px 20px 24px; /* peu de marge au-dessus : le H1 doit rester collé sous le header */
   }
 
   .hero__text {
@@ -2809,9 +2471,7 @@ body.mode-magasin .panneau-ajout__interieur {
 
   .hero__text h1 {
     grid-area: titre;
-    /* Plus petit qu'en base (2.6rem) : sur mobile, cette taille prenait 2 lignes complètes et
-       dominait toute la hero, alors qu'un H1 doit rester un titre, pas une affiche. */
-    font-size: 1.9rem;
+    font-size: 1.9rem; /* 2.6rem prenait 2 lignes et dominait toute la hero sur mobile */
     margin-bottom: 0;
   }
 
@@ -2823,13 +2483,11 @@ body.mode-magasin .panneau-ajout__interieur {
   .hero__badge {
     grid-area: badge;
     align-self: start;
-    /* Réduit à l'échelle du H1 raccourci, sinon le badge dominait une hero devenue plus compacte */
-    width: 78px;
+    width: 78px; /* réduit à l'échelle du H1 raccourci */
     height: 78px;
   }
 
   .hero__badge--courses {
-    /* Proportionnel au padding-bottom de 14px sur la version 110px (110*0.14 ≈ 78*0.10) */
     width: 65px;
     height: 65px;
     padding-bottom: 10px;
@@ -2849,9 +2507,7 @@ body.mode-magasin .panneau-ajout__interieur {
   }
 
   .filter-btn {
-    /* Pilules un peu plus compactes sur mobile : la barre de filtres prenait trop de place
-       en hauteur à côté du reste de la page */
-    height: 30px;
+    height: 30px; /* pilules plus compactes, la barre de filtres prenait trop de hauteur */
     padding: 0 14px;
     font-size: 0.8rem;
   }
@@ -2868,17 +2524,11 @@ body.mode-magasin .panneau-ajout__interieur {
     gap: 16px;
   }
 
-  /* Le "+" passe après la recherche dans l'ordre visuel (donc à droite) en mobile,
-     alors qu'il est écrit avant elle dans le HTML (donc à gauche en desktop, sans
-     règle "order" à cet endroit) */
   .btn-ajout-icone {
-    order: 1;
+    order: 1; /* passe après la recherche (à droite) en mobile, alors qu'il précède dans le HTML */
   }
 
-  /* Tri / bascule grille-liste (page Stock) : les trois éléments (select de tri, "Grille",
-     "Liste") tiennent sur une seule ligne en mobile plutôt que de s'empiler. Le select n'a
-     plus de label ni de largeur minimum imposée : il ne prend que la place que son texte
-     ("Nom", "Récent"...) réclame vraiment, ce qui laisse la place aux deux boutons. */
+  /* Les 3 éléments tiennent sur une ligne en mobile ; le select perd son label/largeur mini pour laisser la place aux boutons. */
   .search-sort-wrapper {
     flex-wrap: nowrap;
     gap: 8px;
@@ -2889,8 +2539,7 @@ body.mode-magasin .panneau-ajout__interieur {
   }
 
   .search-sort-wrapper .sort-wrapper .custom-select {
-    /* Sélecteur plus spécifique que la règle globale ".sort-wrapper .custom-select"
-       (min-width: 190px, plus bas dans le fichier) pour pouvoir vraiment la réduire ici */
+    /* Plus spécifique que la règle globale ".sort-wrapper .custom-select" (min-width: 190px) pour pouvoir la réduire ici. */
     flex: 0 1 auto;
     min-width: 0;
   }
@@ -2901,13 +2550,11 @@ body.mode-magasin .panneau-ajout__interieur {
   }
 
   .vue-toggle .filter-btn {
-    /* Bouton compact plutôt qu'étiré : juste assez de padding pour rester lisible au tactile */
     padding: 0 12px;
   }
 
   #listeStock {
-    /* Même traitement que .food-grid : cartes plus petites, jamais fait avant ce redesign */
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* même traitement que .food-grid */
     gap: 16px;
   }
 
@@ -2920,10 +2567,7 @@ body.mode-magasin .panneau-ajout__interieur {
   .stock-emplacement,
   .stock-separateur,
   .stock-jours {
-    /* Encore plus petit que le desktop (0.66rem) : sur une carte à 2 colonnes, la colonne
-       nom/emplacement est étroite et "Congélateur | il y a 3 jours" doit quand même tenir
-       sur une seule ligne sans "..." */
-    font-size: 0.52rem;
+    font-size: 0.52rem; /* plus petit que le desktop : la colonne étroite doit tenir sur 1 ligne sans "..." */
   }
 
   .stock-emplacement,
@@ -3028,19 +2672,12 @@ body.mode-magasin .panneau-ajout__interieur {
 
   #autocomplete,
   #autocompleteCourses {
-    /* flex-basis (320px/280px, déclaré plus haut pour la mise en page en ligne du desktop) suit
-       l'axe principal du flex, qui devient vertical avec flex-direction:column ci-dessus : sans
-       ce reset, ce qui était une largeur de base devient une HAUTEUR de base, forçant ce champ
-       (juste un input de recherche) à occuper 280-320px de haut sur mobile au lieu de sa hauteur
-       réelle, avec la liste de suggestions qui se retrouve poussée loin en dessous. */
+    /* flex-basis devient une hauteur en colonne : sans ce reset le champ prendrait 280-320px de haut. */
     width: 100%;
     flex-basis: auto;
   }
 
-  /* Courses seulement (pas #autocomplete/Stock, plein écran par choix) : plafonné plutôt que
-     pleine largeur, "margin:0 auto" le centre horizontalement dans la carte même en colonne
-     (align-items:stretch ci-dessus ne force le plein largeur QUE pour les enfants sans largeur
-     propre — un enfant avec une largeur explicite, comme ici, reste maître de sa taille). */
+  /* Courses seulement : plafonné et centré (margin:0 auto), pas pleine largeur. */
   #autocompleteCourses {
     width: 100%;
     max-width: 280px;
@@ -3082,22 +2719,14 @@ body.mode-magasin .panneau-ajout__interieur {
   }
 }
 
-/* ================================================================
-   UTILITAIRES
-   Toujours en dernier dans le fichier : ces classes doivent gagner
-   sur n'importe quelle règle de composant (.stock-item, .food-card,
-   .course-item, etc.) qui définirait sa propre valeur de `display`.
-   ================================================================ */
+/* ---------- UTILITAIRES : toujours en dernier, doivent gagner sur les règles de composant ---------- */
 
 .hidden {
-  /* Classe générique utilisée un peu partout (en JS) pour cacher/afficher un élément */
   display: none;
 }
 
+/* Posée sur <body> tant que le panneau détail recette est ouvert (voir afficherSheet/fermerSheet dans calories.js). */
 .scroll-bloque {
-  /* Posée sur <body> tant que le panneau détail recette est ouvert (voir afficherSheet/
-     fermerSheet dans calories.js) : empêche un geste de scroll de faire défiler la page du
-     dessous au lieu du panneau lui-même */
   overflow: hidden;
 }
 
@@ -3128,10 +2757,7 @@ body.mode-magasin .panneau-ajout__interieur {
   font-size: 0.85rem;
   color: var(--text);
   text-align: center;
-  /* Les flèches natives du navigateur grignotaient la place du chiffre lui-même sur un champ
-     déjà étroit (ex: "32,4" collé contre les flèches) : on les enlève, le champ +/− du clavier
-     numérique mobile ou la saisie directe suffisent */
-  -moz-appearance: textfield;
+  -moz-appearance: textfield; /* flèches natives retirées : grignotaient la place du chiffre sur ce champ étroit */
   appearance: textfield;
 }
 
@@ -3157,9 +2783,7 @@ body.mode-magasin .panneau-ajout__interieur {
   min-width: 0;
 }
 
-/* Largeur fixe : sinon un libellé plus long ("gousse", "tbsp"...) élargit ce bouton et désaligne
-   toutes les lignes entre elles. Le nom de l'aliment (flex:1) garde toujours la priorité d'espace,
-   quitte à se tronquer lui-même en premier sur un écran étroit. */
+/* Largeur fixe : sinon un libellé plus long ("gousse", "tbsp"...) désaligne les lignes entre elles. */
 .journal-quantite-groupe .custom-select__button {
   width: 62px;
   padding: 6px 24px 6px 8px;
@@ -3189,8 +2813,6 @@ body.mode-magasin .panneau-ajout__interieur {
 
 .page-header h1 span,
 .journal-section h1 span {
-  /* Même accent que Aliments ("Mieux manger commence ici.") : Stock, Courses et Calories
-     reprennent maintenant le même principe titre + bout de phrase en couleur */
   color: var(--accent);
 }
 
@@ -3210,9 +2832,6 @@ body.mode-magasin .panneau-ajout__interieur {
   min-width: 220px;
 }
 
-/* Le style du champ de recherche et de la liste de suggestions est défini une seule fois,
-   plus bas, dans la section "CONTRÔLES PARTAGÉS" (partagé avec Stock, Courses, Ingrédients) */
-
 #listeJournal {
   display: flex;
   flex-direction: column;
@@ -3221,33 +2840,18 @@ body.mode-magasin .panneau-ajout__interieur {
 
 .journal-item {
   display: grid;
-  /* Grille inchangée (nom + valeurs) : les boutons monter/descendre ne prennent PAS leur propre
-     colonne (voir .reorder-controls plus bas) — leur donner une colonne "auto" mangeait juste
-     assez de largeur pour faire passer des noms plus longs ("Boeuf Haché 20%", "Piment Marocain")
-     sur deux lignes. Ils flottent maintenant en position absolute dans la marge gauche, comme le
-     "−" de suppression flotte déjà dans le coin en haut à droite (voir .form-supprimer-journal) :
-     aucun impact sur la largeur disponible pour le nom. */
+  /* Pas de colonne dédiée pour monter/descendre : ils flottent en absolute dans la marge gauche, comme le "−" flotte à droite (.form-supprimer-journal), sans réduire la largeur du nom. */
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: 12px;
-  /* Réserve la place occupée par les boutons flottants, sans leur donner de vraie colonne */
-  padding-left: 22px;
+  padding-left: 22px; /* réserve la place des boutons flottants sans leur donner de vraie colonne */
 }
 
-/* Boutons monter/descendre : une paire de chevrons discrets, façon "stepper" iOS, plutôt qu'une
-   vraie poignée de glisser-déposer (peu fiable au tactile sans librairie dédiée). Flottent dans
-   la marge gauche (position absolute) pour ne jamais réduire la largeur du nom à côté — voir le
-   commentaire sur .journal-item. Réutilisés tels quels pour le Journal ET les ingrédients de
-   recette (voir .ligne-ingredient-recette, qui a besoin de son propre "position: relative"). */
+/* Chevrons "stepper" iOS plutôt qu'une poignée de drag (peu fiable au tactile). Réutilisés pour le Journal et les ingrédients de recette (.ligne-ingredient-recette). */
 .reorder-controls {
   position: absolute;
   left: 0;
-  /* Étiré sur (presque) toute la hauteur de la ligne (plutôt que centré avec les deux boutons
-     collés) : "space-between" pousse "monter" vers le haut et "descendre" vers le bas, chacun
-     proche du bord qu'il représente au lieu d'être tassés ensemble au milieu. 6px de marge en
-     haut/bas plutôt que 0 : collés pile sur les bords, ils touchaient visuellement le bord de
-     la carte, ce qui faisait trop serré. */
-  top: 6px;
+  top: 6px; /* space-between pousse monter/descendre vers les bords, 6px pour ne pas les coller pile dessus */
   bottom: 6px;
   display: flex;
   flex-direction: column;
@@ -3311,8 +2915,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .journal-nom {
-  /* Même traitement que .food-card__name / .course-nom / .stock-nom : police de texte courant
-     et poids léger plutôt que la serif en gras des titres */
   font-family: var(--font-body);
   font-size: 1.05rem;
   font-weight: 400;
@@ -3342,8 +2944,6 @@ body.mode-magasin .panneau-ajout__interieur {
   text-align: right;
 }
 
-/* Bouton supprimer : petit rond rouge avec un signe moins, style iOS,
-   posé en dehors du cadre de la carte */
 .form-supprimer-journal {
   position: absolute;
   top: -8px;
@@ -3367,13 +2967,8 @@ body.mode-magasin .panneau-ajout__interieur {
     transform 0.12s ease;
 }
 
+/* Icône par défaut (Journal, ingrédients recette) : retirer un aliment est une action légère, pas une vraie suppression (voir .btn-supprimer-icone pour Stock/Courses, la poubelle). */
 .btn-supprimer-dash::before {
-  /* Icône dédiée (public/images/svg/supprimer-article.svg, un cercle plein avec une encoche
-     "−") reste l'icône par défaut (Journal, cartes/ingrédients de Recette) : retirer un
-     aliment du journal ou un ingrédient d'une recette qu'on compose est une action légère,
-     pas une vraie suppression d'inventaire. Voir .btn-supprimer-icone ci-dessous pour
-     Stock/Courses, où c'est bien la poubelle (public/images/svg/supprimer.svg). L'icône
-     dessine déjà son propre cercle : pas besoin d'un fond/bordure séparé sur le bouton. */
   content: "";
   display: block;
   width: 17px;
@@ -3389,12 +2984,7 @@ body.mode-magasin .panneau-ajout__interieur {
   mask-position: center;
 }
 
-/* Stock et Courses seuls ont cette classe en plus de .btn-supprimer-dash (voir stock.ejs/js et
-   courses.ejs/js) : retirer un article de l'inventaire ou de la liste de courses est une vraie
-   suppression, donc la poubelle plutôt que le "−" plus léger du Journal/Recette. Contrairement à
-   supprimer-article.svg (qui dessine déjà son propre cercle), supprimer.svg est une simple
-   poubelle : ce variant a donc besoin de son propre cercle/bordure, plus repris automatiquement
-   depuis .btn-supprimer-dash de base depuis qu'elle ne le dessine plus. */
+/* Stock/Courses seuls ajoutent cette classe à .btn-supprimer-dash : vraie suppression, donc la poubelle (supprimer.svg) plutôt que le "−" léger. */
 .btn-supprimer-icone {
   background: var(--accent);
   border: 2px solid var(--surface);
@@ -3426,13 +3016,9 @@ body.mode-magasin .panneau-ajout__interieur {
   transform: scale(0.85);
 }
 
-/* ---------- ONGLETS JOURNAL / RECETTES (page Calories) ---------- */
-/* Une seule page, deux onglets pilotés en JavaScript (voir calories.js) : pas de rechargement,
-   donc jamais de "retour en arrière" perdu en passant d'une recette à son application au journal. */
+/* ---------- ONGLETS JOURNAL / RECETTES (page Calories) : deux onglets pilotés en JS (calories.js), pas de rechargement ---------- */
 
-/* Pas des boutons d'action comme les pilules de filtre : Journal et Recettes sont chacun une
-   vraie section de la page, donc traités comme des titres qu'on choisit plutôt que des boutons
-   qu'on presse — même famille de police que les titres, gras, soulignés façon .nav__link.actif. */
+/* Traités comme des titres qu'on choisit, pas des boutons qu'on presse : police des titres, gras, soulignés façon .nav__link.actif. */
 .calories-tabs {
   display: flex;
   margin-bottom: 24px;
@@ -3441,10 +3027,7 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .calories-tab-btn {
-  /* Chaque onglet prend une part égale de toute la largeur (au lieu d'être collé à gauche avec
-     un "gap" fixe et un grand vide à droite) : Journal et Recette occupent ainsi toute la ligne,
-     comme une vraie barre d'onglets plutôt que deux libellés perdus dans le coin. */
-  flex: 1;
+  flex: 1; /* chaque onglet prend une part égale de la largeur, comme une vraie barre d'onglets */
   text-align: center;
   padding: 0;
   border: none;
@@ -3556,11 +3139,7 @@ body.mode-magasin .panneau-ajout__interieur {
     transform 0.12s ease;
 }
 
-/* .hidden (display:none) est définie plus haut dans ce fichier, et perdait contre ce
-   "display:flex" à spécificité égale (l'ordre du fichier tranche les égalités) : le bouton
-   restait visible même avec la classe "hidden" posée dessus. Spécificité plus forte ici
-   (.btn-enregistrer-recette.hidden, 2 classes) pour que masqué gagne toujours, peu importe
-   l'ordre des règles dans le fichier. */
+/* Spécificité renforcée (2 classes) : .hidden seule perdait contre "display:flex" à spécificité égale. */
 .btn-enregistrer-recette.hidden {
   display: none;
 }
@@ -3600,9 +3179,7 @@ body.mode-magasin .panneau-ajout__interieur {
   margin-bottom: 0;
 }
 
-/* 3 colonnes égales (1fr auto 1fr) : le tri à gauche, le nom de la section vraiment centré (pas
-   juste "poussé" par un margin-left:auto sur l'élément de droite, qui ne centre rien du tout dès
-   que gauche et droite n'ont pas la même largeur), la bascule grille/liste à droite. */
+/* 1fr auto 1fr : nom vraiment centré, pas juste poussé par margin-left:auto qui ne centre rien si gauche/droite diffèrent. */
 .recette-groupe-titre {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -3757,10 +3334,7 @@ body.mode-magasin .panneau-ajout__interieur {
   color: var(--accent);
 }
 
-/* Icône de catégorie de recette (Plat/Fraîcheur) : mêmes SVG en plusieurs couleurs que les
-   boutons du Journal (voir #selectRecettePlat + .custom-select ci-dessus), donc affichés tels
-   quels plutôt qu'en mask-image recolorable. Utilisée ici sur les pastilles de catégorie, le
-   titre de groupe de la grille de recettes, et en repli sur une carte recette sans émoji connu. */
+/* SVG affichés tels quels (pas mask-image recolorable), utilisés sur les pastilles, le titre de groupe et en repli sur une carte sans émoji. */
 .icone-categorie-recette {
   display: inline-block;
   width: 16px;
@@ -3832,20 +3406,13 @@ body.mode-magasin .panneau-ajout__interieur {
   color: var(--text-muted);
 }
 
-/* Même couleur/poids qu'en vue liste (voir .vue-liste .recette-kcal plus bas) : les calories
-   doivent se reconnaître au premier coup d'œil peu importe la vue, pas seulement en liste. */
+/* Même couleur/poids qu'en vue liste (.vue-liste .recette-kcal) : reconnaissable peu importe la vue. */
 .recette-kcal {
   font-weight: 700;
   color: var(--accent);
 }
 
-/* ---- Vue liste (mêmes cartes, même HTML, voir #listeStock.vue-liste plus haut) ----
-   Seulement 2 colonnes : nom + émoji empilés à gauche (l'émoji remplace le nombre d'ingrédients,
-   pas besoin des deux), calories à droite — la donnée la plus scannée en parcourant la liste.
-   ".recette-corps"/".recette-sub" passent en display:contents pour que leurs enfants (nom, émoji,
-   kcal) deviennent des cases directes de la grille du haut, sans avoir à dupliquer le HTML entre
-   vue grille et vue liste. */
-
+/* Vue liste : mêmes cartes/HTML (voir #listeStock.vue-liste). .recette-corps/.recette-sub passent en display:contents pour éviter de dupliquer le HTML entre vues. */
 .recette-grid.vue-liste {
   display: flex;
   flex-direction: column;
@@ -3968,11 +3535,7 @@ body.mode-magasin .panneau-ajout__interieur {
   left: 0;
   right: 0;
   bottom: 0;
-  /* Hauteur FIXE (pas max-height) : le haut du panneau doit toujours démarrer juste sous le
-     header/nav, même pour "Nouvelle recette" avec peu de contenu — un max-height se contente
-     lui de ne pas dépasser une limite, mais laisse la hauteur réelle suivre le contenu, donc
-     un formulaire court laissait un vide entre le panneau et le header au lieu de le remplir. */
-  height: calc(100vh - var(--header-h, 65px));
+  height: calc(100vh - var(--header-h, 65px)); /* fixe, pas max-height : doit toujours démarrer sous le header même à contenu court */
   margin: 0 auto;
   max-width: 560px;
   background: var(--surface);
@@ -3984,10 +3547,7 @@ body.mode-magasin .panneau-ajout__interieur {
   z-index: 201;
   overflow-y: auto;
   padding: 10px 24px 28px;
-  /* Colonne verticale (poignée + formulaire) : #formRecette s'étire pour remplir tout l'espace
-     restant (voir plus bas), ce qui permet à "Enregistrer"/"Supprimer" de rester tout en bas
-     du panneau au lieu de flotter juste après un contenu court, avec un grand vide en dessous */
-  display: flex;
+  display: flex; /* #formRecette s'étire (flex:1) pour garder Enregistrer/Supprimer collés en bas */
   flex-direction: column;
 }
 
@@ -4058,8 +3618,7 @@ body.mode-magasin .panneau-ajout__interieur {
   color: var(--text-muted);
 }
 
-/* Pleine largeur, tout en bas du panneau : façon Apple ("Delete Contact", Réglages...), jamais
-   collée au "✕" fermer en haut, pour qu'un tap malheureux ne puisse pas la déclencher par erreur */
+/* Pleine largeur, tout en bas, jamais collée au "✕" fermer : un tap malheureux ne peut pas la déclencher. */
 .btn-supprimer-pleine-largeur {
   display: block;
   width: 100%;
@@ -4078,8 +3637,7 @@ body.mode-magasin .panneau-ajout__interieur {
     color 0.15s ease;
 }
 
-/* Même souci de cascade que .btn-enregistrer-recette.hidden ci-dessus : sans ce filet,
-   "hidden" perdait contre le display:block de la règle de base */
+/* Même souci de cascade que .btn-enregistrer-recette.hidden : sans ce filet, "hidden" perdait contre display:block. */
 .btn-supprimer-pleine-largeur.hidden {
   display: none;
 }
@@ -4090,8 +3648,6 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .sheet-close-btn::before {
-  /* Icône dédiée "fermer" (public/images/svg/fermer.svg), distincte de la poubelle : fermer ce
-     panneau n'efface rien, contrairement au "−"/poubelle utilisés pour les vraies suppressions */
   content: "";
   display: block;
   width: 12px;
@@ -4124,23 +3680,11 @@ body.mode-magasin .panneau-ajout__interieur {
   display: flex;
   flex-direction: column;
   margin-bottom: 12px;
-  /* Seule cette liste défile quand une recette a beaucoup d'ingrédients : le reste du panneau
-     (titre, Boisson/Plat, "+", "Enregistrer"/"Supprimer" tout en bas) reste bien en place.
-     max-height (pas flex:1) : elle ne prend que la hauteur de son contenu tant qu'il tient dans
-     cette limite (vide ou courte liste), et ne devient scrollable qu'au-delà — flex:1 l'aurait
-     étirée même vide, créant un vide séparé de celui déjà réservé à "Enregistrer" plus bas. */
-  max-height: 40vh;
+  max-height: 40vh; /* pas flex:1 : ne prend que la hauteur de son contenu, scrollable seulement au-delà */
   overflow-y: auto;
 }
 
-/* Même souci que #autocompleteIngredient.pret, un niveau plus haut : même avec
-   #autocompleteIngredient repassé en overflow:visible pendant la recherche, la liste de
-   suggestions (position:absolute) reste un DESCENDANT de #listeIngredientsRecette — son propre
-   "overflow-y: auto" continuait donc à couper toute suggestion qui dépassait ses 40vh, la
-   rendant invisible même si elle s'affichait bien dans le DOM (le champ s'ouvrait, mais taper
-   ne montrait jamais aucun résultat). Classe ajoutée par JS pendant que la recherche est ouverte
-   (voir btnToggleAjoutIngredient dans calories.js) : la liste peut alors dépasser librement, et
-   c'est .sheet (qui défile lui aussi) qui prend le relai pour rester scrollable. */
+/* Classe posée en JS pendant la recherche (voir btnToggleAjoutIngredient dans calories.js) : sinon l'overflow-y de cette liste coupait les suggestions débordantes, invisibles même si présentes dans le DOM. */
 #listeIngredientsRecette.recherche-ouverte {
   overflow: visible;
   max-height: none;
@@ -4154,17 +3698,11 @@ body.mode-magasin .panneau-ajout__interieur {
   margin: 0 0 12px;
 }
 
+/* Toujours dernier enfant de #listeIngredientsRecette (voir ajouterLigneIngredient dans calories.js) : se comporte comme la ligne du prochain ingrédient. */
 #autocompleteIngredient {
-  /* TOUJOURS le dernier enfant de #listeIngredientsRecette (voir calories.ejs et
-     ajouterLigneIngredient dans calories.js, qui insère chaque nouvel ingrédient juste avant
-     lui) : se comporte comme la ligne du "prochain" ingrédient, à l'intérieur de la même zone
-     qui défile, plutôt qu'un popover détaché ailleurs sur la page. */
   position: relative;
   margin-bottom: 14px;
-  /* ".replie" (pas ".hidden"/display:none, qui ne se transitionne pas) : le champ se déplie/
-     replie en douceur au lieu d'apparaître/disparaître d'un coup au clic sur "+". Courbe avec
-     un léger rebond (même famille que .panneau-ajout) plutôt qu'un simple "ease" plat. */
-  max-height: 60px;
+  max-height: 60px; /* ".replie" (pas display:none) pour transitionner en douceur, rebond façon .panneau-ajout */
   opacity: 1;
   overflow: hidden;
   transition:
@@ -4179,11 +3717,7 @@ body.mode-magasin .panneau-ajout__interieur {
   margin-bottom: 0;
 }
 
-/* Une fois l'ouverture terminée (classe "pret", ajoutée par JS via "transitionend", même
-   principe que .panneau-ajout plus haut dans ce fichier), on repasse en overflow:visible :
-   sinon #listeIngredientsRecherche (position:absolute, dépasse volontairement sous le champ)
-   restait coupée/invisible en permanence à cause de l'overflow:hidden nécessaire à l'animation
-   — impossible de voir ou cliquer la moindre suggestion, donc impossible d'ajouter un aliment. */
+/* "pret" (posé par JS après transitionend, même principe que .panneau-ajout) repasse en overflow:visible, sinon la liste de suggestions débordante resterait coupée. */
 #autocompleteIngredient.pret {
   overflow: visible;
 }
@@ -4199,9 +3733,7 @@ body.mode-magasin .panneau-ajout__interieur {
   gap: 10px;
   padding: 9px 0 9px 22px;
   border-bottom: 1px solid var(--border);
-  /* Nécessaire pour que .reorder-controls (position: absolute) se positionne par rapport à
-     CETTE ligne plutôt que par rapport à #listeIngredientsRecette entier */
-  position: relative;
+  position: relative; /* ancre .reorder-controls (absolute) à cette ligne, pas à #listeIngredientsRecette */
 }
 
 .ingredient-nom-recette {
@@ -4242,9 +3774,7 @@ body.mode-magasin .panneau-ajout__interieur {
   min-width: 0;
 }
 
-/* Largeur fixe : sinon un libellé plus long ("gousse", "tbsp"...) élargit ce bouton et désaligne
-   toutes les lignes entre elles. Le nom de l'aliment (flex:1) garde toujours la priorité d'espace,
-   quitte à se tronquer lui-même en premier sur un écran étroit. */
+/* Largeur fixe : sinon un libellé plus long ("gousse", "tbsp"...) désaligne les lignes entre elles. */
 .ligne-ingredient-recette .custom-select__button {
   width: 62px;
   padding: 6px 24px 6px 8px;
@@ -4254,9 +3784,7 @@ body.mode-magasin .panneau-ajout__interieur {
   white-space: nowrap;
 }
 
-/* Même bouton que .btn-supprimer-dash (Journal/Stock/Courses/cartes Recette) : un seul langage
-   visuel pour "retirer cet élément", partout dans l'app plutôt qu'un contour discret ici et un
-   rond rouge ailleurs */
+/* Même bouton que .btn-supprimer-dash : un seul langage visuel pour "retirer cet élément" partout dans l'app. */
 .ingredient-x-recette {
   flex-shrink: 0;
 }
@@ -4264,20 +3792,13 @@ body.mode-magasin .panneau-ajout__interieur {
 #formRecette #btnEnregistrerSheet {
   width: 100%;
   flex-shrink: 0;
-  /* Pousse "Enregistrer" (et "Supprimer la recette" juste après) tout en bas du panneau : sans
-     ça, avec peu ou pas d'ingrédients, les boutons flottaient juste après un contenu très court,
-     laissant un grand vide entre eux et le bas réel du panneau (voir #formRecette, colonne flex) */
-  margin-top: auto;
+  margin-top: auto; /* pousse Enregistrer/Supprimer tout en bas du panneau même à contenu court */
 }
 
-/* ---------- CONTRÔLES PARTAGÉS ---------- */
-/* Système de "custom select" : on cache le vrai <select> HTML (moche et impossible à styliser
-   finement dans tous les navigateurs) et on affiche à la place notre propre menu déroulant en HTML/CSS,
-   généré et piloté par public/js/custom-selects.js */
+/* ---------- CONTRÔLES PARTAGÉS : "custom select" pilotant un <select> caché, voir public/js/custom-selects.js ---------- */
 
 .custom-select-native {
-  /* Technique classique pour cacher un élément visuellement tout en le gardant accessible/fonctionnel :
-     on le réduit à 1px et on le rend invisible, plutôt que d'utiliser display:none (qui le retirerait complètement) */
+  /* Réduit à 1px et invisible (pas display:none) pour rester accessible/fonctionnel tout en étant caché visuellement. */
   position: absolute;
   width: 1px;
   height: 1px;
@@ -4313,16 +3834,12 @@ body.mode-magasin .panneau-ajout__interieur {
     transform 0.12s ease;
 }
 
-/* :hover exclu du tactile (voir @media plus bas) : sur un écran tactile il n'y a pas de vrai
-   "survol", donc pas de mouseout pour l'annuler — sans cette condition, un bouton restait avec
-   sa bordure accentuée après un tap (ex: #selectRecettePlat/#selectRecetteFraicheur sur Calories)
-   tant qu'on ne touchait pas autre chose ailleurs, donnant l'impression que les deux étaient
-   "actifs" en même temps dès qu'on tapait l'un puis l'autre. */
 .custom-select__button:focus {
   outline: none;
   border-color: #d77a4291;
 }
 
+/* (hover: hover) exclut le tactile : sinon la bordure accentuée restait "collée" après un tap. */
 @media (hover: hover) and (pointer: fine) {
   .custom-select__button:hover {
     outline: none;
@@ -4334,10 +3851,8 @@ body.mode-magasin .panneau-ajout__interieur {
   transform: scale(0.98);
 }
 
+/* Terracotta adouci, pas rouge : un menu ouvert n'est pas une erreur (voir .course-item.arme). */
 .custom-select--open .custom-select__button {
-  /* Classe ajoutée par custom-selects.js quand la liste déroulante est actuellement ouverte.
-     Terracotta adouci, pas rouge — un menu ouvert n'est pas une erreur (voir .course-item.arme
-     plus haut). */
   border-color: #d77a4291;
 }
 
@@ -4349,15 +3864,9 @@ body.mode-magasin .panneau-ajout__interieur {
 }
 
 .custom-select__list {
-  /* position: fixed (au lieu de absolute) : la liste est posée sur <body> pendant qu'elle est
-     ouverte (voir custom-selects.js), donc positionnée par rapport à l'écran et pas par rapport
-     à une carte parente. C'est ce qui l'empêche de se retrouver piégée/cachée sous une carte
-     voisine : son "top"/"left" exacts sont calculés en JavaScript juste avant son ouverture. */
+  /* fixed (pas absolute) : posée sur <body> à l'ouverture (voir custom-selects.js), donc jamais piégée sous une carte voisine ; top/left calculés en JS. */
   position: fixed;
-  /* La largeur suit le texte des options (JS ne fixe qu'une largeur minimum, voir open()) :
-     un bouton compact n'oblige plus les options à s'écraser sur une seule ligne trop étroite.
-     max-width protège quand même les petits écrans, pour ne jamais dépasser la fenêtre. */
-  width: max-content;
+  width: max-content; /* suit le texte des options (JS ne fixe qu'une largeur minimum) */
   max-width: calc(100vw - 24px);
   background: var(--surface);
   border: 1.5px solid var(--border);
@@ -4366,10 +3875,7 @@ body.mode-magasin .panneau-ajout__interieur {
   overflow: hidden;
   z-index: 1000; /* bien au-dessus de tout le reste de la page (header compris) */
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-  /* Fermée par défaut : légèrement remontée et invisible, pour glisser/s'estomper à l'ouverture
-     comme un vrai menu déroulant plutôt que d'apparaître d'un coup (voir .custom-select__list--ouverte
-     et open()/close() dans custom-selects.js) */
-  opacity: 0;
+  opacity: 0; /* fermée par défaut : glisse/s'estompe à l'ouverture (voir .custom-select__list--ouverte, custom-selects.js) */
   transform: translateY(-6px);
   transform-origin: top;
   transition:
@@ -4420,9 +3926,7 @@ body.mode-magasin .panneau-ajout__interieur {
   min-width: 120px;
 }
 
-/* #selectRecettePlat/#selectRecetteFraicheur n'affichent qu'une icône (pas de texte, voir calories.ejs) :
-   un rond compact comme les autres boutons d'action de la ligne plutôt que la largeur prévue
-   pour un nom de recette */
+/* N'affichent qu'une icône (pas de texte, voir calories.ejs) : rond compact plutôt que la largeur prévue pour un nom de recette. */
 #selectRecettePlat + .custom-select,
 #selectRecetteFraicheur + .custom-select {
   flex: 0 0 auto;
@@ -4438,11 +3942,7 @@ body.mode-magasin .panneau-ajout__interieur {
   border-radius: 50%;
   background-color: transparent;
   text-align: center;
-  /* Icône dédiée à la place du texte de l'option choisie et de la petite flèche du menu déroulant :
-     contrairement à supprimer/enregistrer/fermer, ces dessins sont en plusieurs couleurs, donc
-     affichés tels quels (pas en mask-image recolorable) — recettes.svg pour les recettes de plat,
-     glacon.svg pour "Fraîcheur" (boissons + glaces) */
-  background-image: url("/images/svg/recettes.svg");
+  background-image: url("/images/svg/recettes.svg"); /* icône en plusieurs couleurs, affichée telle quelle (pas mask-image) */
   background-repeat: no-repeat;
   background-position: center;
   background-size: 20px 20px;
@@ -4455,18 +3955,10 @@ body.mode-magasin .panneau-ajout__interieur {
 
 #selectRecettePlat + .custom-select .custom-select__label,
 #selectRecetteFraicheur + .custom-select .custom-select__label {
-  /* Le nom de la recette choisie reste inutile ici : seule l'icône compte, le texte est cité
-     pour l'accessibilité mais retiré visuellement */
-  font-size: 0;
+  font-size: 0; /* seule l'icône compte, le texte reste pour l'accessibilité */
 }
 
-/* Ces deux menus peuvent contenir beaucoup de recettes : ~5 lignes visibles à la fois puis
-   défilement, même principe que les autres listes de suggestions de l'app (#listeAlimentsCourses
-   etc.) plutôt que de laisser le menu s'étirer indéfiniment vers le bas de l'écran.
-   [data-for-select] plutôt qu'un sélecteur par parenté (ex: "#selectRecettePlat + .custom-select
-   .custom-select__list") : cette liste est déplacée sur <body> pendant qu'elle est ouverte (voir
-   open() dans custom-selects.js), donc plus du tout descendante de son wrapper d'origine à ce
-   moment précis — un sélecteur par parenté ne l'aurait alors plus jamais matchée. */
+/* [data-for-select] plutôt qu'un sélecteur par parenté : la liste est déplacée sur <body> à l'ouverture (voir open() dans custom-selects.js), donc plus descendante de son wrapper. */
 .custom-select__list[data-for-select="selectRecettePlat"],
 .custom-select__list[data-for-select="selectRecetteFraicheur"] {
   max-height: 215px;
@@ -4491,10 +3983,7 @@ body.mode-magasin .panneau-ajout__interieur {
   color: var(--text);
 }
 
-/* Le champ hérite sinon le line-height:1.6 du body (pensé pour du texte en paragraphe, pas un
-   champ d'une seule ligne) : avec "DM Sans", ça pouvait décaler visuellement le texte/placeholder
-   vers le haut ou le bas de la boîte au lieu de le centrer verticalement pile entre le padding
-   haut et bas. "normal" laisse le champ se centrer sur les vraies métriques de la police. */
+/* "normal" plutôt que le line-height:1.6 hérité du body, qui décalait le texte/placeholder du centrage vertical. */
 #rechercheAlimentCourses {
   line-height: normal;
 }
@@ -4629,13 +4118,7 @@ body.mode-magasin .panneau-ajout__interieur {
     width: 100%;
   }
 
-  /* Pas de règle "pleine largeur" pour .journal-actions-row .custom-select ici : ça ne visait que
-     #selectRecettePlat/#selectRecetteFraicheur, deux ronds compacts (icône seule, pas de nom de
-     recette à lire) pour qui "pleine largeur" n'a jamais eu de sens, contrairement à un vrai
-     select texte. Une ancienne règle le forçait quand même (jusqu'ici sans effet à cause d'un
-     conflit de spécificité) ; la corriger les a fait passer en pleine largeur "un par ligne",
-     empilant Journal/Fraîcheur/Tout-effacer sur 3 rangs séparés au lieu de rester groupés à côté
-     de la recherche. Ils restent donc compacts sur mobile aussi, comme sur desktop. */
+  /* Pas de "pleine largeur" pour .journal-actions-row .custom-select : ne concerne que les ronds compacts #selectRecettePlat/#selectRecetteFraicheur, restent compacts sur mobile comme sur desktop. */
 }
 
 /* ---------- PHOTO DE RÉFÉRENCE (Courses) ---------- */
@@ -4670,9 +4153,7 @@ body.mode-magasin .panneau-ajout__interieur {
   gap: 14px;
 }
 
-/* À la fermeture, la photo est "aspirée" vers l'oeil qui l'a ouverte plutôt que de juste
-   disparaître : --vers-x/--vers-y sont posées en JS juste avant (voir fermerApercuPhoto dans
-   courses.js), calculées à partir de la position réelle du bouton oeil sur la carte. */
+/* --vers-x/--vers-y posées en JS (fermerApercuPhoto) : la photo "s'aspire" vers l'oeil qui l'a ouverte. */
 .photo-apercu.fermeture {
   animation: aspirePhotoVersOeil 0.35s cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
@@ -4712,4 +4193,3 @@ body.mode-magasin .panneau-ajout__interieur {
   font-size: 1rem;
   cursor: pointer;
 }
-
